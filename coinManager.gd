@@ -23,7 +23,7 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 @export var step_delay_sec: float = 0.5
 @export var passive_trigger_delay_sec: float = 0.5
 @export var base_show_delay_sec: float = 0.2
-@export var between_tokens_delay_sec: float = 0.5
+@export var between_tokens_delay_sec: float = 0.2
 @export var show_winner_desc_delay_sec: float = 1.0
 @export var active_desc_pause_sec: float = 0.35
 # (reverted) no global time scaling
@@ -92,6 +92,10 @@ var _loot_skip_btn: Button
 var _loot_rng := RandomNumberGenerator.new()
 var _loot_last_round: int = 0
 # Removed FX overlay vars (reverted fly-to-total animation)
+
+# Run state guards
+var _game_over_active: bool = false
+var _loot_gen: int = 0  # increments to invalidate any pending loot shows
 
 # Cached refs
 var _value_label: Node = null
@@ -164,6 +168,8 @@ func reset_run() -> void:
 	total_coins = 0
 	spin_index = 0
 	_shown_total = 0
+	_game_over_active = false
+	_loot_gen += 1
 	if is_instance_valid(_bank_tween):
 		_bank_tween.kill()
 	_bank_tween = null
@@ -368,45 +374,46 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 		if debug_spin:
 			print("[Spin] Final offset=", ck.offset, " => ", ck.meta["final"])
 
-		var active_total: int = 0
-		var passive_total: int = 0
-		for c in contribs:
-			var fin: int = 0
-			if (c.meta as Dictionary).has("final"):
-				fin = int((c.meta as Dictionary).get("final"))
-			if c.kind == "active":
-				active_total += fin
-			else:
-				passive_total += fin
+	# Compute totals ONCE per spin
+	var active_total: int = 0
+	var passive_total: int = 0
+	for c in contribs:
+		var fin: int = 0
+		if (c.meta as Dictionary).has("final"):
+			fin = int((c.meta as Dictionary).get("final"))
+		if c.kind == "active":
+			active_total += fin
+		else:
+			passive_total += fin
 
-		total_active += active_total
-		total_passive += passive_total
-		var spin_total: int = active_total + passive_total
-		total_coins += spin_total
+	total_active += active_total
+	total_passive += passive_total
+	var spin_total: int = active_total + passive_total
+	total_coins += spin_total
 
-		# Reverted: directly update totals without extra overlay animations
-		_update_totals_label(total_coins)
-		_update_spin_counters(false)
+	# Reverted: directly update totals without extra overlay animations
+	_update_totals_label(total_coins)
+	_update_spin_counters(false)
 
-		# Build result dictionary without multi-line literal
-		result = {}
-		result["active_total"] = active_total
-		result["passive_total"] = passive_total
-		result["spin_total"] = spin_total
-		result["run_total"] = total_coins
-		result["contributions"] = contribs
-		result["context"] = ctx
-		if debug_spin:
-			print("[Totals] active=", active_total, " passive=", passive_total, " spin_total=", result["spin_total"], " run_total=", total_coins)
-		emit_signal("spin_totals_ready", result)
+	# Build result dictionary without multi-line literal
+	result = {}
+	result["active_total"] = active_total
+	result["passive_total"] = passive_total
+	result["spin_total"] = spin_total
+	result["run_total"] = total_coins
+	result["contributions"] = contribs
+	result["context"] = ctx
+	if debug_spin:
+		print("[Totals] active=", active_total, " passive=", passive_total, " spin_total=", result["spin_total"], " run_total=", total_coins)
+	emit_signal("spin_totals_ready", result)
 
-		if enable_game_over:
-			var spr: int = max(spins_per_round, 1)
-			var remainder: int = spin_index % spr
-			if remainder == 0:
-				var round_num: int = int(spin_index / spr)
-				_handle_end_of_round(round_num)
-				_update_spin_counters()
+	if enable_game_over:
+		var spr: int = max(spins_per_round, 1)
+		var remainder: int = spin_index % spr
+		if remainder == 0:
+			var round_num: int = int(spin_index / spr)
+			_handle_end_of_round(round_num)
+			_update_spin_counters()
 
 	return result
 			
@@ -896,7 +903,12 @@ func _update_spin_counters(force_zero: bool = false) -> void:
 # ---------- Game Over Overlay ----------
 func _trigger_game_over(round_num: int, requirement: int) -> void:
 	_build_game_over_overlay_if_needed()
+	# Ensure any pending loot overlay is hidden when game over occurs
+	_hide_loot_overlay()
 	_show_game_over(round_num, requirement, total_coins)
+	_game_over_active = true
+	# Invalidate any pending loot UI tasks
+	_loot_gen += 1
 	emit_signal("game_over_shown", round_num, requirement, total_coins)
 
 func _build_game_over_overlay_if_needed() -> void:
@@ -963,6 +975,7 @@ func _show_game_over(round_num: int, requirement: int, coins: int) -> void:
 func _hide_game_over() -> void:
 	if _go_layer != null and is_instance_valid(_go_layer):
 		_go_layer.visible = false
+	_game_over_active = false
 
 func _on_last_spin_pressed() -> void:
 	reset_run()
@@ -1202,12 +1215,16 @@ func _resolve_active_effect_label() -> Node:
 
 # ---------- Loot overlay + picking ----------
 func _trigger_loot_choice(round_num: int) -> void:
+	# Do not offer loot if a Game Over is active
+	if _game_over_active:
+		return
 	var options: Array = _get_loot_options(max(1, loot_options_count), round_num)
 	if options.is_empty():
 		_on_loot_skip_pressed(round_num)
 		return
 	_build_loot_overlay_if_needed()
-	_show_loot_overlay(round_num, options)
+	var gen := _loot_gen
+	_show_loot_overlay(round_num, options, gen)
 	emit_signal("loot_choice_needed", round_num)
 
 func _build_loot_overlay_if_needed() -> void:
@@ -1268,10 +1285,16 @@ func _build_loot_overlay_if_needed() -> void:
 	_loot_layer.visible = false
 
 
-func _show_loot_overlay(round_num: int, options: Array) -> void:
+func _show_loot_overlay(round_num: int, options: Array, expected_gen: int = -1) -> void:
 	await get_tree().process_frame
 	if loot_post_spin_delay > 0.0:
 		await get_tree().create_timer(loot_post_spin_delay).timeout
+
+	# If a Game Over occurred or the generation changed while waiting, abort showing loot
+	if _game_over_active:
+		return
+	if expected_gen >= 0 and expected_gen != _loot_gen:
+		return
 
 	if _loot_layer != null and is_instance_valid(_loot_layer):
 		_loot_layer.offset = Vector2.ZERO
@@ -1411,6 +1434,11 @@ func _show_loot_overlay(round_num: int, options: Array) -> void:
 		center_cont.queue_sort()
 
 	await get_tree().process_frame
+	# Final guard before making visible
+	if _game_over_active:
+		return
+	if expected_gen >= 0 and expected_gen != _loot_gen:
+		return
 	_loot_layer.visible = true
 
 func _hide_loot_overlay() -> void:
@@ -1442,7 +1470,20 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 			var idx := _find_empty_index(arr)
 			if idx >= 0:
 				arr[idx] = tok
+				# Handle duplicate-on-add abilities (e.g., Copper Coin total_copies=2)
+				var copies: int = _copies_to_add_for_token(tok)
+				var extra: int = copies - 1
+				if extra < 0:
+					extra = 0
+				for j in range(extra):
+					var jidx := _find_empty_index(arr)
+					if jidx < 0:
+						break
+					var dup: Resource = (tok as Resource).duplicate(true)
+					arr[jidx] = dup
+				# Commit once after all replacements to minimize churn
 				_set_inventory_array(arr)
+				# Emit signal for the initial replacement; UI can resync if needed
 				emit_signal("loot_choice_replaced", round_num, tok, idx)
 				replaced = true
 
@@ -1461,6 +1502,22 @@ func _load_empty_token() -> Resource:
 		if r is Resource:
 			res = r as Resource
 	return res
+
+# Determine how many copies to add for a token on acquire (default 1)
+func _copies_to_add_for_token(token: Resource) -> int:
+	var copies := 1
+	if token != null and token.has_method("get"):
+		var abilities = token.get("abilities")
+		if abilities is Array:
+			for ab in abilities:
+				if ab == null:
+					continue
+				var tc = null
+				if (ab as Object).has_method("get"):
+					tc = ab.get("total_copies")
+				if tc != null:
+					copies = max(copies, int(tc))
+	return max(1, copies)
 
 # ---------- Loot pool / picking ----------
 func _get_loot_options(count: int, round_num: int) -> Array:

@@ -12,7 +12,7 @@
 [ext_resource type="PackedScene" uid="uid://bbkoj3b4uu041" path="res://floatingPopup.tscn" id="7_mcdcf"]
 [ext_resource type="Shader" uid="uid://3wdmpkyh2bdv" path="res://shaders/spinnerBackground.gdshader" id="8_81ket"]
 [ext_resource type="Script" uid="uid://dk6yfsqvjbxdt" path="res://spinButton.gd" id="8_yubjs"]
-[ext_resource type="AudioStreamS" uid="uid://c0hhvn01tlsmf" path="res://audio/sfx/click-345983.mp3" id="9_dnsp1"]
+[ext_resource type="AudioStream" uid="uid://c0hhvn01tlsmf" path="res://audio/sfx/click-345983.mp3" id="9_dnsp1"]
 [ext_resource type="Script" uid="uid://bwblh3pxtfgml" path="res://spinnerBackground.gd" id="9_mcdcf"]
 [ext_resource type="Script" uid="uid://wgqbwppywr70" path="res://resetButton.gd" id="9_v54cu"]
 [ext_resource type="Shader" uid="uid://bxdl8wargxw6b" path="res://spinnerBackground.gdshader" id="10_ilgax"]
@@ -358,9 +358,10 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="playMarginContainer" type="MarginContainer" parent="mainContainer"]
+custom_minimum_size = Vector2(1400, 0)
 layout_mode = 2
+size_flags_horizontal = 4
 size_flags_vertical = 3
-theme_override_constants/margin_top = 10
 theme_override_constants/margin_bottom = 20
 
 [node name="VBoxContainer" type="VBoxContainer" parent="mainContainer/playMarginContainer"]

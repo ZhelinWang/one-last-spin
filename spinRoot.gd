@@ -86,6 +86,8 @@ func _ready() -> void:
 			 # NEW: when a loot choice is made, append it to the future spin pool
 		if coin_mgr.has_signal("loot_choice_selected"):
 			coin_mgr.connect("loot_choice_selected", Callable(self, "_on_loot_choice_selected"))
+		if coin_mgr.has_signal("loot_choice_replaced"):
+			coin_mgr.connect("loot_choice_replaced", Callable(self, "_on_loot_choice_replaced"))
 		if coin_mgr.has_signal("game_reset"):
 			coin_mgr.connect("game_reset", Callable(self, "_on_game_reset"))
 	else:
@@ -413,8 +415,67 @@ func _play_pass_tick() -> void:
 func _on_loot_choice_selected(round_num: int, token: TokenLootData) -> void:
 	if token == null:
 		return
-	items.append(token) # CoinManager already duplicates; each instance is unique
+	var copies := _copies_to_add_for_token(token)
+	_insert_token_replacing_empties(token, copies)
 	_update_inventory_strip()
+
+func _on_loot_choice_replaced(round_num: int, token: TokenLootData, index: int) -> void:
+	# When CoinManager performs replacement directly into an inventory array,
+	# just refresh our UI from current items.
+	_update_inventory_strip()
+
+func _copies_to_add_for_token(token: TokenLootData) -> int:
+	var copies := 1
+	if token != null and token.has_method("get"):
+		var abilities = token.get("abilities")
+		if abilities is Array:
+			for ab in abilities:
+				if ab == null:
+					continue
+				var tc = null
+				if (ab as Object).has_method("get"):
+					tc = ab.get("total_copies")
+				if tc != null:
+					copies = max(copies, int(tc))
+	return max(1, copies)
+
+func _insert_token_replacing_empties(token: TokenLootData, copies: int) -> void:
+	var empty_path: String = ""
+	if coin_mgr != null and coin_mgr.has_method("get"):
+		var ep = coin_mgr.get("empty_token_path")
+		if typeof(ep) == TYPE_STRING:
+			empty_path = String(ep)
+		for i in range(max(1, copies)):
+			var inst: TokenLootData = token if i == 0 else ((token as Resource).duplicate(true) as TokenLootData)
+			var idx := _find_empty_index_in_items(empty_path)
+			if idx >= 0:
+				items[idx] = inst
+			else:
+				items.append(inst)
+
+func _find_empty_index_in_items(empty_path: String) -> int:
+	var candidates: Array[int] = []
+	for i in range(items.size()):
+		var t = items[i]
+		if t == null:
+			candidates.append(i)
+			continue
+		if empty_path.strip_edges() != "" and t is Resource:
+			var rp := (t as Resource).resource_path
+			if rp != "" and rp == empty_path:
+				return i
+		if t.has_method("get"):
+			var is_empty = t.get("isEmpty")
+			if is_empty != null and bool(is_empty):
+				return i
+			var nm = t.get("name")
+			if typeof(nm) == TYPE_STRING:
+				var s := String(nm).strip_edges().to_lower()
+				if s == "empty" or s == "empty token":
+					return i
+	if candidates.size() > 0:
+		return int(candidates[0])
+	return -1
 
 func _on_game_reset() -> void:
 	# Reset items to starting tokens on game reset
