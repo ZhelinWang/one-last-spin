@@ -12,7 +12,7 @@
 [ext_resource type="PackedScene" uid="uid://bbkoj3b4uu041" path="res://floatingPopup.tscn" id="7_mcdcf"]
 [ext_resource type="Shader" uid="uid://3wdmpkyh2bdv" path="res://shaders/spinnerBackground.gdshader" id="8_81ket"]
 [ext_resource type="Script" uid="uid://dk6yfsqvjbxdt" path="res://spinButton.gd" id="8_yubjs"]
-[ext_resource type="AudioStream" uid="uid://c0hhvn01tlsmf" path="res://audio/sfx/click-345983.mp3" id="9_dnsp1"]
+[ext_resource type="AudioStreamS" uid="uid://c0hhvn01tlsmf" path="res://audio/sfx/click-345983.mp3" id="9_dnsp1"]
 [ext_resource type="Script" uid="uid://bwblh3pxtfgml" path="res://spinnerBackground.gd" id="9_mcdcf"]
 [ext_resource type="Script" uid="uid://wgqbwppywr70" path="res://resetButton.gd" id="9_v54cu"]
 [ext_resource type="Shader" uid="uid://bxdl8wargxw6b" path="res://spinnerBackground.gdshader" id="10_ilgax"]
@@ -288,7 +288,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/normal_font_size = 20
 bbcode_enabled = true
-text = "0 COINS"
+text = "0[font_size=20][color=gold][outline_size=32]G[/outline_size][/color][/font_size]"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -331,7 +331,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/normal_font_size = 20
 bbcode_enabled = true
-text = "X COINS DUE IN Y ROUNDS"
+text = "25[font_size=20][color=gold][outline_size=32]G[/outline_size][/color][/font_size] DUE NEXT ROUND"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -360,7 +360,7 @@ vertical_alignment = 1
 [node name="playMarginContainer" type="MarginContainer" parent="mainContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/margin_top = 15
+theme_override_constants/margin_top = 10
 theme_override_constants/margin_bottom = 20
 
 [node name="VBoxContainer" type="VBoxContainer" parent="mainContainer/playMarginContainer"]

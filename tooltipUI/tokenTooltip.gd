@@ -2,6 +2,7 @@ extends PanelContainer
 class_name TokenTooltipView
 
 @export var pixel_font: FontFile   # Optional: assign a pixel/bitmap font in Inspector
+@export var base_only: bool = false
 
 const ACTIVE_TITLE_COLOR := Color8(246, 44, 37)    # #f62c25
 const PASSIVE_TITLE_COLOR := Color8(66, 182, 255)  # #42b6ff
@@ -115,7 +116,35 @@ func set_data(data: TokenLootData) -> void:
 
 	# Header
 	_name_label.text = data.name
-	_value_label.text = "Value: %d" % int(data.value)
+	var curr_val: int = int(data.value)
+	var base_val: int = curr_val
+	# Resolve stamped base value (property if present, else Resource metadata)
+	if data.has_method("get"):
+		var has_base_prop := false
+		for p in data.get_property_list():
+			if String(p.get("name", "")) == "base_value":
+				has_base_prop = true
+				break
+		if has_base_prop:
+			var bv = data.get("base_value")
+			if bv != null:
+				base_val = int(bv)
+			elif data.has_meta("base_value"):
+				base_val = int(data.get_meta("base_value"))
+
+	if base_only:
+		_value_label.text = "Value: %d" % base_val
+		_value_label.add_theme_color_override("font_color", Color(0.92, 0.92, 0.96))
+	else:
+		_value_label.text = "Value: %d" % curr_val
+		# Color-code permanent deltas: green when increased, red when decreased; default neutral
+		var neutral := Color(0.92, 0.92, 0.96)
+		if curr_val > base_val:
+			_value_label.add_theme_color_override("font_color", Color8(60, 200, 60))
+		elif curr_val < base_val:
+			_value_label.add_theme_color_override("font_color", Color8(220, 60, 60))
+		else:
+			_value_label.add_theme_color_override("font_color", neutral)
 
 	# Rarity via color only (no rarity text)
 	var rare_col := data.get_color()

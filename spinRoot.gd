@@ -49,7 +49,7 @@ var _prev_scroll: float = 0.0
 
 @onready var spin_button: Button = %spinButton
 @onready var coin_mgr: Node = get_node_or_null("/root/coinManager")
-@onready var inventory_strip: Node = get_tree().get_root().get_node_or_null("mainUI/inventoryStrip")
+@onready var inventory_strip: Node = %inventoryStrip
 
 func _ready() -> void:
 	_rng.randomize()
@@ -429,6 +429,8 @@ func _update_inventory_strip() -> void:
 		# Try resolving by unique name (owner mainUI)
 		var ui := get_tree().get_root().get_node_or_null("mainUI")
 		if ui:
-			inventory_strip = ui.get_node_or_null("inventoryStrip")
+			# First try unique-name resolution via the owner
+			var uniq := ui.get_child(0) # noop to ensure tree is ready
+			inventory_strip = ui.find_child("inventoryStrip", true, false)
 	if inventory_strip and inventory_strip.has_method("set_items"):
 		inventory_strip.call("set_items", items)

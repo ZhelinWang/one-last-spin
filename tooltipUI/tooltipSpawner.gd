@@ -35,6 +35,11 @@ func _on_entered() -> void:
 		_tooltip.queue_free()
 	_tooltip = TokenTooltipView.new()
 	_tooltip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	# Propagate context: allow inventory tooltips to show base-only values
+	var base_only := false
+	if _owner_ctrl != null and _owner_ctrl.has_meta("tooltip_base_only"):
+		base_only = bool(_owner_ctrl.get_meta("tooltip_base_only"))
+	_tooltip.base_only = base_only
 	_overlay_root.add_child(_tooltip)
 	_tooltip.set_data(data)
 	_tooltip.visible = true
@@ -62,12 +67,12 @@ func _position_tooltip() -> void:
 
 	# Clamp to viewport
 	var vp_rect := vp.get_visible_rect()
-	var size := _tooltip.get_combined_minimum_size()
-	if size == Vector2.ZERO:
-		size = _tooltip.size
+	var sz: Vector2 = _tooltip.get_combined_minimum_size()
+	if sz == Vector2.ZERO:
+		sz = _tooltip.size
 	pos = _tooltip.position
-	if pos.x + size.x > vp_rect.size.x - 6.0:
-		pos.x = vp_rect.size.x - size.x - 6.0
-	if pos.y + size.y > vp_rect.size.y - 6.0:
-		pos.y = vp_rect.size.y - size.y - 6.0
+	if pos.x + sz.x > vp_rect.size.x - 6.0:
+		pos.x = vp_rect.size.x - sz.x - 6.0
+	if pos.y + sz.y > vp_rect.size.y - 6.0:
+		pos.y = vp_rect.size.y - sz.y - 6.0
 	_tooltip.position = Vector2(floor(pos.x), floor(pos.y))

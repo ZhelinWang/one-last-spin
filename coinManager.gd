@@ -23,9 +23,10 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 @export var step_delay_sec: float = 0.5
 @export var passive_trigger_delay_sec: float = 0.5
 @export var base_show_delay_sec: float = 0.2
-@export var between_tokens_delay_sec: float = 0.35
+@export var between_tokens_delay_sec: float = 0.5
 @export var show_winner_desc_delay_sec: float = 1.0
 @export var active_desc_pause_sec: float = 0.35
+# (reverted) no global time scaling
 @export_range(0.0, 5.0, 0.05) var loot_post_spin_delay: float = 1.5
 
 # Game over / ante system (customizable)
@@ -90,6 +91,7 @@ var _loot_options_hbox: HBoxContainer
 var _loot_skip_btn: Button
 var _loot_rng := RandomNumberGenerator.new()
 var _loot_last_round: int = 0
+# Removed FX overlay vars (reverted fly-to-total animation)
 
 # Cached refs
 var _value_label: Node = null
@@ -167,14 +169,19 @@ func reset_run() -> void:
 	_bank_tween = null
 	_update_totals_label(total_coins)
 	_update_round_and_deadline_labels()
-	_update_spin_counters()
+	_update_spin_counters(true)
 	_hide_game_over()
 	_hide_loot_overlay()
 	emit_signal("game_reset")
 
 # ---------- Spin sequence ----------
+func begin_spin() -> void:
+	# Increment the run spin index and refresh UI immediately on button press
+	spin_index += 1
+	_update_spin_counters(false)
+
 func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
-	
+
 	var ctx: Dictionary = {
 		"winner": winner,
 		"neighbors": neighbors,
@@ -183,6 +190,9 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 	}
 	for k in extra_ctx.keys():
 		ctx[k] = extra_ctx[k]
+
+	# Ensure a function-scope result is always available
+	var result: Dictionary = {}
 	var defer_winner_active: bool = true
 	var dval = ctx.get("defer_winner_active")
 	if dval != null:
@@ -201,6 +211,15 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 			passive_trigger_delay_total = max(base_show_delay_sec, 0.8)
 
 	if debug_spin:
+		print("[Delays] winner=", show_winner_desc_delay_sec,
+			" base=", base_show_delay_sec,
+			" between=", between_tokens_delay_sec,
+			" step=", step_delay_sec,
+			" passive_total=", passive_trigger_delay_sec,
+			" active_pause=", active_desc_pause_sec,
+			" bank_anim=", bank_anim_duration_sec,
+			" loot_post=", loot_post_spin_delay,
+			" Engine.ts=", Engine.time_scale)
 		print("\n[Spin] ===== spin #", spin_index + 1, " =====")
 	emit_signal("spin_sequence_started", ctx)
 
@@ -263,7 +282,7 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 		_play_counting_popup(ctx, c, 0, base_value, true)
 		if debug_spin:
 			print("[Step] Base show offset=", c.offset, " value=", base_value)
-		await _pause(base_show_delay_sec)
+			await _pause(base_show_delay_sec)
 
 		# 2) Token steps (token-defined + abilities Active During Spin)
 		var token_steps_base: Array = _collect_token_description_steps(ctx, c)
@@ -279,7 +298,7 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 		if c.kind == "passive" and will_apply_now and (not now_steps.is_empty() or not ab_parts.get("deferred", []).is_empty()):
 			var extra_wait: float = max(0.0, passive_trigger_delay_total - base_show_delay_sec)
 			if extra_wait > 0.0:
-				await _pause(extra_wait)
+					await _pause(extra_wait)
 
 		# Defer only winner_only ability steps for the winner; everything else applies now
 		if c.offset == 0 and defer_winner_active:
@@ -312,12 +331,18 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 				print("[Artifact] ", art, " steps for offset ", c.offset, ": ", steps_from_art.size())
 			await _apply_steps_now(i, c, steps_from_art, ctx, art)
 
-		var tmp_final: int = _finalize_contrib(c)
-		emit_signal("token_sequence_finished", i, c.offset, tmp_final, c)
-		if debug_spin:
-			print("[Spin] Interim finalize offset=", c.offset, " val=", tmp_final)
+			var tmp_final: int = _finalize_contrib(c)
+			emit_signal("token_sequence_finished", i, c.offset, tmp_final, c)
+			if debug_spin:
+				print("[Spin] Interim finalize offset=", c.offset, " val=", tmp_final)
 		_restore_slot_modulate(ctx, int(c.offset))
+		var __bt_t0: int = 0
+		if debug_spin:
+			__bt_t0 = Time.get_ticks_msec()
 		await _pause(between_tokens_delay_sec)
+		if debug_spin:
+			var __bt_t1: int = Time.get_ticks_msec()
+			print("[BetweenTokens] waited=", float(__bt_t1 - __bt_t0) / 1000.0, "s; cfg=", between_tokens_delay_sec, " Engine.ts=", Engine.time_scale)
 
 	# After all five run, apply the winner's final active to all matching tokens at once
 	if winner != null:
@@ -326,12 +351,12 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 			print("[Final-Active] Winner global steps: ", global_active_steps.size())
 		if not global_active_steps.is_empty():
 			await _apply_global_steps_broadcast(global_active_steps, contribs, ctx, winner)
-
+	await _pause(active_desc_pause_sec)
 	# Then apply the winner's own deferred active to itself (shake description first + pause)
 	if defer_winner_active and winner_idx >= 0 and deferred_winner_self_steps.size() > 0:
 		var cw: Dictionary = contribs[winner_idx]
 		_shake_active_effect_label()
-		await _pause(active_desc_pause_sec)
+
 		if debug_spin:
 			print("[Final-Active] Applying deferred winner self steps: ", deferred_winner_self_steps.size())
 		await _apply_steps_now(winner_idx, cw, deferred_winner_self_steps, ctx, winner)
@@ -343,45 +368,45 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 		if debug_spin:
 			print("[Spin] Final offset=", ck.offset, " => ", ck.meta["final"])
 
-	var active_total: int = 0
-	var passive_total: int = 0
-	for c in contribs:
-		var fin: int = 0
-		if (c.meta as Dictionary).has("final"):
-			fin = int((c.meta as Dictionary).get("final"))
-		if c.kind == "active":
-			active_total += fin
-		else:
-			passive_total += fin
+		var active_total: int = 0
+		var passive_total: int = 0
+		for c in contribs:
+			var fin: int = 0
+			if (c.meta as Dictionary).has("final"):
+				fin = int((c.meta as Dictionary).get("final"))
+			if c.kind == "active":
+				active_total += fin
+			else:
+				passive_total += fin
 
-	total_active += active_total
-	total_passive += passive_total
-	total_coins += active_total + passive_total
+		total_active += active_total
+		total_passive += passive_total
+		var spin_total: int = active_total + passive_total
+		total_coins += spin_total
 
+		# Reverted: directly update totals without extra overlay animations
+		_update_totals_label(total_coins)
+		_update_spin_counters(false)
 
-	_update_totals_label(total_coins)
-	_update_round_and_deadline_labels()
-	_update_spin_counters()
+		# Build result dictionary without multi-line literal
+		result = {}
+		result["active_total"] = active_total
+		result["passive_total"] = passive_total
+		result["spin_total"] = spin_total
+		result["run_total"] = total_coins
+		result["contributions"] = contribs
+		result["context"] = ctx
+		if debug_spin:
+			print("[Totals] active=", active_total, " passive=", passive_total, " spin_total=", result["spin_total"], " run_total=", total_coins)
+		emit_signal("spin_totals_ready", result)
 
-	var result: Dictionary = {
-		"active_total": active_total,
-		"passive_total": passive_total,
-		"spin_total": active_total + passive_total,
-		"run_total": total_coins,
-		"contributions": contribs,
-		"context": ctx
-	}
-	if debug_spin:
-		print("[Totals] active=", active_total, " passive=", passive_total, " spin_total=", result["spin_total"], " run_total=", total_coins)
-	emit_signal("spin_totals_ready", result)
-
-	if enable_game_over:
-		var spr: int = max(spins_per_round, 1)
-		var remainder: int = spin_index % spr
-		if remainder == 0:
-			var round_num: int = int(spin_index / spr)
-			_handle_end_of_round(round_num)
-			_update_spin_counters()
+		if enable_game_over:
+			var spr: int = max(spins_per_round, 1)
+			var remainder: int = spin_index % spr
+			if remainder == 0:
+				var round_num: int = int(spin_index / spr)
+				_handle_end_of_round(round_num)
+				_update_spin_counters()
 
 	return result
 			
@@ -667,7 +692,7 @@ func _play_counting_popup(ctx: Dictionary, contrib: Dictionary, from_val: int, t
 func _set_counting_text(v: float, target: Node) -> void:
 	if target == null:
 		return
-	var t := "+%d [font_size=20][color=gold][outline_size=32]G[/outline_size][/color][/font_size]" % int(round(v))
+	var t := "+%d%s" % [int(round(v)), _gold_bbcode()]
 	if target is Label:
 		(target as Label).text = t
 	elif target is RichTextLabel:
@@ -759,9 +784,8 @@ func _handle_end_of_round(round_num: int) -> void:
 		if deduct_on_pay:
 			total_coins -= requirement
 			_update_totals_label(total_coins)
-		emit_signal("round_ended", round_num, requirement, true)
-		_update_round_and_deadline_labels()
-		_update_spin_counters()
+			emit_signal("round_ended", round_num, requirement, true)
+			_update_spin_counters()
 		_trigger_loot_choice(round_num)
 	else:
 		emit_signal("round_ended", round_num, requirement, false)
@@ -783,12 +807,25 @@ func _get_requirement_for_round(round_num: int) -> int:
 	return max(0, req)
 
 # ---------- Totals / Labels ----------
+func _gold_bbcode() -> String:
+	return "[color=gold]G[/color]"
+
+func _set_value_label_gold(total: int) -> void:
+	var lbl := _resolve_value_label()
+	if lbl == null:
+		return
+	var s := "%d%s" % [total, _gold_bbcode()]
+	if lbl is RichTextLabel:
+		(lbl as RichTextLabel).set_deferred("bbcode_text", s)
+	else:
+		_set_node_text(lbl, s)
+
 func _update_totals_label(total: int) -> void:
 	var lbl := _resolve_value_label()
 	if lbl == null:
 		return
 	if not animate_bank:
-		_set_node_text(lbl, str(total) + " COINS")
+		_set_value_label_gold(total)
 		_shown_total = total
 		return
 	if is_instance_valid(_bank_tween):
@@ -807,9 +844,7 @@ func _update_totals_label(total: int) -> void:
 
 func _set_bank_display(v: float) -> void:
 	_shown_total = int(round(v))
-	var lbl := _resolve_value_label()
-	if lbl != null:
-		_set_node_text(lbl, str(_shown_total) + " COINS")
+	_set_value_label_gold(_shown_total)
 
 func _update_round_and_deadline_labels() -> void:
 	var target := _owner_node()
@@ -826,10 +861,13 @@ func _update_round_and_deadline_labels() -> void:
 
 	var deadline_lbl := _resolve_ui_node(target, "%deadlineLabel", "deadlineLabel")
 	if deadline_lbl != null:
-		var dt: String = ("%d coins due next round" % [requirement]).to_upper()
-		_set_node_text(deadline_lbl, dt)
+		var dt: String = "%d%s DUE NEXT ROUND" % [requirement, _gold_bbcode()]
+		if deadline_lbl is RichTextLabel:
+			(deadline_lbl as RichTextLabel).set_deferred("bbcode_text", dt)
+		else:
+			_set_node_text(deadline_lbl, dt)
 
-func _update_spin_counters() -> void:
+func _update_spin_counters(force_zero: bool = false) -> void:
 	var target := _owner_node()
 	if target == null:
 		return
@@ -837,7 +875,13 @@ func _update_spin_counters() -> void:
 	if grid == null:
 		return
 	var spr: int = max(spins_per_round, 1)
-	var spins_into_round: int = (spin_index - 1) % spr + 1
+	# Show how many spins have been taken IN the current round.
+	# Default: 1..spr (shows spr at boundary).
+	# When force_zero=true (post-loot/new round), display 0 until the next spin begins.
+	var spins_into_round: int = 0
+	if not force_zero:
+		if spin_index > 0:
+			spins_into_round = ((spin_index - 1) % spr) + 1
 	var children: Array = (grid as Node).get_children()
 	var child_count: int = children.size()
 	var active_slots: int = min(spr, child_count)
@@ -1223,6 +1267,7 @@ func _build_loot_overlay_if_needed() -> void:
 
 	_loot_layer.visible = false
 
+
 func _show_loot_overlay(round_num: int, options: Array) -> void:
 	await get_tree().process_frame
 	if loot_post_spin_delay > 0.0:
@@ -1403,6 +1448,10 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 
 	if not replaced:
 		emit_signal("loot_choice_selected", round_num, tok)
+
+	# New round begins after a token is added/replaced. Refresh counters to 0.
+	_update_round_and_deadline_labels()
+	_update_spin_counters()
 
 func _load_empty_token() -> Resource:
 	var res: Resource = null
@@ -1799,6 +1848,8 @@ func _set_node_text(node: Node, txt: String) -> void:
 		(node as RichTextLabel).set_deferred("text", txt)
 	else:
 		node.set_deferred("text", txt)
+
+# ---------- FX overlay helpers ----------
 
 # Apply all winner global steps to all matching tokens simultaneously (single shared delay)
 # Apply all winner global steps to all matching tokens simultaneously (single shared delay)
