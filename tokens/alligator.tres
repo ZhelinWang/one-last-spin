@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=3 format=3 uid="uid://cqy7qf2mwfsq1"]
+
+[ext_resource type="Texture2D" uid="uid://iv1nrgylcyap" path="res://tokens/tokenAssets/alligator/1.png" id="1_qtnym"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_r8nu2"]
+
+[resource]
+script = ExtResource("1_r8nu2")
+name = "Alligator"
+weight = 1.0
+rarity = "common"
+icon = ExtResource("1_qtnym")
+activeDescription = "Double all non-winner slot values"
+passiveDescription = "Hello World"
+value = 1
+tags = null
+metadata/_custom_type_script = "uid://2lqsh3g3xqag"

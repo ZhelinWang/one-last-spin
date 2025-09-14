@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://dq7cgvphi6gwu"]
+
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_74v8u"]
+[ext_resource type="Script" uid="uid://qxy2n8ufrlqh" path="res://abilties/genericDuplicateOnAddAbility.gd" id="2_qye0n"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="3_b6gl8"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="4_0h4pq"]
+
+[sub_resource type="Resource" id="Resource_k3txd"]
+script = ExtResource("2_qye0n")
+total_copies = 2
+auto_self_step = false
+id = ""
+trigger = 0
+target_kind = 0
+target_offset = 0
+target_tag = ""
+target_name = ""
+winner_only = false
+desc_template = ""
+metadata/_custom_type_script = "uid://qxy2n8ufrlqh"
+
+[resource]
+script = ExtResource("4_0h4pq")
+name = "Copper Coin"
+weight = 1.0
+rarity = "common"
+icon = ExtResource("3_b6gl8")
+value = 1
+tags = PackedStringArray("Coin")
+abilities = Array[ExtResource("1_74v8u")]([SubResource("Resource_k3txd")])
+activeDescription = ""
+passiveDescription = ""
+metadata/_custom_type_script = "uid://2lqsh3g3xqag"

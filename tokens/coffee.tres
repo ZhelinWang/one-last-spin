@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://3we4ixqkvhpb"]
+
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_shc6p"]
+[ext_resource type="Script" uid="uid://bbflpk0whoeeu" path="res://abilties/genericAdjacencyPresenceBuffAbility.gd" id="2_dg2i8"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="3_o17f5"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="4_jsn6p"]
+
+[sub_resource type="Resource" id="Resource_ylgm7"]
+script = ExtResource("2_dg2i8")
+require_any = true
+per_adjacent = false
+amount = 1
+match_tag = "worker"
+match_name = ""
+auto_self_step = false
+id = ""
+trigger = 0
+target_kind = 0
+target_offset = 0
+target_tag = ""
+target_name = ""
+winner_only = false
+desc_template = ""
+metadata/_custom_type_script = "uid://bbflpk0whoeeu"
+
+[resource]
+script = ExtResource("4_jsn6p")
+name = "Coffee"
+weight = 1.0
+rarity = "common"
+icon = ExtResource("3_o17f5")
+value = 1
+tags = PackedStringArray()
+abilities = Array[ExtResource("1_shc6p")]([SubResource("Resource_ylgm7")])
+activeDescription = "Double all non-winner slot values"
+passiveDescription = "Hello World"
+metadata/_custom_type_script = "uid://2lqsh3g3xqag"

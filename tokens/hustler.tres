@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://b7qvltgd7lbkm"]
+
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_e50h6"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_f8212"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="2_1ed3t"]
+[ext_resource type="Script" uid="uid://bp4m1a725lajo" path="res://abilties/genericPermanentAdjustAbility.gd" id="2_6q376"]
+
+[sub_resource type="Resource" id="Resource_8rgfy"]
+script = ExtResource("2_6q376")
+amount = 1
+destroy_if_zero = true
+exclude_self = false
+id = ""
+trigger = 0
+target_kind = 0
+target_offset = 0
+target_tag = ""
+target_name = ""
+winner_only = true
+desc_template = ""
+metadata/_custom_type_script = "uid://bp4m1a725lajo"
+
+[resource]
+script = ExtResource("1_f8212")
+name = "Hustler"
+weight = 1.0
+rarity = "common"
+icon = ExtResource("2_1ed3t")
+value = 2
+tags = PackedStringArray("worker")
+abilities = Array[ExtResource("1_e50h6")]([SubResource("Resource_8rgfy")])
+activeDescription = "Add +1 value to the token permanently"
+passiveDescription = ""
+metadata/_custom_type_script = "uid://2lqsh3g3xqag"

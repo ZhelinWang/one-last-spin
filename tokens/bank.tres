@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://cu4yq5c4neqvu"]
+
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_1qk44"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="2_nv4mw"]
+[ext_resource type="Script" uid="uid://bftaioc8dl7hx" path="res://abilties/genericTransferAndSelfScaleAbility.gd" id="2_q05v7"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="3_3sd5l"]
+
+[sub_resource type="Resource" id="Resource_u22t0"]
+script = ExtResource("2_q05v7")
+require_any = true
+amount = 1
+match_tag = "coin"
+match_name = "coin"
+id = ""
+trigger = 0
+target_kind = 0
+target_offset = 0
+target_tag = ""
+target_name = ""
+winner_only = true
+desc_template = ""
+metadata/_custom_type_script = "uid://bftaioc8dl7hx"
+
+[resource]
+script = ExtResource("2_nv4mw")
+name = "Bank"
+weight = 1.0
+rarity = "common"
+icon = ExtResource("3_3sd5l")
+value = 10
+tags = null
+abilities = Array[ExtResource("1_1qk44")]([SubResource("Resource_u22t0")])
+activeDescription = "This token's value is equal to X% of current Gold"
+passiveDescription = "X is how many coins you have in your inventory"
+metadata/_custom_type_script = "uid://2lqsh3g3xqag"

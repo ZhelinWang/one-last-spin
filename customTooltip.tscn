@@ -1,0 +1,53 @@
+[gd_scene load_steps=2 format=3 uid="uid://doo8ujwk6a1rl"]
+
+[ext_resource type="Script" uid="uid://di2hpkb5dbc3h" path="res://tooltipPopup.gd" id="1_s800y"]
+
+[node name="customTooltip" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 6
+size_flags_vertical = 6
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="tooltipPopup" type="PopupPanel" parent="UI"]
+unique_name_in_owner = true
+size = Vector2i(208, 112)
+script = ExtResource("1_s800y")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/tooltipPopup"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 204.0
+offset_bottom = 108.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RichTextLabel2" type="RichTextLabel" parent="UI/tooltipPopup/VBoxContainer"]
+custom_minimum_size = Vector2(0, 25)
+layout_mode = 2
+text = "asdasd"
+horizontal_alignment = 1
+
+[node name="RichTextLabel" type="RichTextLabel" parent="UI/tooltipPopup/VBoxContainer"]
+custom_minimum_size = Vector2(0, 25)
+layout_mode = 2
+text = "fdf"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RichTextLabel3" type="RichTextLabel" parent="UI/tooltipPopup/VBoxContainer"]
+custom_minimum_size = Vector2(0, 25)
+layout_mode = 2
+text = "fdf"
+horizontal_alignment = 1
+vertical_alignment = 2

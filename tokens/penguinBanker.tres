@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://b2y41gnrp4pau"]
+
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_62nnn"]
+[ext_resource type="Texture2D" uid="uid://blambvc40ro4n" path="res://tokens/tokenAssets/pengu.png" id="1_b8js3"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_m41b6"]
+[ext_resource type="Script" uid="uid://c2jf00ecr7yc" path="res://abilties/genericFlatAddAbility.gd" id="2_m41b6"]
+
+[sub_resource type="Resource" id="Resource_3aam1"]
+script = ExtResource("2_m41b6")
+amount = 10
+auto_self_step = false
+id = ""
+trigger = 0
+target_kind = 0
+target_offset = 0
+target_tag = ""
+target_name = ""
+winner_only = false
+desc_template = ""
+metadata/_custom_type_script = "uid://c2jf00ecr7yc"
+
+[resource]
+script = ExtResource("1_62nnn")
+name = "Penguin Banker"
+weight = 1.0
+rarity = "rare"
+icon = ExtResource("1_b8js3")
+value = 1
+tags = null
+abilities = Array[ExtResource("1_m41b6")]([SubResource("Resource_3aam1")])
+activeDescription = "10x self's G value "
+passiveDescription = "AHH"
+metadata/_custom_type_script = "uid://2lqsh3g3xqag"

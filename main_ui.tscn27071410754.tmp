@@ -1,0 +1,448 @@
+[gd_scene load_steps=19 format=3 uid="uid://cgtt2cnw2gnpo"]
+
+[ext_resource type="Texture2D" uid="uid://b5wc666rsbbvq" path="res://Screenshot 2025-08-27 173116.png" id="1_2ppmm"]
+[ext_resource type="Shader" uid="uid://cch6cvm8y3ctj" path="res://shaders/background.gdshader" id="1_w37m7"]
+[ext_resource type="Shader" uid="uid://c1th2tmqhx4vk" path="res://shaders/swirl.gdshader" id="3_ktt6o"]
+[ext_resource type="Script" uid="uid://bhvcv2dadyt27" path="res://spinner.gd" id="3_n1q3t"]
+[ext_resource type="PackedScene" uid="uid://305jesit5qa0" path="res://slotItem.tscn" id="4_il2or"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="5_b7t0n"]
+[ext_resource type="Texture2D" uid="uid://bn2071j25x868" path="res://itemframe_1.png" id="5_llbac"]
+[ext_resource type="Resource" uid="uid://mas6e6uk1l0w" path="res://tokens/capybara.tres" id="6_im5q1"]
+[ext_resource type="Script" uid="uid://dk6yfsqvjbxdt" path="res://spinButton.gd" id="8_b7t0n"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4uoxc"]
+shader = ExtResource("3_ktt6o")
+shader_parameter/speed = 0.001
+shader_parameter/swirl_strength = 7.5
+shader_parameter/scale = 1.5
+shader_parameter/center_softness = 0.25
+shader_parameter/color_a = Color(1, 0.936667, 0.8, 0.784314)
+shader_parameter/color_b = Color(0.76, 0.73492, 0.6232, 0.784314)
+shader_parameter/pixel_size = 0.01
+shader_parameter/color_steps = 6.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ktt6o"]
+shader = ExtResource("1_w37m7")
+shader_parameter/speed = 0.5
+shader_parameter/swirl_strength = 1.5
+shader_parameter/scale = 4.0
+shader_parameter/center_softness = 2.5
+shader_parameter/color_a = Color(1, 1, 1, 0.196078)
+shader_parameter/color_b = Color(0, 0, 0, 0.0980392)
+shader_parameter/pixel_size = 0.003
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_il2or"]
+bg_color = Color(1, 0.991, 0.46, 0.588235)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_n1q3t"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_n1q3t"]
+bg_color = Color(0, 0, 0, 0.686275)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_llbac"]
+bg_color = Color(1, 0.883333, 0, 0.588235)
+corner_radius_top_right = 200
+corner_radius_bottom_right = 200
+expand_margin_right = 40.0
+shadow_offset = Vector2(10, 10)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1v8me"]
+bg_color = Color(0, 0, 0, 1)
+corner_detail = 1
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_ktt6o"]
+blend_mode = 3
+
+[sub_resource type="GDScript" id="GDScript_1v8me"]
+script/source = "extends RichTextLabel
+"
+
+[node name="mainUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+
+[node name="backgroundEffect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.81, 0.73197, 0.5346, 1)
+
+[node name="bigSwirl" type="ColorRect" parent="backgroundEffect"]
+material = SubResource("ShaderMaterial_4uoxc")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="backgroundGradient" type="ColorRect" parent="backgroundEffect"]
+material = SubResource("ShaderMaterial_ktt6o")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="spinRoot" type="Control" parent="." node_paths=PackedStringArray("scroll_container", "slots_hbox")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_n1q3t")
+scroll_container = NodePath("spinnerRows/ScrollContainer")
+slots_hbox = NodePath("spinnerRows/ScrollContainer/slotsHBox")
+slot_item_scene = ExtResource("4_il2or")
+items = Array[ExtResource("5_b7t0n")]([ExtResource("6_im5q1"), ExtResource("6_im5q1"), ExtResource("6_im5q1"), ExtResource("6_im5q1"), ExtResource("6_im5q1"), ExtResource("6_im5q1"), ExtResource("6_im5q1"), ExtResource("6_im5q1")])
+
+[node name="spinnerRows" type="MarginContainer" parent="spinRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_bottom = 100
+
+[node name="ScrollContainer" type="ScrollContainer" parent="spinRoot/spinnerRows"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="slotsHBox" type="HBoxContainer" parent="spinRoot/spinnerRows/ScrollContainer"]
+layout_mode = 2
+
+[node name="yellowSelector" type="MarginContainer" parent="spinRoot/spinnerRows"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/margin_top = 380
+
+[node name="yellowSelector" type="Panel" parent="spinRoot/spinnerRows/yellowSelector"]
+custom_minimum_size = Vector2(10, 260)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_il2or")
+
+[node name="blackTopSelector" type="VBoxContainer" parent="spinRoot/spinnerRows"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 6
+
+[node name="MarginContainer" type="MarginContainer" parent="spinRoot/spinnerRows/blackTopSelector"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/margin_top = 100
+
+[node name="blackSelector" type="ColorRect" parent="spinRoot/spinnerRows/blackTopSelector/MarginContainer"]
+custom_minimum_size = Vector2(20, 30)
+layout_mode = 2
+color = Color(0, 0, 0, 1)
+
+[node name="blackBottomSelector" type="VBoxContainer" parent="spinRoot/spinnerRows"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 10
+
+[node name="MarginContainer" type="MarginContainer" parent="spinRoot/spinnerRows/blackBottomSelector"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 10
+theme_override_constants/margin_bottom = 140
+
+[node name="blackSelector" type="ColorRect" parent="spinRoot/spinnerRows/blackBottomSelector/MarginContainer"]
+custom_minimum_size = Vector2(40, 30)
+layout_mode = 2
+color = Color(0, 0, 0, 1)
+
+[node name="visualPlaceholder" type="MarginContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_bottom = 100
+
+[node name="ScrollContainer" type="ScrollContainer" parent="visualPlaceholder"]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="visualPlaceholder/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 6
+theme_override_constants/separation = 385
+
+[node name="separator" type="Control" parent="visualPlaceholder/ScrollContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="visualPlaceholder/ScrollContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 6
+theme_override_constants/separation = 0
+
+[node name="ColorRect" type="ColorRect" parent="visualPlaceholder/ScrollContainer/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(1920, 300)
+layout_mode = 2
+size_flags_horizontal = 6
+color = Color(1, 1, 1, 0)
+
+[node name="rectTexture" type="NinePatchRect" parent="visualPlaceholder/ScrollContainer/VBoxContainer/HBoxContainer/ColorRect"]
+material = SubResource("ShaderMaterial_n1q3t")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("5_llbac")
+region_rect = Rect2(7, 1, 114, 127)
+
+[node name="yellowSelector" type="MarginContainer" parent="visualPlaceholder"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/margin_top = 380
+
+[node name="yellowSelector" type="Panel" parent="visualPlaceholder/yellowSelector"]
+custom_minimum_size = Vector2(10, 260)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_il2or")
+
+[node name="blackTopSelector" type="VBoxContainer" parent="visualPlaceholder"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 6
+
+[node name="MarginContainer" type="MarginContainer" parent="visualPlaceholder/blackTopSelector"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/margin_top = 100
+
+[node name="blackSelector" type="ColorRect" parent="visualPlaceholder/blackTopSelector/MarginContainer"]
+custom_minimum_size = Vector2(20, 30)
+layout_mode = 2
+color = Color(0, 0, 0, 1)
+
+[node name="blackBottomSelector" type="VBoxContainer" parent="visualPlaceholder"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 10
+
+[node name="MarginContainer" type="MarginContainer" parent="visualPlaceholder/blackBottomSelector"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 10
+theme_override_constants/margin_bottom = 140
+
+[node name="blackSelector" type="ColorRect" parent="visualPlaceholder/blackBottomSelector/MarginContainer"]
+custom_minimum_size = Vector2(40, 30)
+layout_mode = 2
+color = Color(0, 0, 0, 1)
+
+[node name="topUI" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="artifactDisplay" type="Panel" parent="topUI"]
+custom_minimum_size = Vector2(1120, 90)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_n1q3t")
+
+[node name="RichTextLabel" type="RichTextLabel" parent="topUI/artifactDisplay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 5.0
+offset_bottom = 5.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "ARTIFACTS GO HERE - INCLUDE A SCROLL FEATURE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="deadlineDisplay" type="HBoxContainer" parent="topUI"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="topUI/deadlineDisplay"]
+layout_mode = 2
+size_flags_vertical = 0
+
+[node name="deadlineDisplay" type="ColorRect" parent="topUI/deadlineDisplay/VBoxContainer"]
+custom_minimum_size = Vector2(400, 100)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+color = Color(0, 0, 0, 1)
+
+[node name="RichTextLabel" type="RichTextLabel" parent="topUI/deadlineDisplay/VBoxContainer/deadlineDisplay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 5.0
+offset_bottom = 5.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+text = "X DAYS BEFORE THE DEADLINE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control" type="Control" parent="topUI/deadlineDisplay/VBoxContainer"]
+layout_mode = 2
+
+[node name="goldDisplay" type="Panel" parent="topUI/deadlineDisplay/VBoxContainer"]
+custom_minimum_size = Vector2(250, 100)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_llbac")
+
+[node name="RichTextLabel" type="RichTextLabel" parent="topUI/deadlineDisplay/VBoxContainer/goldDisplay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 7.0
+offset_top = 5.0
+offset_right = 7.0
+offset_bottom = 5.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_colors/default_color = Color(1, 0, 0, 1)
+text = "X GOLD / Y GOLD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="itemDisplay" type="MarginContainer" parent="topUI"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="topUI/itemDisplay"]
+layout_mode = 2
+size_flags_horizontal = 8
+
+[node name="VBoxContainer" type="VBoxContainer" parent="topUI/itemDisplay/HBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 0
+
+[node name="Panel" type="Panel" parent="topUI/itemDisplay/HBoxContainer/VBoxContainer"]
+custom_minimum_size = Vector2(400, 100)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_1v8me")
+
+[node name="tempPlaceholder" type="RichTextLabel" parent="topUI/itemDisplay/HBoxContainer/VBoxContainer/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 5.0
+offset_bottom = 5.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "ITEMS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="spinButton" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_bottom = 110
+
+[node name="Button" type="Button" parent="spinButton"]
+material = SubResource("CanvasItemMaterial_ktt6o")
+custom_minimum_size = Vector2(500, 100)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 8
+script = ExtResource("8_b7t0n")
+
+[node name="MarginContainer" type="MarginContainer" parent="spinButton/Button"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_top = 10
+
+[node name="spinText" type="RichTextLabel" parent="spinButton/Button/MarginContainer"]
+layout_mode = 2
+tooltip_text = "Spin the highlighted bar and test your luck..."
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/normal_font_size = 34
+text = "SPIN"
+horizontal_alignment = 1
+vertical_alignment = 1
+script = SubResource("GDScript_1v8me")
+
+[node name="menuPopupContainer" type="MarginContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ColorRect" type="ColorRect" parent="menuPopupContainer"]
+layout_mode = 2
+color = Color(0, 0, 0, 0.686275)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="menuPopupContainer/ColorRect"]
+layout_mode = 2
+offset_left = 460.0
+offset_top = 290.0
+offset_right = 1460.0
+offset_bottom = 790.0
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="baseMenuScreen" type="MarginContainer" parent="menuPopupContainer/ColorRect/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="menu" type="NinePatchRect" parent="menuPopupContainer/ColorRect/VBoxContainer/baseMenuScreen"]
+custom_minimum_size = Vector2(1000, 500)
+layout_mode = 2
+
+[node name="template" type="Sprite2D" parent="."]
+position = Vector2(-1320, 370)
+texture = ExtResource("1_2ppmm")
+
+[connection signal="pressed" from="spinButton/Button" to="spinRoot" method="spin"]

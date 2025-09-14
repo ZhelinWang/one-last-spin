@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CharacterClassData" load_steps=9 format=3 uid="uid://ckj5b7jr36la6"]
+
+[ext_resource type="Script" uid="uid://ltn4148sc7sb" path="res://characters/characterData.gd" id="1_royit"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="2_wuq5s"]
+[ext_resource type="Resource" uid="uid://mas6e6uk1l0w" path="res://tokens/capybara.tres" id="3_iomki"]
+[ext_resource type="Resource" uid="uid://b2y41gnrp4pau" path="res://tokens/penguinBanker.tres" id="4_sqxdb"]
+[ext_resource type="Resource" uid="uid://3we4ixqkvhpb" path="res://tokens/coffee.tres" id="5_lha1g"]
+[ext_resource type="Resource" uid="uid://dq7cgvphi6gwu" path="res://tokens/copperCoin.tres" id="6_j7eb8"]
+[ext_resource type="Resource" uid="uid://c504xih8se6f5" path="res://tokens/coin.tres" id="7_sqxdb"]
+[ext_resource type="Resource" uid="uid://bj8jtgxsh2pe2" path="res://tokens/empty.tres" id="8_sqxdb"]
+
+[resource]
+script = ExtResource("1_royit")
+name = ""
+locked = false
+description = "placeholder"
+startingRelic = []
+startingTokens = Array[ExtResource("2_wuq5s")]([ExtResource("3_iomki"), ExtResource("4_sqxdb"), ExtResource("5_lha1g"), ExtResource("6_j7eb8"), ExtResource("7_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb")])
+metadata/_custom_type_script = "uid://ltn4148sc7sb"
