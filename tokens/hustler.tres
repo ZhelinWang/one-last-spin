@@ -10,6 +10,7 @@ script = ExtResource("2_6q376")
 amount = 1
 destroy_if_zero = true
 exclude_self = false
+auto_self_step = false
 id = ""
 trigger = 0
 target_kind = 0

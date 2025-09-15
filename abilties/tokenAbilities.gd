@@ -1,7 +1,7 @@
 extends Resource
 class_name TokenAbility
 
-enum Trigger { ACTIVE_DURING_SPIN, ON_ACQUIRE }
+enum Trigger { ACTIVE_DURING_SPIN, ON_ACQUIRE, ON_REMOVED }
 enum TargetKind { SELF, MIDDLE, OFFSET, TAG, NAME, ANY, NEIGHBORS, LEFT, RIGHT, EDGES, ACTIVE, PASSIVE, OTHERS }
 
 @export var auto_self_step: bool = false
@@ -23,6 +23,10 @@ func build_final_steps(ctx: Dictionary, contribs: Array, source_token: Resource)
 	return []
 
 func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) -> Array:
+	return []
+
+# Optional: commands when a token is removed (executor hook)
+func build_on_removed_commands(ctx: Dictionary, removed_token: Resource, source_token: Resource) -> Array:
 	return []
 
 func filter_step(ctx: Dictionary, step: Dictionary, source_token: Resource = null, target_token: Variant = null, target_contrib: Dictionary = {}) -> Variant:
@@ -111,12 +115,20 @@ func _token_name(t) -> String:
 	return ""
 
 func _token_has_tag(t, tag: String) -> bool:
-	if t == null or not t.has_method("get") or tag.strip_edges() == "":
+	if t == null or not t.has_method("get"):
+		return false
+	var tag_norm := tag.strip_edges().to_lower()
+	if tag_norm == "":
 		return false
 	var tags = t.get("tags")
 	if tags is Array:
 		for s in tags:
-			if typeof(s) == TYPE_STRING and String(s).to_lower() == tag.to_lower():
+			if typeof(s) == TYPE_STRING and String(s).to_lower() == tag_norm:
+				return true
+	elif typeof(tags) == TYPE_PACKED_STRING_ARRAY:
+		var psa: PackedStringArray = tags
+		for s in psa:
+			if String(s).to_lower() == tag_norm:
 				return true
 	return false
 

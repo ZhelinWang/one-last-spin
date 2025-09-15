@@ -1,4 +1,4 @@
-[gd_scene load_steps=41 format=3 uid="uid://c5rvk15uv8cxf"]
+[gd_scene load_steps=40 format=3 uid="uid://c5rvk15uv8cxf"]
 
 [ext_resource type="Script" uid="uid://cyvguba1sinbr" path="res://main.gd" id="1_im5q1"]
 [ext_resource type="Shader" uid="uid://c1th2tmqhx4vk" path="res://shaders/swirl.gdshader" id="2_8yam0"]
@@ -12,7 +12,6 @@
 [ext_resource type="PackedScene" uid="uid://bbkoj3b4uu041" path="res://floatingPopup.tscn" id="7_mcdcf"]
 [ext_resource type="Shader" uid="uid://3wdmpkyh2bdv" path="res://shaders/spinnerBackground.gdshader" id="8_81ket"]
 [ext_resource type="Script" uid="uid://dk6yfsqvjbxdt" path="res://spinButton.gd" id="8_yubjs"]
-[ext_resource type="AudioStream" uid="uid://c0hhvn01tlsmf" path="res://audio/sfx/click-345983.mp3" id="9_dnsp1"]
 [ext_resource type="Script" uid="uid://bwblh3pxtfgml" path="res://spinnerBackground.gd" id="9_mcdcf"]
 [ext_resource type="Script" uid="uid://wgqbwppywr70" path="res://resetButton.gd" id="9_v54cu"]
 [ext_resource type="Shader" uid="uid://bxdl8wargxw6b" path="res://spinnerBackground.gdshader" id="10_ilgax"]
@@ -436,7 +435,6 @@ slots_hbox = NodePath("spinner/spinnerTilesMargin/scrollContainer/slotsHBox")
 slot_item_scene = ExtResource("5_sd2ej")
 class_data = ExtResource("6_dnsp1")
 floating_label_scene = ExtResource("7_mcdcf")
-pass_sfx = ExtResource("9_dnsp1")
 
 [node name="spinner" type="MarginContainer" parent="mainContainer/spinMarginContainer/gameElementsContainer/spinRoot"]
 layout_mode = 1

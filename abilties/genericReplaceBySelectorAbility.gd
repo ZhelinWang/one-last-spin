@@ -35,6 +35,7 @@ enum Selector { LOWEST, HIGHEST }
 @export var replace_with_path: String = "res://tokens/coin.tres"
 @export var preserve_value_from_selected: bool = true
 @export var tie_break: String = "leftmost"  # "leftmost" | "rightmost" | "random"
+@export var preserve_tags: bool = false      # if true, carry over tags from removed token
 
 func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) -> Array:
 	if trigger != Trigger.ACTIVE_DURING_SPIN or contribs.is_empty(): return []
@@ -61,5 +62,5 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 		"offset": int(chosen.get("offset",0)),
 		"token_path": replace_with_path,
 		"set_value": (best_val if preserve_value_from_selected else -1),
-		"preserve_tags": true
+		"preserve_tags": preserve_tags
 	}]

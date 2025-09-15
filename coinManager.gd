@@ -197,6 +197,9 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 	for k in extra_ctx.keys():
 		ctx[k] = extra_ctx[k]
 
+	# Provide inventory tokens for abilities that depend on board/inventory counts.
+	ctx["board_tokens"] = _get_inventory_array()
+
 	# Ensure a function-scope result is always available
 	var result: Dictionary = {}
 	var defer_winner_active: bool = true
@@ -406,6 +409,14 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 	if debug_spin:
 		print("[Totals] active=", active_total, " passive=", passive_total, " spin_total=", result["spin_total"], " run_total=", total_coins)
 	emit_signal("spin_totals_ready", result)
+
+	# After computing totals, execute any winner ability commands
+	# These mutate inventory for future spins (e.g., replace lowest with Coin)
+	var _cmds := _collect_winner_ability_commands(ctx, contribs, winner)
+	if _cmds is Array and not _cmds.is_empty():
+		if debug_spin:
+			print("[Commands] Found ", _cmds.size(), " command(s). Executing...")
+		_execute_ability_commands(_cmds, ctx, contribs)
 
 	if enable_game_over:
 		var spr: int = max(spins_per_round, 1)
@@ -1665,17 +1676,32 @@ func _try_get_icon_texture(token) -> Texture2D:
 func _get_inventory_array() -> Array:
 	var owner := get_node_or_null(inventory_owner_path)
 	if owner == null:
+		owner = _resolve_inventory_owner_node()
+	if owner == null or not owner.has_method("get"):
 		return []
-	var inv = owner.get(inventory_property)
+	var prop := String(inventory_property)
+	if prop.strip_edges() == "":
+		prop = "items"
+	var inv = owner.get(prop)
 	if typeof(inv) == TYPE_ARRAY:
 		return inv
+	# Fallback: many owners (e.g., spinRoot) expose `items` instead of `tokens`.
+	if prop != "items":
+		var alt = owner.get("items")
+		if typeof(alt) == TYPE_ARRAY:
+			return alt
 	return []
 
 func _set_inventory_array(arr: Array) -> void:
 	var owner := get_node_or_null(inventory_owner_path)
 	if owner == null:
+		owner = _resolve_inventory_owner_node()
+	if owner == null:
 		return
-	owner.set(inventory_property, arr)
+	var prop := String(inventory_property)
+	if prop.strip_edges() == "":
+		prop = "items"
+	owner.set(prop, arr)
 
 func _find_empty_index(arr: Array) -> int:
 	var indices: Array = []
@@ -1755,10 +1781,18 @@ func _token_name(t) -> String:
 func _token_has_tag(t, tag: String) -> bool:
 	if t == null or not t.has_method("get"):
 		return false
+	var tag_norm := String(tag).strip_edges().to_lower()
+	if tag_norm == "":
+		return false
 	var tags = t.get("tags")
 	if tags is Array:
 		for s in tags:
-			if typeof(s) == TYPE_STRING and String(s).to_lower() == tag.to_lower():
+			if typeof(s) == TYPE_STRING and String(s).to_lower() == tag_norm:
+				return true
+	elif typeof(tags) == TYPE_PACKED_STRING_ARRAY:
+		var psa: PackedStringArray = tags
+		for s in psa:
+			if String(s).to_lower() == tag_norm:
 				return true
 	return false
 
@@ -2278,3 +2312,262 @@ func _invoke_on_value_changed(ctx: Dictionary, source_token, target_contrib: Dic
 
 			if (ab as Object).has_method("on_value_changed"):
 				ab.call("on_value_changed", ctx, prev_val, new_val, source_token, token_target, target_contrib, step)
+
+# ---------- Ability command collection/execution ----------
+func _collect_winner_ability_commands(ctx: Dictionary, contribs: Array, winner) -> Array:
+	var out: Array = []
+	if winner == null:
+		return out
+	if winner.has_method("get"):
+		var abilities = winner.get("abilities")
+		if abilities is Array:
+			for ab in abilities:
+				if ab == null:
+					continue
+				# Only consider Active During Spin and winner_only abilities for commands
+				if not _ability_is_active_during_spin(ab):
+					continue
+				if not _ability_winner_only(ab):
+					continue
+				if (ab as Object).has_method("build_commands"):
+					var arr = ab.build_commands(ctx, contribs, winner)
+					if arr is Array:
+						for cmd in arr:
+							if typeof(cmd) == TYPE_DICTIONARY:
+								out.append(cmd)
+	return out
+
+func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array) -> void:
+	for cmd in cmds:
+		if typeof(cmd) != TYPE_DICTIONARY:
+			continue
+		var op := String((cmd as Dictionary).get("op", "")).to_lower()
+		match op:
+			"replace_at_offset":
+				var off := int((cmd as Dictionary).get("offset", 0))
+				var token_path := String((cmd as Dictionary).get("token_path", ""))
+				var set_value := int((cmd as Dictionary).get("set_value", -1))
+				var preserve_tags := bool((cmd as Dictionary).get("preserve_tags", false))
+				_replace_token_at_offset(ctx, off, token_path, set_value, preserve_tags)
+			"replace_all_empties":
+				var token_path2 := String((cmd as Dictionary).get("token_path", ""))
+				_replace_all_empties_in_inventory(token_path2)
+			"permanent_add":
+				var tk := String((cmd as Dictionary).get("target_kind", "any")).to_lower()
+				var toff := int((cmd as Dictionary).get("target_offset", 0))
+				var ttag := String((cmd as Dictionary).get("target_tag", ""))
+				var tname := String((cmd as Dictionary).get("target_name", ""))
+				var amt2 := int((cmd as Dictionary).get("amount", 0))
+				var diz := bool((cmd as Dictionary).get("destroy_if_zero", false))
+				_apply_permanent_add_inventory(tk, toff, ttag, tname, amt2, diz, ctx)
+			"adjust_run_total":
+				var amt := int((cmd as Dictionary).get("amount", 0))
+				if amt != 0:
+					total_coins = max(0, total_coins + amt)
+					_update_totals_label(total_coins)
+			"destroy":
+				var off2 := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+				var empty_res := _load_empty_token()
+				if empty_res != null and empty_res is Resource:
+					_replace_token_at_offset(ctx, off2, (empty_res as Resource).resource_path, -1, false)
+			_:
+				if debug_spin:
+					print("[Commands] Unknown op: ", op)
+
+func _resolve_inventory_owner_node() -> Node:
+	var owner := get_node_or_null(inventory_owner_path)
+	if owner != null:
+		return owner
+	# Fallback: try to find spinRoot in the current scene
+	var scene := get_tree().current_scene
+	if scene != null:
+		var sr := scene.find_child("spinRoot", true, false)
+		if sr != null and sr is Node:
+			return sr
+	return null
+
+func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, set_value: int, preserve_tags: bool) -> void:
+	if token_path.strip_edges() == "":
+		return
+	var slot := _slot_from_ctx(ctx, offset)
+	var target_token = null
+	if slot != null:
+		if slot.has_meta("token_data"):
+			target_token = slot.get_meta("token_data")
+
+	# If we have a token to remove, let its abilities react (e.g., on-removed penalties)
+	if target_token != null:
+		var removed_cmds := _collect_on_removed_commands(ctx, target_token)
+		if removed_cmds is Array and not removed_cmds.is_empty():
+			_execute_ability_commands(removed_cmds, ctx, [])
+
+	var owner := _resolve_inventory_owner_node()
+	if owner == null:
+		if debug_spin:
+			print("[Commands] No inventory owner found; skip replace_at_offset")
+		return
+	var prop := String(inventory_property)
+	if prop.strip_edges() == "":
+		prop = "items"  # default to spinRoot.items
+	if not owner.has_method("get"):
+		return
+	var arr = owner.get(prop)
+	if typeof(arr) != TYPE_ARRAY:
+		return
+
+	# Find index by identity if possible
+	var idx := -1
+	for i in range((arr as Array).size()):
+		if (arr as Array)[i] == target_token:
+			idx = i
+			break
+	if idx < 0:
+		# Fallback: attempt to match by resource_path and name
+		for i in range((arr as Array).size()):
+			var it = (arr as Array)[i]
+			if it is Resource and (it as Resource).resource_path != "" and target_token is Resource and (it as Resource).resource_path == (target_token as Resource).resource_path:
+				idx = i
+				break
+	if idx < 0:
+		if debug_spin:
+			print("[Commands] Could not locate target token in inventory for offset ", offset)
+		return
+
+	var rep := ResourceLoader.load(token_path)
+	if rep == null or not (rep is Resource):
+		return
+	var inst := (rep as Resource).duplicate(true)
+	# Optional: set incoming value and preserve tags
+	if inst.has_method("set") and set_value >= 0:
+		inst.set("value", set_value)
+	if preserve_tags:
+		var src_tags = null
+		if target_token != null and (target_token as Object).has_method("get"):
+			src_tags = target_token.get("tags")
+		if src_tags is Array and inst.has_method("set"):
+			inst.set("tags", PackedStringArray(src_tags))
+
+	(arr as Array)[idx] = inst
+	owner.set(prop, arr)
+
+	# Try to refresh inventory strip visuals if available
+	if owner.has_method("_update_inventory_strip"):
+		owner.call_deferred("_update_inventory_strip")
+
+func _replace_all_empties_in_inventory(token_path: String) -> void:
+	if token_path.strip_edges() == "":
+		return
+	var owner := _resolve_inventory_owner_node()
+	if owner == null or not owner.has_method("get"):
+		return
+	var prop := String(inventory_property)
+	if prop.strip_edges() == "":
+		prop = "items"
+	var arr = owner.get(prop)
+	if typeof(arr) != TYPE_ARRAY:
+		return
+	var rep := ResourceLoader.load(token_path)
+	if rep == null or not (rep is Resource):
+		return
+	var changed := false
+	for i in range((arr as Array).size()):
+		var it = (arr as Array)[i]
+		if _is_empty_token(it):
+			var inst := (rep as Resource).duplicate(true)
+			(arr as Array)[i] = inst
+			changed = true
+	if changed:
+		owner.set(prop, arr)
+		if owner.has_method("_update_inventory_strip"):
+			owner.call_deferred("_update_inventory_strip")
+
+func _apply_permanent_add_inventory(target_kind: String, target_offset: int, target_tag: String, target_name: String, amount: int, destroy_if_zero: bool, ctx: Dictionary) -> void:
+	var owner := _resolve_inventory_owner_node()
+	if owner == null or not owner.has_method("get"):
+		return
+	var prop := String(inventory_property)
+	if prop.strip_edges() == "": prop = "items"
+	var arr = owner.get(prop)
+	if typeof(arr) != TYPE_ARRAY:
+		return
+
+	var matches_token = func(tok) -> bool:
+		if tok == null:
+			return false
+		var name_ok: bool = true
+		var tag_ok: bool = true
+		if target_kind == "name" and target_name.strip_edges() != "":
+			name_ok = (_token_name(tok) == target_name)
+		if target_kind == "tag" and target_tag.strip_edges() != "":
+			tag_ok = _token_has_tag(tok, target_tag)
+		if target_kind == "any":
+			return true
+		if target_kind == "self" or target_kind == "offset":
+			# Resolve target token via slot/offset map when possible
+			var slot := _slot_from_ctx(ctx, target_offset)
+			if slot != null and slot.has_meta("token_data"):
+				return slot.get_meta("token_data") == tok
+			return false
+		return name_ok and tag_ok
+
+	var changed := false
+	for i in range((arr as Array).size()):
+		var tok = (arr as Array)[i]
+		if matches_token.call(tok):
+			var v := 0
+			if tok != null and (tok as Object).has_method("get"):
+				var vv = tok.get("value")
+				if vv != null: v = int(vv)
+			v += amount
+			if destroy_if_zero and v <= 0:
+				var empty_res := _load_empty_token()
+				if empty_res is Resource:
+					(arr as Array)[i] = (empty_res as Resource).duplicate(true)
+					changed = true
+			else:
+				if (tok as Object).has_method("set"):
+					tok.set("value", max(0, v))
+					changed = true
+
+	if changed:
+		owner.set(prop, arr)
+		if owner.has_method("_update_inventory_strip"):
+			owner.call_deferred("_update_inventory_strip")
+
+func _collect_on_removed_commands(ctx: Dictionary, removed_token) -> Array:
+	var out: Array = []
+	if removed_token == null:
+		return out
+	# Collect ON_REMOVED ability commands if authored
+	var abilities = _get_abilities(removed_token)
+	for ab in abilities:
+		if ab == null:
+			continue
+		# trigger check: allow explicit ON_REMOVED or the presence of the builder method
+		var trig = ab.get("trigger")
+		var ok_trig := false
+		if typeof(trig) == TYPE_INT:
+			ok_trig = int(trig) == 2 # TokenAbility.Trigger.ON_REMOVED
+		elif typeof(trig) == TYPE_STRING:
+			ok_trig = String(trig).to_lower().findn("removed") != -1
+		if (ab as Object).has_method("build_on_removed_commands"):
+			if not ok_trig and debug_spin:
+				pass
+			var arr = ab.call("build_on_removed_commands", ctx, removed_token, removed_token)
+			if arr is Array:
+				for cmd in arr:
+					if typeof(cmd) == TYPE_DICTIONARY:
+						out.append(cmd)
+
+	# Fallback for Executive if no ability authored
+	var name_l := _token_name(removed_token).to_lower()
+	if name_l == "executive" or _token_has_tag(removed_token, "executive"):
+		# Lose 5x removed token's value
+		var v = 0
+		if (removed_token as Object).has_method("get"):
+			var vv = removed_token.get("value")
+			if vv != null: v = int(vv)
+		if v > 0:
+			out.append({"op":"adjust_run_total", "amount": -5 * v, "source": "token:Executive", "desc": "Executive removal penalty"})
+
+	return out
