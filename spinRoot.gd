@@ -506,6 +506,11 @@ func _update_inventory_strip() -> void:
 func _init_token_base_value(tok: TokenLootData) -> void:
 	if tok == null:
 		return
+	# Prefer CoinManager's initializer so any per-run offsets apply to this instance.
+	if coin_mgr != null and coin_mgr.has_method("_init_token_base_value"):
+		coin_mgr.call("_init_token_base_value", tok)
+		return
+	# Fallback: just stamp baseline meta
 	if (tok as Object).has_method("has_meta") and tok.has_meta("base_value"):
 		return
 	var v = null

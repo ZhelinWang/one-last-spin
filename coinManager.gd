@@ -102,6 +102,7 @@ var _value_label: Node = null
 var _bank_tween: Tween = null
 var _shown_total: int = 0
 var _active_effect_label: Node = null
+var _token_value_offsets: Dictionary = {} # key (resource_path or name) -> cumulative permanent offset for this run
 
 func _ready() -> void:
 	_loot_rng.randomize()
@@ -170,6 +171,8 @@ func reset_run() -> void:
 	_shown_total = 0
 	_game_over_active = false
 	_loot_gen += 1
+	# Clear any per-token permanent offsets (future runs start from baseline)
+	_token_value_offsets.clear()
 	if is_instance_valid(_bank_tween):
 		_bank_tween.kill()
 	_bank_tween = null
@@ -236,7 +239,7 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 	emit_signal("winner_description_shown", winner, winner_desc)
 	await _pause(show_winner_desc_delay_sec)
 
-	# Early UX: run inventory-affecting commands immediately (e.g., Mint)
+	# Early UX: run inventory-affecting commands immediately when they affect board composition for this spin
 	var __early_cmds := _collect_winner_ability_commands(ctx, [], winner)
 	if __early_cmds is Array and not __early_cmds.is_empty():
 		var early: Array = []
@@ -244,13 +247,13 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 			if typeof(cmd) != TYPE_DICTIONARY:
 				continue
 			var op := String((cmd as Dictionary).get("op", ""))
-			if op == "replace_all_empties" or op == "permanent_add":
+			# Only run inventory-wide replacements early; defer permanent_add to post-shake
+			if op == "replace_all_empties":
 				early.append(cmd)
 		if not early.is_empty():
 			_execute_ability_commands(early, ctx, [])
 			# Mark so we can skip duplicates later
 			ctx["__ran_replace_all_empties"] = true
-			ctx["__ran_permanent_add"] = true
 
 	var offsets: Array = [-2, -1, 0, 1, 2]
 	var norder: Array = [-2, -1, 1, 2]
@@ -374,7 +377,30 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 		var global_active_steps: Array = _collect_winner_active_global_steps(ctx, winner, contribs)
 		if debug_spin:
 			print("[Final-Active] Winner global steps: ", global_active_steps.size())
-		if not global_active_steps.is_empty():
+		# Collect winner ability commands that need post-shake execution (e.g., Mint visuals, Hustler permanent add)
+		var __board_cmds := _collect_winner_ability_commands(ctx, contribs, winner)
+		var board_visual_cmds: Array = []
+		var post_shake_cmds: Array = []
+		for cmd in __board_cmds:
+			if typeof(cmd) != TYPE_DICTIONARY:
+				continue
+			var op := String((cmd as Dictionary).get("op", ""))
+			if op == "replace_board_tag" or op == "replace_board_empties":
+				board_visual_cmds.append(cmd)
+			elif op == "permanent_add":
+				post_shake_cmds.append(cmd)
+
+		# Do not scale self-target permanent_add here; visuals will display per-matching token separately
+		# Stash board visual commands in ctx for the broadcast phase to run right after the active label shake
+		var need_board_phase := not board_visual_cmds.is_empty() or not post_shake_cmds.is_empty()
+		if not board_visual_cmds.is_empty():
+			ctx["__board_visual_cmds"] = board_visual_cmds
+			ctx["__ran_replace_board_tag"] = true
+		if not post_shake_cmds.is_empty():
+			ctx["__post_shake_cmds"] = post_shake_cmds
+			ctx["__ran_permanent_add"] = true
+		# Run the post-shake phase if there are any winner global steps OR any post-shake/board-visual commands
+		if need_board_phase or not global_active_steps.is_empty():
 			await _apply_global_steps_broadcast(global_active_steps, contribs, ctx, winner)
 	await _pause(active_desc_pause_sec)
 	# Then apply the winner's own deferred active to itself (shake description first + pause)
@@ -433,6 +459,7 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 		# Filter out early-run inventory ops
 		var skip_empties := bool(ctx.get("__ran_replace_all_empties", false))
 		var skip_perm := bool(ctx.get("__ran_permanent_add", false))
+		var skip_board := bool(ctx.get("__ran_replace_board_tag", false))
 		var late: Array = []
 		for cmd in _cmds:
 			if typeof(cmd) != TYPE_DICTIONARY:
@@ -441,6 +468,8 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 			if skip_empties and op == "replace_all_empties":
 				continue
 			if skip_perm and op == "permanent_add":
+				continue
+			if skip_board and (op == "replace_board_tag" or op == "replace_board_empties"):
 				continue
 			late.append(cmd)
 		if not late.is_empty():
@@ -578,6 +607,10 @@ func _collect_winner_active_global_steps(ctx: Dictionary, winner, contribs: Arra
 				if not _ability_is_active_during_spin(ab):
 					continue
 				if not _ability_winner_only(ab):
+					continue
+				# Avoid double-applying effects: if an ability declares build_commands (e.g., permanent_add),
+				# do not synthesize an "add/mult" spin step from its amount/factor.
+				if (ab as Object).has_method("build_commands"):
 					continue
 
 				var tk := _ability_target_kind(ab).to_lower()
@@ -1362,6 +1395,8 @@ func _show_loot_overlay(round_num: int, options: Array, expected_gen: int = -1) 
 	var icon_px := int(round(ICON_BASE * loot_tile_scale))
 
 	for token in options:
+		# Ensure loot shows the current per-run adjusted value
+		_init_token_base_value(token)
 		var frame := PanelContainer.new()
 		frame.name = "ItemFrame"
 		frame.custom_minimum_size = Vector2(tile_px, tile_px)
@@ -1500,6 +1535,7 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 	var tok: Resource = token
 	if tok != null and tok is Resource:
 		tok = (tok as Resource).duplicate(true)
+		_init_token_base_value(tok)
 
 	var replaced: bool = false
 	var prop_str: String = String(inventory_property).strip_edges()
@@ -1521,6 +1557,7 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 					if jidx < 0:
 						break
 					var dup: Resource = (tok as Resource).duplicate(true)
+					_init_token_base_value(dup)
 					arr[jidx] = dup
 				# Commit once after all replacements to minimize churn
 				_set_inventory_array(arr)
@@ -1826,6 +1863,14 @@ func _token_has_tag(t, tag: String) -> bool:
 				return true
 	return false
 
+func _token_key(t) -> String:
+	if t is Resource and (t as Resource).resource_path != "":
+		return String((t as Resource).resource_path)
+	var nm := _token_name(t).strip_edges().to_lower()
+	if nm != "":
+		return nm
+	return str(t)
+
 # ---------- ability field helpers ----------
 func _ability_is_active_during_spin(ab) -> bool:
 	if ab == null:
@@ -1977,6 +2022,49 @@ func _set_node_text(node: Node, txt: String) -> void:
 func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Dictionary, winner) -> void:
 	_shake_active_effect_label()
 	await _pause(active_desc_pause_sec)
+
+	# After the active effect label shake, run any board-visual commands (e.g., Mint replacing coins on board)
+	var __board_cmds = ctx.get("__board_visual_cmds")
+	if __board_cmds is Array and not (__board_cmds as Array).is_empty():
+		if debug_spin:
+			print("[Board-Visual] Executing ", int((__board_cmds as Array).size()), " command(s) after shake")
+		_execute_ability_commands(__board_cmds, ctx, contribs)
+
+	# Also run any post-shake inventory commands (e.g., Hustler permanent_add) before totals
+	var __post_cmds = ctx.get("__post_shake_cmds")
+	if __post_cmds is Array and not (__post_cmds as Array).is_empty():
+		if debug_spin:
+			print("[Post-Shake] Executing ", int((__post_cmds as Array).size()), " inventory command(s)")
+		_execute_ability_commands(__post_cmds, ctx, contribs)
+
+		# Visual confirmation: if a self-target permanent_add was applied by the winner, show +amt on each same-type token
+		var self_amt: int = 0
+		for cmd in (__post_cmds as Array):
+			if typeof(cmd) != TYPE_DICTIONARY:
+				continue
+			var d := cmd as Dictionary
+			var op := String(d.get("op", "")).to_lower()
+			if op != "permanent_add":
+				continue
+			var tk := String(d.get("target_kind", "")).to_lower()
+			var toff := int(d.get("target_offset", 999))
+			if tk == "self" or (tk == "offset" and toff == 0):
+				self_amt += int(d.get("amount", 0))
+		if self_amt != 0 and winner != null:
+			var k := _token_key(winner)
+			for i in range(contribs.size()):
+				var c2: Dictionary = contribs[i]
+				if _token_key(c2.get("token")) != k:
+					continue
+				var pv: int = _compute_value(c2)
+				var nv: int = pv + self_amt
+				_play_counting_popup(ctx, c2, pv, nv, false)
+				# Update inline slot value if available
+				var slot2 := _slot_from_ctx(ctx, int(c2.get("offset", 0)))
+				if slot2 != null:
+					var si2 := slot2.get_node_or_null("slotItem")
+					if si2 != null and si2.has_method("set_value"):
+						si2.call_deferred("set_value", nv)
 
 	# Build per-target filtered step lists
 	var targets: Array = []
@@ -2390,6 +2478,13 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array) -
 				var amt2 := int((cmd as Dictionary).get("amount", 0))
 				var diz := bool((cmd as Dictionary).get("destroy_if_zero", false))
 				_apply_permanent_add_inventory(tk, toff, ttag, tname, amt2, diz, ctx)
+			"replace_board_tag":
+				var tag := String((cmd as Dictionary).get("target_tag", ""))
+				var tpath := String((cmd as Dictionary).get("token_path", ""))
+				_replace_board_tag_in_slotmap(ctx, tag, tpath)
+			"replace_board_empties":
+				var tpath2 := String((cmd as Dictionary).get("token_path", ""))
+				_replace_board_empties_in_slotmap(ctx, tpath2)
 			"adjust_run_total":
 				var amt := int((cmd as Dictionary).get("amount", 0))
 				if amt != 0:
@@ -2496,6 +2591,128 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	if owner.has_method("_update_inventory_strip"):
 		owner.call_deferred("_update_inventory_strip")
 
+func _apply_token_to_slot(slot: Control, token: Resource) -> void:
+	if slot == null or token == null:
+		return
+	# Update meta used everywhere
+	slot.set_meta("token_data", token)
+	# Try preferred API: set exported `data` property on the root control
+	var has_data_prop := false
+	for p in slot.get_property_list():
+		if String(p.get("name", "")) == "data":
+			has_data_prop = true
+			break
+	if has_data_prop:
+		slot.set("data", token)
+		return
+	# Fallback: if root exposes an _apply(data) method
+	if slot.has_method("_apply"):
+		slot.call("_apply", token)
+		return
+	# Final fallback: update a child named "slotItem" if present
+	var si := slot.get_node_or_null("slotItem")
+	if si != null and si.has_method("set"):
+		si.set("data", token)
+
+func _replace_board_tag_in_slotmap(ctx: Dictionary, target_tag: String, token_path: String) -> void:
+	if token_path.strip_edges() == "":
+		return
+	var rep := ResourceLoader.load(token_path)
+	if rep == null or not (rep is Resource):
+		return
+	var slots := _visible_slots_from_ctx(ctx)
+	if slots.is_empty():
+		return
+	for slot in slots:
+		if not (slot is Control):
+			continue
+		var tok = (slot as Control).get_meta("token_data") if (slot as Control).has_meta("token_data") else null
+		if _token_has_tag(tok, target_tag):
+			var inst := (rep as Resource).duplicate(true)
+			_init_token_base_value(inst)
+			_apply_token_to_slot(slot as Control, inst)
+			_shake_slot(slot as Control)
+
+func _replace_board_empties_in_slotmap(ctx: Dictionary, token_path: String) -> void:
+	if token_path.strip_edges() == "":
+		return
+	var rep := ResourceLoader.load(token_path)
+	if rep == null or not (rep is Resource):
+		return
+	var slots := _visible_slots_from_ctx(ctx)
+	if slots.is_empty():
+		return
+	for slot in slots:
+		if not (slot is Control):
+			continue
+		var tok = (slot as Control).get_meta("token_data") if (slot as Control).has_meta("token_data") else null
+		if _is_empty_token(tok):
+			var inst := (rep as Resource).duplicate(true)
+			_init_token_base_value(inst)
+			_apply_token_to_slot(slot as Control, inst)
+			_shake_slot(slot as Control)
+
+func _visible_slots_from_ctx(ctx: Dictionary) -> Array:
+	if not ctx.has("slot_map"):
+		return []
+	var sm = ctx["slot_map"]
+	if not (sm is Dictionary):
+		return []
+	# Grab any slot to find the HBox and its ScrollContainer
+	var any_slot: Control = null
+	for k in (sm as Dictionary).keys():
+		var s = (sm as Dictionary).get(k)
+		if s is Control:
+			any_slot = s
+			break
+	if any_slot == null:
+		return []
+	var hbox := any_slot.get_parent()
+	if hbox == null or not (hbox is Control):
+		return []
+	var sc: ScrollContainer = null
+	var n := hbox.get_parent()
+	while n != null and sc == null:
+		if n is ScrollContainer:
+			sc = n as ScrollContainer
+			break
+		n = n.get_parent()
+	var left := 0.0
+	var right := 1e12
+	if sc != null:
+		left = float(sc.scroll_horizontal)
+		right = left + sc.size.x
+	var out: Array = []
+	for child in hbox.get_children():
+		if child is Control:
+			var c := child as Control
+			var center_x: float = c.position.x + c.size.x * 0.5
+			if center_x >= left and center_x <= right:
+				out.append(c)
+	return out
+
+func _shake_slot(slot: Control) -> void:
+	if slot == null:
+		return
+	var base_mod := slot.modulate
+	var fx := get_tree().create_tween()
+	fx.tween_property(slot, "modulate", Color(base_mod.r, base_mod.g, base_mod.b, 0.90), 0.04).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	fx.chain().tween_property(slot, "modulate", base_mod, 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	var shake_target: Node = slot.get_node_or_null("slotItem")
+	if shake_target == null:
+		shake_target = slot
+	if not (shake_target is CanvasItem):
+		return
+	var rng := _mk_rng()
+	var orig_pos: Vector2 = (shake_target as CanvasItem).position
+	var shake := get_tree().create_tween()
+	var shakes := 3
+	var strength: float = 8.0
+	for i in range(shakes):
+		var offv := Vector2(rng.randf_range(-strength, strength), rng.randf_range(-strength, strength))
+		shake.tween_property(shake_target, "position", orig_pos + offv, 0.03).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	shake.tween_property(shake_target, "position", orig_pos, 0.04).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
 func _replace_all_empties_in_inventory(token_path: String) -> void:
 	if token_path.strip_edges() == "":
 		return
@@ -2575,25 +2792,35 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 			return false
 		return name_ok and tag_ok
 
+	# Update per-run offsets for all matched token types
+	var affected: Dictionary = {}
+	for i in range((arr as Array).size()):
+		var tok = (arr as Array)[i]
+		if matches_token.call(tok):
+			var key := _token_key(tok)
+			var cur := int(_token_value_offsets.get(key, 0))
+			_token_value_offsets[key] = cur + amount
+			affected[key] = true
+
+	# Apply recalculated value (base + new offset) to all instances of affected types
 	var changed := false
 	for i in range((arr as Array).size()):
 		var tok = (arr as Array)[i]
+		var key := _token_key(tok)
+		if not affected.has(key):
+			continue
 		_init_token_base_value(tok)
-		if matches_token.call(tok):
-			var v := 0
-			if tok != null and (tok as Object).has_method("get"):
-				var vv = tok.get("value")
-				if vv != null: v = int(vv)
-			v += amount
-			if destroy_if_zero and v <= 0:
-				var empty_res := _load_empty_token()
-				if empty_res is Resource:
-					(arr as Array)[i] = (empty_res as Resource).duplicate(true)
-					changed = true
-			else:
-				if (tok as Object).has_method("set"):
-					tok.set("value", max(0, v))
-					changed = true
+		var curv := 0
+		if tok != null and (tok as Object).has_method("get"):
+			var vv2 = tok.get("value")
+			if vv2 != null: curv = int(vv2)
+		if destroy_if_zero and curv <= 0:
+			var empty_res := _load_empty_token()
+			if empty_res is Resource:
+				(arr as Array)[i] = (empty_res as Resource).duplicate(true)
+				changed = true
+		else:
+			changed = true
 
 	if changed:
 		owner.set(prop, arr)
@@ -2606,14 +2833,26 @@ func _init_token_base_value(tok) -> void:
 		return
 	if not (tok as Object).has_method("get"):
 		return
-	if (tok as Object).has_method("has_meta") and tok.has_meta("base_value"):
-		return
-	var vv = tok.get("value")
-	if vv == null:
-		return
-	var base := int(vv)
-	if (tok as Object).has_method("set_meta"):
-		tok.set_meta("base_value", base)
+	var base: int = 0
+	var has_meta_flag: bool = false
+	if (tok as Object).has_method("has_meta"):
+		has_meta_flag = tok.has_meta("base_value")
+	if has_meta_flag:
+		var bv = tok.get_meta("base_value")
+		if bv != null:
+			base = int(bv)
+	else:
+		var vv = tok.get("value")
+		if vv == null:
+			return
+		base = int(vv)
+		if (tok as Object).has_method("set_meta"):
+			tok.set_meta("base_value", base)
+	# Apply per-run offset for this token type
+	var key := _token_key(tok)
+	var off := int(_token_value_offsets.get(key, 0))
+	if (tok as Object).has_method("set"):
+		tok.set("value", max(0, base + off))
 
 func _collect_on_removed_commands(ctx: Dictionary, removed_token) -> Array:
 	var out: Array = []

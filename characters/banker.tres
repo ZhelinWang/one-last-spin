@@ -11,9 +11,5 @@
 
 [resource]
 script = ExtResource("1_royit")
-name = ""
-locked = false
-description = "placeholder"
-startingRelic = []
-startingTokens = Array[ExtResource("2_wuq5s")]([ExtResource("3_sqxdb"), ExtResource("4_sqxdb"), ExtResource("5_lha1g"), ExtResource("6_j7eb8"), ExtResource("7_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb")])
+startingTokens = Array[ExtResource("2_wuq5s")]([ExtResource("3_sqxdb"), ExtResource("4_sqxdb"), ExtResource("5_lha1g"), ExtResource("6_j7eb8"), ExtResource("7_sqxdb"), ExtResource("3_sqxdb"), ExtResource("3_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb")])
 metadata/_custom_type_script = "uid://ltn4148sc7sb"
