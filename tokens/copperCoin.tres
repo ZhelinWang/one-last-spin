@@ -7,27 +7,13 @@
 
 [sub_resource type="Resource" id="Resource_k3txd"]
 script = ExtResource("2_qye0n")
-total_copies = 2
-auto_self_step = false
-id = ""
 trigger = 1
-target_kind = 0
-target_offset = 0
-target_tag = ""
-target_name = ""
-winner_only = false
-desc_template = ""
 metadata/_custom_type_script = "uid://qxy2n8ufrlqh"
 
 [resource]
 script = ExtResource("4_0h4pq")
 name = "Copper Coin"
-weight = 1.0
-rarity = "common"
 icon = ExtResource("3_b6gl8")
-value = 1
 tags = PackedStringArray("Coin")
 abilities = Array[ExtResource("1_74v8u")]([SubResource("Resource_k3txd")])
-activeDescription = ""
-passiveDescription = ""
 metadata/_custom_type_script = "uid://2lqsh3g3xqag"

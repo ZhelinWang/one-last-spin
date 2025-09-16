@@ -8,36 +8,15 @@
 
 [sub_resource type="Resource" id="MintActive"]
 script = ExtResource("3_mint_active")
-coin_token_path = "res://tokens/coin.tres"
-auto_self_step = false
-id = ""
-trigger = 0
-target_kind = 0
-target_offset = 0
-target_tag = ""
-target_name = ""
 winner_only = true
-desc_template = ""
 
 [sub_resource type="Resource" id="MintPassiveSelfMult"]
 script = ExtResource("4_self_mult")
 tag = "Coin"
-threshold = 5
-min_factor = 0.0
-auto_self_step = false
-id = ""
-trigger = 0
-target_kind = 0
-target_offset = 0
-target_tag = ""
-target_name = ""
-winner_only = false
-desc_template = ""
 
 [resource]
 script = ExtResource("1_token")
 name = "Mint"
-weight = 1.0
 rarity = "legendary"
 icon = ExtResource("5_icon")
 value = 8

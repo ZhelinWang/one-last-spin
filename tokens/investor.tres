@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/genericReplaceBySelectorAbility.gd" id="3_active"]
+[ext_resource type="Script" path="res://abilties/genericAdjacencyPresenceBuffAbility.gd" id="4_passive"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="5_icon"]
+
+[sub_resource type="Resource" id="InvestorActive"]
+script = ExtResource("3_active")
+winner_only = true
+op = "add"
+selector = 2 # RANDOM_NEIGHBOR
+amount_mode = "self_value"
+apply_self_mult_after = true
+self_factor = 0.5
+
+[sub_resource type="Resource" id="InvestorPassive"]
+script = ExtResource("4_passive")
+require_any = true
+per_adjacent = false
+amount = 2
+match_tag = "coin"
+match_name = ""
+emit_as_spin_steps = true
+
+[resource]
+script = ExtResource("1_token")
+name = "Investor"
+weight = 1.0
+rarity = "rare"
+icon = ExtResource("5_icon")
+value = 9
+tags = PackedStringArray("investor")
+abilities = Array[ExtResource("2_abilities")]([SubResource("InvestorActive"), SubResource("InvestorPassive")])
+activeDescription = "Add self's value to a random adjacent. Then halve self."
+passiveDescription = "If adjacent to any coin, +2 value."
+metadata/_custom_type_script = "uid://2lqsh3g3xqag"

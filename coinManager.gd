@@ -65,7 +65,7 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 
 # Inventory wiring for replacement
 @export var inventory_owner_path: NodePath
-@export var inventory_property: String = "tokens"
+@export var inventory_property: String = "items"
 @export_enum("first", "last", "random") var empty_replace_strategy: String = "first"
 
 # Debugging
@@ -235,6 +235,22 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 	var winner_desc: String = _get_token_description(winner, "active")
 	emit_signal("winner_description_shown", winner, winner_desc)
 	await _pause(show_winner_desc_delay_sec)
+
+	# Early UX: run inventory-affecting commands immediately (e.g., Mint)
+	var __early_cmds := _collect_winner_ability_commands(ctx, [], winner)
+	if __early_cmds is Array and not __early_cmds.is_empty():
+		var early: Array = []
+		for cmd in __early_cmds:
+			if typeof(cmd) != TYPE_DICTIONARY:
+				continue
+			var op := String((cmd as Dictionary).get("op", ""))
+			if op == "replace_all_empties" or op == "permanent_add":
+				early.append(cmd)
+		if not early.is_empty():
+			_execute_ability_commands(early, ctx, [])
+			# Mark so we can skip duplicates later
+			ctx["__ran_replace_all_empties"] = true
+			ctx["__ran_permanent_add"] = true
 
 	var offsets: Array = [-2, -1, 0, 1, 2]
 	var norder: Array = [-2, -1, 1, 2]
@@ -414,9 +430,23 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 	# These mutate inventory for future spins (e.g., replace lowest with Coin)
 	var _cmds := _collect_winner_ability_commands(ctx, contribs, winner)
 	if _cmds is Array and not _cmds.is_empty():
-		if debug_spin:
-			print("[Commands] Found ", _cmds.size(), " command(s). Executing...")
-		_execute_ability_commands(_cmds, ctx, contribs)
+		# Filter out early-run inventory ops
+		var skip_empties := bool(ctx.get("__ran_replace_all_empties", false))
+		var skip_perm := bool(ctx.get("__ran_permanent_add", false))
+		var late: Array = []
+		for cmd in _cmds:
+			if typeof(cmd) != TYPE_DICTIONARY:
+				continue
+			var op := String((cmd as Dictionary).get("op", ""))
+			if skip_empties and op == "replace_all_empties":
+				continue
+			if skip_perm and op == "permanent_add":
+				continue
+			late.append(cmd)
+		if not late.is_empty():
+			if debug_spin:
+				print("[Commands] Found ", late.size(), " command(s). Executing...")
+			_execute_ability_commands(late, ctx, contribs)
 
 	if enable_game_over:
 		var spr: int = max(spins_per_round, 1)
@@ -2413,7 +2443,18 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 		return
 	var arr = owner.get(prop)
 	if typeof(arr) != TYPE_ARRAY:
-		return
+		# Fallbacks: try common inventory properties
+		var arr_items = owner.get("items")
+		if typeof(arr_items) == TYPE_ARRAY:
+			prop = "items"
+			arr = arr_items
+		else:
+			var arr_tokens = owner.get("tokens")
+			if typeof(arr_tokens) == TYPE_ARRAY:
+				prop = "tokens"
+				arr = arr_tokens
+			else:
+				return
 
 	# Find index by identity if possible
 	var idx := -1
@@ -2437,6 +2478,7 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	if rep == null or not (rep is Resource):
 		return
 	var inst := (rep as Resource).duplicate(true)
+	_init_token_base_value(inst)
 	# Optional: set incoming value and preserve tags
 	if inst.has_method("set") and set_value >= 0:
 		inst.set("value", set_value)
@@ -2465,7 +2507,18 @@ func _replace_all_empties_in_inventory(token_path: String) -> void:
 		prop = "items"
 	var arr = owner.get(prop)
 	if typeof(arr) != TYPE_ARRAY:
-		return
+		# Fallbacks: try common inventory properties
+		var arr_items = owner.get("items")
+		if typeof(arr_items) == TYPE_ARRAY:
+			prop = "items"
+			arr = arr_items
+		else:
+			var arr_tokens = owner.get("tokens")
+			if typeof(arr_tokens) == TYPE_ARRAY:
+				prop = "tokens"
+				arr = arr_tokens
+			else:
+				return
 	var rep := ResourceLoader.load(token_path)
 	if rep == null or not (rep is Resource):
 		return
@@ -2474,6 +2527,7 @@ func _replace_all_empties_in_inventory(token_path: String) -> void:
 		var it = (arr as Array)[i]
 		if _is_empty_token(it):
 			var inst := (rep as Resource).duplicate(true)
+			_init_token_base_value(inst)
 			(arr as Array)[i] = inst
 			changed = true
 	if changed:
@@ -2489,7 +2543,18 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 	if prop.strip_edges() == "": prop = "items"
 	var arr = owner.get(prop)
 	if typeof(arr) != TYPE_ARRAY:
-		return
+		# Fallbacks: try common inventory properties
+		var arr_items = owner.get("items")
+		if typeof(arr_items) == TYPE_ARRAY:
+			prop = "items"
+			arr = arr_items
+		else:
+			var arr_tokens = owner.get("tokens")
+			if typeof(arr_tokens) == TYPE_ARRAY:
+				prop = "tokens"
+				arr = arr_tokens
+			else:
+				return
 
 	var matches_token = func(tok) -> bool:
 		if tok == null:
@@ -2513,6 +2578,7 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 	var changed := false
 	for i in range((arr as Array).size()):
 		var tok = (arr as Array)[i]
+		_init_token_base_value(tok)
 		if matches_token.call(tok):
 			var v := 0
 			if tok != null and (tok as Object).has_method("get"):
@@ -2533,6 +2599,21 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 		owner.set(prop, arr)
 		if owner.has_method("_update_inventory_strip"):
 			owner.call_deferred("_update_inventory_strip")
+
+# Ensure a token tracks its baseline value in metadata so resets can restore it
+func _init_token_base_value(tok) -> void:
+	if tok == null:
+		return
+	if not (tok as Object).has_method("get"):
+		return
+	if (tok as Object).has_method("has_meta") and tok.has_meta("base_value"):
+		return
+	var vv = tok.get("value")
+	if vv == null:
+		return
+	var base := int(vv)
+	if (tok as Object).has_method("set_meta"):
+		tok.set_meta("base_value", base)
 
 func _collect_on_removed_commands(ctx: Dictionary, removed_token) -> Array:
 	var out: Array = []

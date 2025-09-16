@@ -57,6 +57,9 @@ func _ready() -> void:
 
 	if class_data:
 		items = class_data.startingTokens.duplicate()
+		# Snapshot baseline values for all starting tokens
+		_snapshot_base_values(class_data.startingTokens)
+		_snapshot_base_values(items)
 	else:
 		push_error("spinRoot: class_data NOT assigned")
 
@@ -447,6 +450,7 @@ func _insert_token_replacing_empties(token: TokenLootData, copies: int) -> void:
 			empty_path = String(ep)
 		for i in range(max(1, copies)):
 			var inst: TokenLootData = token if i == 0 else ((token as Resource).duplicate(true) as TokenLootData)
+			_init_token_base_value(inst)
 			var idx := _find_empty_index_in_items(empty_path)
 			if idx >= 0:
 				items[idx] = inst
@@ -480,6 +484,8 @@ func _find_empty_index_in_items(empty_path: String) -> int:
 func _on_game_reset() -> void:
 	# Reset items to starting tokens on game reset
 	if class_data:
+		# Restore baseline values on authoring resources, then rebuild items from that list
+		_reset_array_to_base(class_data.startingTokens)
 		items = class_data.startingTokens.duplicate()
 		_rebuild_idle_strip()
 	else:
@@ -495,3 +501,32 @@ func _update_inventory_strip() -> void:
 			inventory_strip = ui.find_child("inventoryStrip", true, false)
 	if inventory_strip and inventory_strip.has_method("set_items"):
 		inventory_strip.call("set_items", items)
+
+# ---- Baseline value helpers ----
+func _init_token_base_value(tok: TokenLootData) -> void:
+	if tok == null:
+		return
+	if (tok as Object).has_method("has_meta") and tok.has_meta("base_value"):
+		return
+	var v = null
+	if (tok as Object).has_method("get"):
+		v = tok.get("value")
+	if v != null and (tok as Object).has_method("set_meta"):
+		tok.set_meta("base_value", int(v))
+
+func _snapshot_base_values(arr: Array) -> void:
+	if arr == null:
+		return
+	for t in arr:
+		_init_token_base_value(t)
+
+func _reset_array_to_base(arr: Array) -> void:
+	if arr == null:
+		return
+	for t in arr:
+		if t == null:
+			continue
+		if (t as Object).has_method("has_meta") and t.has_meta("base_value") and (t as Object).has_method("set"):
+			var bv = t.get_meta("base_value")
+			if bv != null:
+				t.set("value", int(bv))
