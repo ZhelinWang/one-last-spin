@@ -103,6 +103,10 @@ var _bank_tween: Tween = null
 var _shown_total: int = 0
 var _active_effect_label: Node = null
 var _token_value_offsets: Dictionary = {} # key (resource_path or name) -> cumulative permanent offset for this run
+const META_ZERO_REPLACED := "__zero_replaced"
+const META_ZERO_REASON := "__zero_reason"
+const ZERO_REPLACEMENT_VALUE := 1
+
 
 func _ready() -> void:
 	_loot_rng.randomize()
@@ -326,7 +330,7 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 		if c.kind == "passive" and will_apply_now and (not now_steps.is_empty() or not ab_parts.get("deferred", []).is_empty()):
 			var extra_wait: float = max(0.0, passive_trigger_delay_total - base_show_delay_sec)
 			if extra_wait > 0.0:
-					await _pause(extra_wait)
+				await _pause(extra_wait)
 
 		# Defer only winner_only ability steps for the winner; everything else applies now
 		if c.offset == 0 and defer_winner_active:
@@ -335,8 +339,8 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 				var sk: String = String(s.get("kind", ""))
 				if sk == "add" or sk == "mult":
 					deferred_winner_self_steps.append(s)
-					if debug_spin:
-						print("  [Defer] Winner self step deferred: ", s)
+				if debug_spin:
+					print("  [Defer] Winner self step deferred: ", s)
 			# Apply 'now' steps immediately (winner token steps + non-winner_only ability steps)
 			if not now_steps.is_empty():
 				await _apply_steps_now(i, c, now_steps, ctx, c.token)
@@ -349,20 +353,21 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 				await _apply_steps_now(i, c, apply_steps, ctx, c.token)
 
 		# 3) Artifacts
-		for art in _artifacts:
-			if not (art is ArtifactData):
-				continue
-			if not art.applies(ctx, c):
-				continue
-			var steps_from_art: Array = art.build_steps(ctx, c)
-			if debug_spin and not steps_from_art.is_empty():
-				print("[Artifact] ", art, " steps for offset ", c.offset, ": ", steps_from_art.size())
-			await _apply_steps_now(i, c, steps_from_art, ctx, art)
+		if not _is_contrib_zero_replaced(c):
+			for art in _artifacts:
+				if not (art is ArtifactData):
+					continue
+				if not art.applies(ctx, c):
+					continue
+				var steps_from_art: Array = art.build_steps(ctx, c)
+				if debug_spin and not steps_from_art.is_empty():
+					print("[Artifact] ", art, " steps for offset ", c.offset, ": ", steps_from_art.size())
+				await _apply_steps_now(i, c, steps_from_art, ctx, art)
 
-			var tmp_final: int = _finalize_contrib(c)
-			emit_signal("token_sequence_finished", i, c.offset, tmp_final, c)
-			if debug_spin:
-				print("[Spin] Interim finalize offset=", c.offset, " val=", tmp_final)
+		var tmp_final: int = _finalize_contrib(c)
+		emit_signal("token_sequence_finished", i, c.offset, tmp_final, c)
+		if debug_spin:
+			print("[Spin] Interim finalize offset=", c.offset, " val=", tmp_final)
 		_restore_slot_modulate(ctx, int(c.offset))
 		var __bt_t0: int = 0
 		if debug_spin:
@@ -522,7 +527,53 @@ func _apply_steps_now(i: int, c: Dictionary, steps: Array, ctx: Dictionary, sour
 		# Ability on_value_changed hooks (target + source)
 		_invoke_on_value_changed(ctx, source_token, c, prev_val, new_val, stepn)
 
+		var reason := "%s:%s" % [String(stepn.get("source", "unknown")), String(stepn.get("kind", ""))]
+		var destroyed_this_step := _maybe_replace_contrib_with_empty(ctx, c, prev_val, new_val, reason)
 		await _pause(step_delay_sec)
+		if destroyed_this_step:
+			break
+
+func _is_contrib_zero_replaced(contrib: Dictionary) -> bool:
+	if contrib == null:
+		return false
+	var meta = contrib.get("meta", {})
+	if meta is Dictionary:
+		return bool((meta as Dictionary).get(META_ZERO_REPLACED, false))
+	return false
+
+func _maybe_replace_contrib_with_empty(ctx: Dictionary, contrib: Dictionary, prev_val: int, new_val: int, reason: String) -> bool:
+	if contrib == null:
+		return false
+	if new_val > 0:
+		return false
+	var meta_variant = contrib.get("meta", {})
+	var meta: Dictionary = meta_variant if meta_variant is Dictionary else {}
+	if not (meta is Dictionary):
+		meta = {}
+		contrib["meta"] = meta
+	if bool(meta.get(META_ZERO_REPLACED, false)):
+		return false
+	var empty_path := String(empty_token_path).strip_edges()
+	if empty_path == "":
+		if debug_spin:
+			print("[ZeroReplace] empty_token_path is empty; cannot replace token at offset ", contrib.get("offset", 0))
+		return false
+	var offset := int(contrib.get("offset", 0))
+	var slot := _slot_from_ctx(ctx, offset)
+	if slot != null:
+		_shake_slot(slot)
+	var replacement := _replace_token_at_offset(ctx, offset, empty_path, ZERO_REPLACEMENT_VALUE, false, contrib.get("token"))
+	if replacement == null:
+		return false
+	meta[META_ZERO_REPLACED] = true
+	meta[META_ZERO_REASON] = reason
+	contrib["token"] = replacement
+	contrib["base"] = ZERO_REPLACEMENT_VALUE
+	contrib["delta"] = 0
+	contrib["mult"] = 1.0
+	if debug_spin:
+		print("[ZeroReplace] offset=", offset, " prev=", prev_val, " new=", new_val, " reason=", reason)
+	return true
 
 # NEW: Apply one global step across multiple tokens simultaneously
 func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Array, ctx: Dictionary) -> void:
@@ -538,6 +589,10 @@ func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Arr
 	for k in range(indices.size()):
 		var idx := int(indices[k])
 		var c: Dictionary = contribs[idx]
+		if _is_contrib_zero_replaced(c):
+			if debug_spin:
+				print("    [Apply-Parallel] offset=", c.get("offset", c.offset), " skipped (already replaced)")
+			continue
 		if debug_spin:
 			print("    [Apply-Parallel] offset=", c.offset, " kind=", step.get("kind"), " +", step.get("amount", 0), " x", step.get("factor", 1.0), " src=", step.get("source", "unknown"))
 		_apply_step(c, step)
@@ -546,6 +601,8 @@ func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Arr
 	for k in range(indices.size()):
 		var idx := int(indices[k])
 		var c: Dictionary = contribs[idx]
+		if _is_contrib_zero_replaced(c):
+			continue
 		var new_val := _compute_value(c)
 
 		emit_signal("token_step_applied", idx, c.offset, step, new_val, c)
@@ -561,7 +618,18 @@ func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Arr
 	for k in range(indices.size()):
 		var idx := int(indices[k])
 		var c: Dictionary = contribs[idx]
+		if _is_contrib_zero_replaced(c):
+			continue
 		_play_counting_popup(ctx, c, prev_vals[k], _compute_value(c), false)
+
+	# Replace any tokens that hit zero after the parallel step
+	for k in range(indices.size()):
+		var idx := int(indices[k])
+		var c: Dictionary = contribs[idx]
+		if _is_contrib_zero_replaced(c):
+			continue
+		var reason := "global:%s" % String(step.get("source", "unknown"))
+		_maybe_replace_contrib_with_empty(ctx, c, int(prev_vals[k]), _compute_value(c), reason)
 
 	# Shared delay once per global step (not per token)
 	await _pause(step_delay_sec)
@@ -2071,6 +2139,8 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 	var steps_by_index: Dictionary = {}  # idx -> Array[Dictionary]
 	for i in range(contribs.size()):
 		var c: Dictionary = contribs[i]
+		if _is_contrib_zero_replaced(c):
+			continue
 		var lst: Array = []
 		for gs in global_steps:
 			var stepn: Dictionary = _normalize_step(gs)
@@ -2109,6 +2179,8 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 	for i in targets:
 		var idx := int(i)
 		var c: Dictionary = contribs[idx]
+		if _is_contrib_zero_replaced(c):
+			continue
 		var new_val := _compute_value(c)
 
 		var batch_step := {
@@ -2131,13 +2203,25 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 	for i in targets:
 		var idx := int(i)
 		var c: Dictionary = contribs[idx]
+		if _is_contrib_zero_replaced(c):
+			continue
 		_play_counting_popup(ctx, c, int(prev_vals[idx]), _compute_value(c), false)
 
 	# Ability on_value_changed once per target for the batch
 	for i in targets:
 		var idx := int(i)
 		var c: Dictionary = contribs[idx]
+		if _is_contrib_zero_replaced(c):
+			continue
 		_invoke_on_value_changed(ctx, winner, c, int(prev_vals[idx]), _compute_value(c), {"kind":"batch","source":"winner_active"})
+
+	# Replace any tokens that hit zero during broadcast steps
+	for i in targets:
+		var idx := int(i)
+		var c: Dictionary = contribs[idx]
+		if _is_contrib_zero_replaced(c):
+			continue
+		_maybe_replace_contrib_with_empty(ctx, c, int(prev_vals.get(idx, 0)), _compute_value(c), "broadcast")
 
 	await _pause(step_delay_sec)
 		
@@ -2477,7 +2561,8 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array) -
 				var tname := String((cmd as Dictionary).get("target_name", ""))
 				var amt2 := int((cmd as Dictionary).get("amount", 0))
 				var diz := bool((cmd as Dictionary).get("destroy_if_zero", false))
-				_apply_permanent_add_inventory(tk, toff, ttag, tname, amt2, diz, ctx)
+				var propagate_same_key := bool((cmd as Dictionary).get("propagate_same_key", false))
+				_apply_permanent_add_inventory(tk, toff, ttag, tname, amt2, diz, ctx, propagate_same_key)
 			"replace_board_tag":
 				var tag := String((cmd as Dictionary).get("target_tag", ""))
 				var tpath := String((cmd as Dictionary).get("token_path", ""))
@@ -2511,12 +2596,12 @@ func _resolve_inventory_owner_node() -> Node:
 			return sr
 	return null
 
-func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, set_value: int, preserve_tags: bool) -> void:
+func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, set_value: int, preserve_tags: bool, target_token_override = null) -> Resource:
 	if token_path.strip_edges() == "":
-		return
+		return null
 	var slot := _slot_from_ctx(ctx, offset)
-	var target_token = null
-	if slot != null:
+	var target_token = target_token_override
+	if target_token == null and slot != null:
 		if slot.has_meta("token_data"):
 			target_token = slot.get_meta("token_data")
 
@@ -2530,12 +2615,12 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	if owner == null:
 		if debug_spin:
 			print("[Commands] No inventory owner found; skip replace_at_offset")
-		return
+		return null
 	var prop := String(inventory_property)
 	if prop.strip_edges() == "":
 		prop = "items"  # default to spinRoot.items
 	if not owner.has_method("get"):
-		return
+		return null
 	var arr = owner.get(prop)
 	if typeof(arr) != TYPE_ARRAY:
 		# Fallbacks: try common inventory properties
@@ -2549,7 +2634,7 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 				prop = "tokens"
 				arr = arr_tokens
 			else:
-				return
+				return null
 
 	# Find index by identity if possible
 	var idx := -1
@@ -2557,21 +2642,21 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 		if (arr as Array)[i] == target_token:
 			idx = i
 			break
-	if idx < 0:
+	if idx < 0 and target_token is Resource:
 		# Fallback: attempt to match by resource_path and name
 		for i in range((arr as Array).size()):
 			var it = (arr as Array)[i]
-			if it is Resource and (it as Resource).resource_path != "" and target_token is Resource and (it as Resource).resource_path == (target_token as Resource).resource_path:
+			if it is Resource and (it as Resource).resource_path != "" and (it as Resource).resource_path == (target_token as Resource).resource_path:
 				idx = i
 				break
 	if idx < 0:
 		if debug_spin:
 			print("[Commands] Could not locate target token in inventory for offset ", offset)
-		return
+		return null
 
 	var rep := ResourceLoader.load(token_path)
 	if rep == null or not (rep is Resource):
-		return
+		return null
 	var inst := (rep as Resource).duplicate(true)
 	_init_token_base_value(inst)
 	# Optional: set incoming value and preserve tags
@@ -2587,9 +2672,17 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	(arr as Array)[idx] = inst
 	owner.set(prop, arr)
 
+	if slot != null:
+		_apply_token_to_slot(slot, inst)
+
 	# Try to refresh inventory strip visuals if available
 	if owner.has_method("_update_inventory_strip"):
 		owner.call_deferred("_update_inventory_strip")
+
+	if ctx != null and ctx is Dictionary:
+		ctx["board_tokens"] = _get_inventory_array()
+
+	return inst
 
 func _apply_token_to_slot(slot: Control, token: Resource) -> void:
 	if slot == null or token == null:
@@ -2632,6 +2725,33 @@ func _replace_board_tag_in_slotmap(ctx: Dictionary, target_tag: String, token_pa
 			_init_token_base_value(inst)
 			_apply_token_to_slot(slot as Control, inst)
 			_shake_slot(slot as Control)
+
+func _update_slot_map_for_replacements(ctx: Dictionary, replacements: Array) -> void:
+	if replacements.is_empty():
+		return
+	if ctx == null or not ctx.has("slot_map"):
+		return
+	var sm = ctx["slot_map"]
+	if not (sm is Dictionary):
+		return
+	for key in (sm as Dictionary).keys():
+		var slot = (sm as Dictionary).get(key)
+		if not (slot is Control):
+			continue
+		var ctrl := slot as Control
+		var slot_token = ctrl.get_meta("token_data") if ctrl.has_meta("token_data") else null
+		for entry in replacements:
+			if typeof(entry) != TYPE_DICTIONARY:
+				continue
+			var old_token = entry.get("old")
+			if slot_token != old_token:
+				continue
+			var new_token = entry.get("new")
+			if new_token == null:
+				continue
+			_apply_token_to_slot(ctrl, new_token)
+			_shake_slot(ctrl)
+			break
 
 func _replace_board_empties_in_slotmap(ctx: Dictionary, token_path: String) -> void:
 	if token_path.strip_edges() == "":
@@ -2752,7 +2872,7 @@ func _replace_all_empties_in_inventory(token_path: String) -> void:
 		if owner.has_method("_update_inventory_strip"):
 			owner.call_deferred("_update_inventory_strip")
 
-func _apply_permanent_add_inventory(target_kind: String, target_offset: int, target_tag: String, target_name: String, amount: int, destroy_if_zero: bool, ctx: Dictionary) -> void:
+func _apply_permanent_add_inventory(target_kind: String, target_offset: int, target_tag: String, target_name: String, amount: int, destroy_if_zero: bool, ctx: Dictionary, propagate_same_key: bool = false) -> void:
 	var owner := _resolve_inventory_owner_node()
 	if owner == null or not owner.has_method("get"):
 		return
@@ -2773,8 +2893,19 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 			else:
 				return
 
+	var anchor_token = null
+	var anchor_key := ""
+	if (target_kind == "self" or target_kind == "offset" or propagate_same_key):
+		var anchor_slot := _slot_from_ctx(ctx, target_offset)
+		if anchor_slot != null and anchor_slot.has_meta("token_data"):
+			anchor_token = anchor_slot.get_meta("token_data")
+			anchor_key = _token_key(anchor_token)
 	var matches_token = func(tok) -> bool:
 		if tok == null:
+			return false
+		if target_kind == "self" or target_kind == "offset":
+			if anchor_token != null:
+				return tok == anchor_token
 			return false
 		var name_ok: bool = true
 		var tag_ok: bool = true
@@ -2784,48 +2915,57 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 			tag_ok = _token_has_tag(tok, target_tag)
 		if target_kind == "any":
 			return true
-		if target_kind == "self" or target_kind == "offset":
-			# Resolve target token via slot/offset map when possible
-			var slot := _slot_from_ctx(ctx, target_offset)
-			if slot != null and slot.has_meta("token_data"):
-				return slot.get_meta("token_data") == tok
-			return false
 		return name_ok and tag_ok
 
 	# Update per-run offsets for all matched token types
 	var affected: Dictionary = {}
 	for i in range((arr as Array).size()):
 		var tok = (arr as Array)[i]
-		if matches_token.call(tok):
+		var matched: bool = matches_token.call(tok)
+		if not matched and propagate_same_key and anchor_key != "":
+			matched = (_token_key(tok) == anchor_key)
+		if matched:
 			var key := _token_key(tok)
+			if affected.has(key):
+				continue
 			var cur := int(_token_value_offsets.get(key, 0))
 			_token_value_offsets[key] = cur + amount
 			affected[key] = true
 
 	# Apply recalculated value (base + new offset) to all instances of affected types
 	var changed := false
+	var replaced_tokens: Array = []
 	for i in range((arr as Array).size()):
 		var tok = (arr as Array)[i]
 		var key := _token_key(tok)
 		if not affected.has(key):
 			continue
+		var orig_token = tok
 		_init_token_base_value(tok)
 		var curv := 0
 		if tok != null and (tok as Object).has_method("get"):
 			var vv2 = tok.get("value")
-			if vv2 != null: curv = int(vv2)
-		if destroy_if_zero and curv <= 0:
+			if vv2 != null:
+				curv = int(vv2)
+		if curv <= 0:
 			var empty_res := _load_empty_token()
 			if empty_res is Resource:
-				(arr as Array)[i] = (empty_res as Resource).duplicate(true)
+				var inst := (empty_res as Resource).duplicate(true)
+				_init_token_base_value(inst)
+				(arr as Array)[i] = inst
+				replaced_tokens.append({"old": orig_token, "new": inst})
 				changed = true
-		else:
-			changed = true
+				continue
+		changed = true
 
 	if changed:
 		owner.set(prop, arr)
 		if owner.has_method("_update_inventory_strip"):
 			owner.call_deferred("_update_inventory_strip")
+		if ctx != null and ctx is Dictionary:
+			ctx["board_tokens"] = _get_inventory_array()
+			if not replaced_tokens.is_empty():
+				_update_slot_map_for_replacements(ctx, replaced_tokens)
 
 # Ensure a token tracks its baseline value in metadata so resets can restore it
 func _init_token_base_value(tok) -> void:

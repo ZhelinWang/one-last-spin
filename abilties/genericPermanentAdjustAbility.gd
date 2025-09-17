@@ -31,6 +31,7 @@ class_name GenericPermanentAdjustAbility
 @export var amount: int = -1
 @export var destroy_if_zero: bool = true
 @export var exclude_self: bool = false
+@export var propagate_same_key: bool = false
 
 func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) -> Array:
 	if trigger != Trigger.ACTIVE_DURING_SPIN: return []
@@ -38,8 +39,15 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 	if exclude_self:
 		var self_c := _find_self_contrib(contribs, source_token)
 		for c in contribs:
-			if c == self_c: continue
-			cmds.append({"op":"permanent_add","target_kind":"offset","target_offset":int(c.get("offset",0)),"amount":amount,"destroy_if_zero":destroy_if_zero})
+			if c == self_c:
+				continue
+			var cmd := {"op":"permanent_add","target_kind":"offset","target_offset":int(c.get("offset",0)),"amount":amount,"destroy_if_zero":destroy_if_zero}
+			if propagate_same_key:
+				cmd["propagate_same_key"] = true
+			cmds.append(cmd)
 	else:
-		cmds.append({"op":"permanent_add","target_kind":_tk_to_string(),"target_offset":target_offset,"target_tag":target_tag,"target_name":target_name,"amount":amount,"destroy_if_zero":destroy_if_zero})
+		var cmd := {"op":"permanent_add","target_kind":_tk_to_string(),"target_offset":target_offset,"target_tag":target_tag,"target_name":target_name,"amount":amount,"destroy_if_zero":destroy_if_zero}
+		if propagate_same_key:
+			cmd["propagate_same_key"] = true
+		cmds.append(cmd)
 	return cmds
