@@ -8,9 +8,9 @@
 [sub_resource type="Resource" id="Resource_8rgfy"]
 script = ExtResource("2_6q376")
 amount = 1
-winner_only = true
 destroy_if_zero = false
 propagate_same_key = true
+winner_only = true
 metadata/_custom_type_script = "uid://bp4m1a725lajo"
 
 [resource]

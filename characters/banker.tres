@@ -4,12 +4,12 @@
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="2_wuq5s"]
 [ext_resource type="Resource" uid="uid://b7qvltgd7lbkm" path="res://tokens/hustler.tres" id="3_sqxdb"]
 [ext_resource type="Resource" uid="uid://bpebbtdof3ea" path="res://tokens/mint.tres" id="4_sqxdb"]
-[ext_resource type="Resource" uid="uid://3we4ixqkvhpb" path="res://tokens/coffee.tres" id="5_lha1g"]
 [ext_resource type="Resource" uid="uid://dq7cgvphi6gwu" path="res://tokens/copperCoin.tres" id="6_j7eb8"]
+[ext_resource type="Resource" uid="uid://c8geidaiuuhff" path="res://tokens/executive.tres" id="6_sqxdb"]
 [ext_resource type="Resource" uid="uid://c504xih8se6f5" path="res://tokens/coin.tres" id="7_sqxdb"]
 [ext_resource type="Resource" uid="uid://bj8jtgxsh2pe2" path="res://tokens/empty.tres" id="8_sqxdb"]
 
 [resource]
 script = ExtResource("1_royit")
-startingTokens = Array[ExtResource("2_wuq5s")]([ExtResource("3_sqxdb"), ExtResource("4_sqxdb"), ExtResource("5_lha1g"), ExtResource("6_j7eb8"), ExtResource("7_sqxdb"), ExtResource("3_sqxdb"), ExtResource("3_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb")])
+startingTokens = Array[ExtResource("2_wuq5s")]([ExtResource("3_sqxdb"), ExtResource("4_sqxdb"), ExtResource("6_sqxdb"), ExtResource("6_j7eb8"), ExtResource("7_sqxdb"), ExtResource("3_sqxdb"), ExtResource("3_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb"), ExtResource("8_sqxdb")])
 metadata/_custom_type_script = "uid://ltn4148sc7sb"

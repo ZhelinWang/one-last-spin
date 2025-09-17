@@ -507,6 +507,8 @@ func _apply_steps_now(i: int, c: Dictionary, steps: Array, ctx: Dictionary, sour
 		var prev_val: int = _compute_value(c)
 		if debug_spin:
 			print("	[Apply] offset=", c.offset, " kind=", stepn.get("kind"), " +", stepn.get("amount", 0), " x", stepn.get("factor", 1.0), " src=", stepn.get("source", "unknown"))
+		if not _is_contrib_zero_replaced(c):
+			_shake_slot_for_contrib(ctx, c)
 		_apply_step(c, stepn)
 		var new_val: int = _compute_value(c)
 
@@ -560,8 +562,6 @@ func _maybe_replace_contrib_with_empty(ctx: Dictionary, contrib: Dictionary, pre
 		return false
 	var offset := int(contrib.get("offset", 0))
 	var slot := _slot_from_ctx(ctx, offset)
-	if slot != null:
-		_shake_slot(slot)
 	var replacement := _replace_token_at_offset(ctx, offset, empty_path, ZERO_REPLACEMENT_VALUE, false, contrib.get("token"))
 	if replacement == null:
 		return false
@@ -575,6 +575,14 @@ func _maybe_replace_contrib_with_empty(ctx: Dictionary, contrib: Dictionary, pre
 		print("[ZeroReplace] offset=", offset, " prev=", prev_val, " new=", new_val, " reason=", reason)
 	return true
 
+func _shake_slot_for_contrib(ctx: Dictionary, contrib: Dictionary) -> void:
+	if ctx == null or contrib == null:
+		return
+	var off := int(contrib.get("offset", 0))
+	var slot := _slot_from_ctx(ctx, off)
+	if slot != null:
+		_shake_slot(slot)
+
 # NEW: Apply one global step across multiple tokens simultaneously
 func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Array, ctx: Dictionary) -> void:
 	# Snapshot previous values
@@ -584,7 +592,6 @@ func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Arr
 		var idx := int(indices[k])
 		var c: Dictionary = contribs[idx]
 		prev_vals[k] = _compute_value(c)
-
 	# Apply step to all targets (mutate first, then animate/signals)
 	for k in range(indices.size()):
 		var idx := int(indices[k])
@@ -595,6 +602,7 @@ func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Arr
 			continue
 		if debug_spin:
 			print("    [Apply-Parallel] offset=", c.offset, " kind=", step.get("kind"), " +", step.get("amount", 0), " x", step.get("factor", 1.0), " src=", step.get("source", "unknown"))
+		_shake_slot_for_contrib(ctx, c)
 		_apply_step(c, step)
 
 	# Emit and update visuals for all targets
@@ -2173,6 +2181,7 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 		for stepn in lst:
 			if debug_spin:
 				print("	[Apply] offset=", c.offset, " kind=", stepn.get("kind"), " +", stepn.get("amount", 0), " x", stepn.get("factor", 1.0), " src=", stepn.get("source", "winner_active"))
+			_shake_slot_for_contrib(ctx, c)
 			_apply_step(c, stepn)
 
 	# Emit and update visuals for all targets in same frame
@@ -2600,6 +2609,8 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	if token_path.strip_edges() == "":
 		return null
 	var slot := _slot_from_ctx(ctx, offset)
+	if slot != null:
+		_shake_slot(slot)
 	var target_token = target_token_override
 	if target_token == null and slot != null:
 		if slot.has_meta("token_data"):
@@ -2721,10 +2732,10 @@ func _replace_board_tag_in_slotmap(ctx: Dictionary, target_tag: String, token_pa
 			continue
 		var tok = (slot as Control).get_meta("token_data") if (slot as Control).has_meta("token_data") else null
 		if _token_has_tag(tok, target_tag):
+			_shake_slot(slot as Control)
 			var inst := (rep as Resource).duplicate(true)
 			_init_token_base_value(inst)
 			_apply_token_to_slot(slot as Control, inst)
-			_shake_slot(slot as Control)
 
 func _update_slot_map_for_replacements(ctx: Dictionary, replacements: Array) -> void:
 	if replacements.is_empty():
@@ -2749,8 +2760,8 @@ func _update_slot_map_for_replacements(ctx: Dictionary, replacements: Array) -> 
 			var new_token = entry.get("new")
 			if new_token == null:
 				continue
-			_apply_token_to_slot(ctrl, new_token)
 			_shake_slot(ctrl)
+			_apply_token_to_slot(ctrl, new_token)
 			break
 
 func _replace_board_empties_in_slotmap(ctx: Dictionary, token_path: String) -> void:
@@ -2767,10 +2778,10 @@ func _replace_board_empties_in_slotmap(ctx: Dictionary, token_path: String) -> v
 			continue
 		var tok = (slot as Control).get_meta("token_data") if (slot as Control).has_meta("token_data") else null
 		if _is_empty_token(tok):
+			_shake_slot(slot as Control)
 			var inst := (rep as Resource).duplicate(true)
 			_init_token_base_value(inst)
 			_apply_token_to_slot(slot as Control, inst)
-			_shake_slot(slot as Control)
 
 func _visible_slots_from_ctx(ctx: Dictionary) -> Array:
 	if not ctx.has("slot_map"):
