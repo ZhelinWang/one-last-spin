@@ -243,22 +243,6 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 	emit_signal("winner_description_shown", winner, winner_desc)
 	await _pause(show_winner_desc_delay_sec)
 
-	# Early UX: run inventory-affecting commands immediately when they affect board composition for this spin
-	var __early_cmds := _collect_winner_ability_commands(ctx, [], winner)
-	if __early_cmds is Array and not __early_cmds.is_empty():
-		var early: Array = []
-		for cmd in __early_cmds:
-			if typeof(cmd) != TYPE_DICTIONARY:
-				continue
-			var op := String((cmd as Dictionary).get("op", ""))
-			# Only run inventory-wide replacements early; defer permanent_add to post-shake
-			if op == "replace_all_empties":
-				early.append(cmd)
-		if not early.is_empty():
-			_execute_ability_commands(early, ctx, [])
-			# Mark so we can skip duplicates later
-			ctx["__ran_replace_all_empties"] = true
-
 	var offsets: Array = [-2, -1, 0, 1, 2]
 	var norder: Array = [-2, -1, 1, 2]
 	var contribs: Array = []
@@ -392,6 +376,9 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 			var op := String((cmd as Dictionary).get("op", ""))
 			if op == "replace_board_tag" or op == "replace_board_empties":
 				board_visual_cmds.append(cmd)
+			elif op == "replace_all_empties":
+				post_shake_cmds.append(cmd)
+				ctx["__ran_replace_all_empties"] = true
 			elif op == "permanent_add":
 				post_shake_cmds.append(cmd)
 
