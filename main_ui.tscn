@@ -1,4 +1,4 @@
-[gd_scene load_steps=40 format=3 uid="uid://c5rvk15uv8cxf"]
+[gd_scene load_steps=41 format=3 uid="uid://c5rvk15uv8cxf"]
 
 [ext_resource type="Script" uid="uid://cyvguba1sinbr" path="res://main.gd" id="1_im5q1"]
 [ext_resource type="Shader" uid="uid://c1th2tmqhx4vk" path="res://shaders/swirl.gdshader" id="2_8yam0"]
@@ -16,6 +16,7 @@
 [ext_resource type="Script" uid="uid://wgqbwppywr70" path="res://resetButton.gd" id="9_v54cu"]
 [ext_resource type="Shader" uid="uid://bxdl8wargxw6b" path="res://spinnerBackground.gdshader" id="10_ilgax"]
 [ext_resource type="Texture2D" uid="uid://b5wc666rsbbvq" path="res://Screenshot 2025-08-27 173116.png" id="10_mgxdc"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="12_v54cu"]
 [ext_resource type="Script" uid="uid://c0k5fkukw4tni" path="res://inventoryStrip.gd" id="99_inv"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_v54cu"]
@@ -105,15 +106,6 @@ border_width_right = 12
 border_width_bottom = 10
 border_color = Color(0, 0, 0, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sd2ej"]
-bg_color = Color(0.282353, 0.270588, 0.235294, 0.784314)
-border_width_left = 8
-border_width_top = 8
-border_width_right = 8
-border_width_bottom = 8
-border_color = Color(0, 0, 0, 1)
-corner_detail = 1
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dnsp1"]
 shader = ExtResource("10_ilgax")
 shader_parameter/rim_size = 3.0
@@ -147,6 +139,19 @@ shadow_color = Color(1, 0, 0, 1)
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_ktt6o"]
 blend_mode = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sd2ej"]
+bg_color = Color(0.28235295, 0.27058825, 0.23529412, 0)
+border_width_left = 8
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
+border_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+corner_detail = 1
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ilgax"]
 bg_color = Color(0.933333, 0.913725, 0.843137, 1)
@@ -261,7 +266,7 @@ size_flags_vertical = 2
 theme_override_constants/margin_left = 0
 theme_override_constants/margin_top = 0
 theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 30
+theme_override_constants/margin_bottom = 12
 
 [node name="topUIContainer" type="HBoxContainer" parent="mainContainer/topUIMarginContainer"]
 layout_mode = 2
@@ -370,6 +375,7 @@ layout_mode = 2
 alignment = 1
 
 [node name="valuePanelBackground" type="Panel" parent="mainContainer/playMarginContainer/VBoxContainer/HBoxContainer"]
+visible = false
 custom_minimum_size = Vector2(125, 100)
 layout_mode = 2
 size_flags_vertical = 0
@@ -394,9 +400,8 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_dnsp1")
 
 [node name="activeEffect" type="RichTextLabel" parent="mainContainer/playMarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/MarginContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(1490, 160)
+custom_minimum_size = Vector2(1600, 160)
 layout_mode = 2
-size_flags_horizontal = 4
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/line_separation = 30
 theme_override_constants/outline_size = 44
@@ -407,16 +412,10 @@ fit_content = true
 horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="classAbilityPanel" type="Panel" parent="mainContainer/playMarginContainer/VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(125, 125)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_sd2ej")
-
 [node name="spinMarginContainer" type="MarginContainer" parent="mainContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_constants/margin_top = 10
 theme_override_constants/margin_bottom = 40
 
 [node name="gameElementsContainer" type="VBoxContainer" parent="mainContainer/spinMarginContainer"]
@@ -571,19 +570,27 @@ theme_override_constants/margin_top = 10
 [node name="spinButtonWrapper" type="MarginContainer" parent="mainContainer/bottomUISpinContainer"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/margin_bottom = 30
+theme_override_constants/margin_bottom = 0
 
 [node name="HBoxContainer" type="HBoxContainer" parent="mainContainer/bottomUISpinContainer/spinButtonWrapper"]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 0
-theme_override_constants/separation = 0
+theme_override_constants/separation = 150
+
+[node name="eyeHover" type="TextureRect" parent="mainContainer/bottomUISpinContainer/spinButtonWrapper/HBoxContainer"]
+custom_minimum_size = Vector2(125, 100)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+texture = ExtResource("12_v54cu")
 
 [node name="spinButton" type="Button" parent="mainContainer/bottomUISpinContainer/spinButtonWrapper/HBoxContainer"]
 unique_name_in_owner = true
 material = SubResource("CanvasItemMaterial_ktt6o")
 custom_minimum_size = Vector2(500, 100)
 layout_mode = 2
+size_flags_horizontal = 6
 size_flags_vertical = 0
 mouse_default_cursor_shape = 2
 script = ExtResource("8_yubjs")
@@ -605,10 +612,27 @@ text = "SPIN"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="classAbilityPanel" type="Panel" parent="mainContainer/bottomUISpinContainer/spinButtonWrapper/HBoxContainer"]
+custom_minimum_size = Vector2(125, 125)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_sd2ej")
+
+[node name="NinePatchRect" type="NinePatchRect" parent="mainContainer/bottomUISpinContainer/spinButtonWrapper/HBoxContainer/classAbilityPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("12_v54cu")
+
 [node name="spinCounterHBox" type="HBoxContainer" parent="mainContainer"]
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_constants/separation = 0
 alignment = 1
 
 [node name="spinCounterGrid" type="GridContainer" parent="mainContainer/spinCounterHBox"]

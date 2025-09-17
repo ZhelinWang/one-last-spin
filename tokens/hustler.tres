@@ -20,5 +20,5 @@ icon = ExtResource("2_1ed3t")
 value = 2
 tags = PackedStringArray("Worker")
 abilities = Array[ExtResource("1_e50h6")]([SubResource("Resource_8rgfy")])
-activeDescription = "Add +1 value to the token permanently"
+activeDescription = "+1 value to all copies of this token permanently "
 metadata/_custom_type_script = "uid://2lqsh3g3xqag"
