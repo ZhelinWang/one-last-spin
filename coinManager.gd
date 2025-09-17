@@ -71,6 +71,14 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 # Debugging
 @export var debug_spin: bool = true
 
+@export var screen_shake_light_threshold := 5
+@export var screen_shake_moderate_threshold := 10
+@export var screen_shake_heavy_threshold := 20
+@export var screen_shake_light_intensity := 1.25
+@export var screen_shake_moderate_intensity := 1.5
+@export var screen_shake_heavy_intensity := 2
+@export var screen_shake_duration := 0.5
+
 var total_active: int = 0
 var total_passive: int = 0
 var total_coins: int = 0
@@ -494,10 +502,16 @@ func _apply_steps_now(i: int, c: Dictionary, steps: Array, ctx: Dictionary, sour
 		var prev_val: int = _compute_value(c)
 		if debug_spin:
 			print("	[Apply] offset=", c.offset, " kind=", stepn.get("kind"), " +", stepn.get("amount", 0), " x", stepn.get("factor", 1.0), " src=", stepn.get("source", "unknown"))
-		if not _is_contrib_zero_replaced(c):
-			_shake_slot_for_contrib(ctx, c)
 		_apply_step(c, stepn)
 		var new_val: int = _compute_value(c)
+		var delta := new_val - prev_val
+		var shake_mag := 0.0
+		if delta >= screen_shake_heavy_threshold:
+			shake_mag = screen_shake_heavy_intensity
+		elif delta >= screen_shake_moderate_threshold:
+			shake_mag = screen_shake_moderate_intensity
+		elif delta >= screen_shake_light_threshold:
+			shake_mag = screen_shake_light_intensity
 
 		# Emit signals so UI/listeners refresh immediately
 		emit_signal("token_step_applied", i, c.offset, stepn, new_val, c)
@@ -515,6 +529,11 @@ func _apply_steps_now(i: int, c: Dictionary, steps: Array, ctx: Dictionary, sour
 
 		# Ability on_value_changed hooks (target + source)
 		_invoke_on_value_changed(ctx, source_token, c, prev_val, new_val, stepn)
+
+		if shake_mag > 0.0:
+			if not _is_contrib_zero_replaced(c):
+				_shake_slot_for_contrib(ctx, c)
+			await _apply_screen_shake(shake_mag, screen_shake_duration)
 
 		var reason := "%s:%s" % [String(stepn.get("source", "unknown")), String(stepn.get("kind", ""))]
 		var destroyed_this_step := _maybe_replace_contrib_with_empty(ctx, c, prev_val, new_val, reason)
@@ -562,6 +581,46 @@ func _maybe_replace_contrib_with_empty(ctx: Dictionary, contrib: Dictionary, pre
 		print("[ZeroReplace] offset=", offset, " prev=", prev_val, " new=", new_val, " reason=", reason)
 	return true
 
+func _apply_screen_shake(magnitude: float, duration: float) -> void:
+	if magnitude <= 0.0 or duration <= 0.0:
+		return
+	var viewport := get_viewport()
+	if viewport == null:
+		return
+	var rng := _mk_rng()
+	var steps := int(max(2, duration / 0.05))
+	var step_time := duration / float(steps)
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var camera := viewport.get_camera_2d()
+	if camera != null:
+		var original_offset := camera.offset
+		for i in range(steps):
+			var off := Vector2(rng.randf_range(-magnitude, magnitude), rng.randf_range(-magnitude, magnitude))
+			var seg := tween.tween_property(camera, "offset", original_offset + off, step_time)
+			seg.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		var reset := tween.tween_property(camera, "offset", original_offset, 0.1)
+		reset.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		await tween.finished
+		camera.offset = original_offset
+		return
+	var fallback := get_tree().current_scene
+	if fallback == null or not (fallback is CanvasItem):
+		fallback = get_tree().root.get_node_or_null("mainUI")
+	if fallback is CanvasItem:
+		var canvas: CanvasItem = fallback as CanvasItem
+		var original_pos: Vector2 = canvas.position
+		canvas.position = original_pos
+		for i in range(steps):
+			var off := Vector2(rng.randf_range(-magnitude, magnitude), rng.randf_range(-magnitude, magnitude))
+			var seg := tween.tween_property(canvas, "position", original_pos + off, step_time)
+			seg.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		var reset := tween.tween_property(canvas, "position", original_pos, 0.1)
+		reset.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		await tween.finished
+		canvas.position = original_pos
+		return
+	tween.kill()
 func _shake_slot_for_contrib(ctx: Dictionary, contrib: Dictionary) -> void:
 	if ctx == null or contrib == null:
 		return
@@ -575,6 +634,7 @@ func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Arr
 	# Snapshot previous values
 	var prev_vals: Array[int] = []
 	prev_vals.resize(indices.size())
+	var shake_by_index: Dictionary = {}
 	for k in range(indices.size()):
 		var idx := int(indices[k])
 		var c: Dictionary = contribs[idx]
@@ -589,8 +649,19 @@ func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Arr
 			continue
 		if debug_spin:
 			print("    [Apply-Parallel] offset=", c.offset, " kind=", step.get("kind"), " +", step.get("amount", 0), " x", step.get("factor", 1.0), " src=", step.get("source", "unknown"))
-		_shake_slot_for_contrib(ctx, c)
+		var prev_val := _compute_value(c)
 		_apply_step(c, step)
+		var new_val := _compute_value(c)
+		var delta := new_val - prev_val
+		var shake_mag := 0.0
+		if delta >= screen_shake_heavy_threshold:
+			shake_mag = screen_shake_heavy_intensity
+		elif delta >= screen_shake_moderate_threshold:
+			shake_mag = screen_shake_moderate_intensity
+		elif delta >= screen_shake_light_threshold:
+			shake_mag = screen_shake_light_intensity
+		if shake_mag > 0.0:
+			shake_by_index[idx] = shake_mag
 
 	# Emit and update visuals for all targets
 	for k in range(indices.size()):
@@ -616,6 +687,10 @@ func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Arr
 		if _is_contrib_zero_replaced(c):
 			continue
 		_play_counting_popup(ctx, c, prev_vals[k], _compute_value(c), false)
+		var shake_mag := float(shake_by_index.get(idx, 0.0))
+		if shake_mag > 0.0:
+			_shake_slot_for_contrib(ctx, c)
+			await _apply_screen_shake(shake_mag, screen_shake_duration)
 
 	# Replace any tokens that hit zero after the parallel step
 	for k in range(indices.size()):
@@ -2153,6 +2228,7 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 
 	# Snapshot previous values per target
 	var prev_vals: Dictionary = {}  # idx -> int
+	var shake_by_index: Dictionary = {}
 	for i in targets:
 		var idx := int(i)
 		var c: Dictionary = contribs[idx]
@@ -2168,8 +2244,21 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 		for stepn in lst:
 			if debug_spin:
 				print("	[Apply] offset=", c.offset, " kind=", stepn.get("kind"), " +", stepn.get("amount", 0), " x", stepn.get("factor", 1.0), " src=", stepn.get("source", "winner_active"))
-			_shake_slot_for_contrib(ctx, c)
+			var prev_val := _compute_value(c)
 			_apply_step(c, stepn)
+			var new_val := _compute_value(c)
+			var delta := new_val - prev_val
+			var shake_mag := 0.0
+			if delta >= screen_shake_heavy_threshold:
+				shake_mag = screen_shake_heavy_intensity
+			elif delta >= screen_shake_moderate_threshold:
+				shake_mag = screen_shake_moderate_intensity
+			elif delta >= screen_shake_light_threshold:
+				shake_mag = screen_shake_light_intensity
+			if shake_mag > 0.0:
+				var existing := float(shake_by_index.get(idx, 0.0))
+				if shake_mag > existing:
+					shake_by_index[idx] = shake_mag
 
 	# Emit and update visuals for all targets in same frame
 	for i in targets:
@@ -2202,6 +2291,10 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 		if _is_contrib_zero_replaced(c):
 			continue
 		_play_counting_popup(ctx, c, int(prev_vals[idx]), _compute_value(c), false)
+		var shake_mag := float(shake_by_index.get(idx, 0.0))
+		if shake_mag > 0.0:
+			_shake_slot_for_contrib(ctx, c)
+			await _apply_screen_shake(shake_mag, screen_shake_duration)
 
 	# Ability on_value_changed once per target for the batch
 	for i in targets:
