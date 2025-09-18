@@ -36,9 +36,12 @@ func _key_for_token(td) -> String:
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(0, icon_size.y)
-	alignment = BoxContainer.ALIGNMENT_BEGIN
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	alignment = BoxContainer.ALIGNMENT_CENTER
 	add_theme_constant_override("separation", icon_spacing)
-
+	if get_parent() is ScrollContainer:
+		var sc := get_parent() as ScrollContainer
+		sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 func clear_icons() -> void:
 	for c in get_children():
 		c.queue_free()
@@ -90,7 +93,7 @@ func _render() -> void:
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		icon.texture = td.icon
 		holder.add_child(icon)
 
