@@ -267,7 +267,7 @@ size_flags_vertical = 2
 theme_override_constants/margin_left = 0
 theme_override_constants/margin_top = 0
 theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 0
+theme_override_constants/margin_bottom = 10
 
 [node name="topUIContainer" type="HBoxContainer" parent="mainContainer/topUIMarginContainer"]
 layout_mode = 2
@@ -365,7 +365,6 @@ vertical_alignment = 1
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 3
-theme_override_constants/margin_bottom = 20
 
 [node name="VBoxContainer" type="VBoxContainer" parent="mainContainer/playMarginContainer"]
 layout_mode = 2
@@ -389,7 +388,6 @@ size_flags_horizontal = 3
 
 [node name="MarginContainer" type="MarginContainer" parent="mainContainer/playMarginContainer/VBoxContainer/HBoxContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_constants/margin_bottom = 20
 
 [node name="ColorRect" type="Panel" parent="mainContainer/playMarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/MarginContainer"]
 visible = false
@@ -402,7 +400,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_dnsp1")
 
 [node name="activeEffect" type="RichTextLabel" parent="mainContainer/playMarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/MarginContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(1600, 160)
+custom_minimum_size = Vector2(1800, 150)
 layout_mode = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/line_separation = 30
@@ -410,14 +408,14 @@ theme_override_constants/outline_size = 44
 theme_override_font_sizes/normal_font_size = 40
 bbcode_enabled = true
 text = "PLACEHOLDER ACTIVE EFFECT TITLE"
-fit_content = true
+scroll_active = false
 horizontal_alignment = 1
 vertical_alignment = 2
 
 [node name="spinMarginContainer" type="MarginContainer" parent="mainContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/margin_top = 10
+theme_override_constants/margin_top = 40
 theme_override_constants/margin_bottom = 40
 
 [node name="gameElementsContainer" type="VBoxContainer" parent="mainContainer/spinMarginContainer"]
@@ -586,6 +584,8 @@ custom_minimum_size = Vector2(125, 100)
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 0
+mouse_filter = 0
+mouse_default_cursor_shape = 2
 texture = ExtResource("12_v54cu")
 script = ExtResource("13_eye")
 
