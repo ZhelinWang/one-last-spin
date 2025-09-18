@@ -254,6 +254,7 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 	var offsets: Array = [-2, -1, 0, 1, 2]
 	var norder: Array = [-2, -1, 1, 2]
 	var contribs: Array = []
+	var baseline_snapshot: Array = []
 	var winner_idx: int = -1
 
 	for off in offsets:
@@ -291,6 +292,7 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 
 			print("[Spin] Slot offset ", off, " -> token=", token_str, " kind=", kind, " base=", base_val)
 
+	baseline_snapshot = _snapshot_baseline_contribs(contribs)
 	# winner active steps (self) deferred here; winner global active (affect others) collected later
 	var deferred_winner_self_steps: Array = []
 
@@ -447,6 +449,7 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 	result["spin_total"] = spin_total
 	result["run_total"] = total_coins
 	result["contributions"] = contribs
+	result["baseline"] = baseline_snapshot
 	result["context"] = ctx
 	if debug_spin:
 		print("[Totals] active=", active_total, " passive=", passive_total, " spin_total=", result["spin_total"], " run_total=", total_coins)
@@ -1217,6 +1220,31 @@ func _mk_contrib(token, kind: String, base_val: int, offset: int) -> Dictionary:
 			"description": desc
 		}
 	}
+
+# Snapshot pre-effect contrib data for hover previews.
+func _snapshot_baseline_contribs(contribs: Array) -> Array:
+	var snapshot: Array = []
+	for entry in contribs:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var c: Dictionary = entry
+		var snap := {}
+		snap["offset"] = int(c.get("offset", 0))
+		snap["kind"] = String(c.get("kind", ""))
+		snap["base_value"] = int(c.get("base", 0))
+		var tok = c.get("token")
+		snap["token"] = tok
+		if tok != null and (tok as Object).has_method("get"):
+			var name_val = tok.get("name")
+			if typeof(name_val) == TYPE_STRING:
+				snap["token_name"] = String(name_val)
+			var icon_val = tok.get("icon")
+			if icon_val != null:
+				snap["icon"] = icon_val
+		if tok is Resource and (tok as Resource).resource_path != "":
+			snap["resource_path"] = (tok as Resource).resource_path
+		snapshot.append(snap)
+	return snapshot
 
 func _apply_step(c: Dictionary, step: Dictionary) -> void:
 	var before: Dictionary = {

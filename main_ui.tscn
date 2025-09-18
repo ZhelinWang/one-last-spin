@@ -1,4 +1,4 @@
-[gd_scene load_steps=41 format=3 uid="uid://c5rvk15uv8cxf"]
+[gd_scene load_steps=42 format=3 uid="uid://c5rvk15uv8cxf"]
 
 [ext_resource type="Script" uid="uid://cyvguba1sinbr" path="res://main.gd" id="1_im5q1"]
 [ext_resource type="Shader" uid="uid://c1th2tmqhx4vk" path="res://shaders/swirl.gdshader" id="2_8yam0"]
@@ -17,6 +17,7 @@
 [ext_resource type="Shader" uid="uid://bxdl8wargxw6b" path="res://spinnerBackground.gdshader" id="10_ilgax"]
 [ext_resource type="Texture2D" uid="uid://b5wc666rsbbvq" path="res://Screenshot 2025-08-27 173116.png" id="10_mgxdc"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="12_v54cu"]
+[ext_resource type="Script" uid="uid://dacke4sdlhooa" path="res://eyeHover.gd" id="13_eye"]
 [ext_resource type="Script" uid="uid://c0k5fkukw4tni" path="res://inventoryStrip.gd" id="99_inv"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_v54cu"]
@@ -579,10 +580,12 @@ size_flags_vertical = 0
 theme_override_constants/separation = 150
 
 [node name="eyeHover" type="TextureRect" parent="mainContainer/bottomUISpinContainer/spinButtonWrapper/HBoxContainer"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(125, 100)
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 0
+script = ExtResource("13_eye")
 texture = ExtResource("12_v54cu")
 
 [node name="spinButton" type="Button" parent="mainContainer/bottomUISpinContainer/spinButtonWrapper/HBoxContainer"]

@@ -40,6 +40,12 @@ var _last_winning_slot_idx := -1
 var _spinning := false
 var _rng := RandomNumberGenerator.new()
 var _spin_history_counts: Array[int] = []
+var _last_spin_baseline: Array = []
+var _preview_slot_cache: Dictionary = {}
+var _preview_popups: Array[Node] = []
+var _preview_visible := false
+var _inventory_before_spin: Array = []
+var _inventory_preview_active := false
 
 # SFX internals
 var _sfx_pool: Array[AudioStreamPlayer] = []
@@ -72,6 +78,7 @@ func _ready() -> void:
 
 	_rebuild_idle_strip()
 	_update_inventory_strip()
+	_inventory_before_spin = _deep_copy_inventory(items)
 
 	# Use a press handler that supports "Speed up" while spinning
 	spin_button.pressed.connect(_on_spin_button_pressed)
@@ -208,6 +215,8 @@ func _finish_spin() -> void:
 
 	# Fallback: no animations/popups; just sum values
 	push_warning("spinRoot: CoinManager not found; fallback tally (no effects, no visuals).")
+	_last_spin_baseline.clear()
+	hide_base_preview()
 	var sequence: Array[int] = [-2, -1, 0, 1, 2]
 	var spin_total := 0
 	for offset in sequence:
@@ -250,12 +259,286 @@ func _slot_for_offset(offset: int) -> Control:
 		return null
 	return slots_hbox.get_child(idx) as Control
 
+# ---------- Eye hover preview ----------
+func show_base_preview() -> void:
+	if _spinning:
+		return
+	if _last_spin_baseline.is_empty():
+		return
+	if not _inventory_preview_active:
+		_set_inventory_preview(true)
+	_preview_visible = true
+	_apply_baseline_to_slots()
+
+func hide_base_preview() -> void:
+	_preview_visible = false
+	_restore_slots_from_preview()
+	_clear_preview_popups()
+	if _inventory_preview_active:
+		_set_inventory_preview(false)
+
+func _apply_baseline_to_slots() -> void:
+	_restore_slots_from_preview()
+	_clear_preview_popups()
+	for entry in _ordered_baseline_entries():
+		var offset := int(entry.get("offset", 0))
+		var slot := _slot_for_offset(offset)
+		if slot == null:
+			continue
+		if !_preview_slot_cache.has(slot):
+			var snapshot := {}
+			snapshot["token"] = slot.get_meta("token_data")
+			snapshot["popup_info"] = _capture_popup_state(slot)
+			_preview_slot_cache[slot] = snapshot
+		var preview_token = _build_preview_token(entry)
+		_set_slot_token(slot, preview_token)
+		var base_val := int(entry.get("base_value", entry.get("base", 0)))
+		var popup_bundle := _ensure_popup_for_slot(slot)
+		var label := popup_bundle.get("label") as Node
+		if label != null:
+			_set_preview_label_text(label, base_val)
+		if bool(popup_bundle.get("created", false)):
+			_preview_popups.append(popup_bundle.get("popup"))
+
+func _ordered_baseline_entries() -> Array:
+	var ordered: Array = []
+	var by_offset: Dictionary = {}
+	for entry in _last_spin_baseline:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		by_offset[int((entry as Dictionary).get("offset", 0))] = entry
+	for off in [-2, -1, 0, 1, 2]:
+		if by_offset.has(off):
+			ordered.append(by_offset[off])
+			by_offset.erase(off)
+	for remaining in by_offset.values():
+		ordered.append(remaining)
+	return ordered
+
+func _build_preview_token(entry: Dictionary):
+	var token = entry.get("token")
+	var base_val := int(entry.get("base_value", entry.get("base", 0)))
+	if token is Resource:
+		var dup := (token as Resource).duplicate(true)
+		if dup != null:
+			var has_value_prop := false
+			for prop in dup.get_property_list():
+				if String(prop.get("name", "")) == "value":
+					has_value_prop = true
+					break
+			if has_value_prop and (dup as Object).has_method("set"):
+				dup.set("value", base_val)
+			return dup
+	return token
+
+func _set_slot_token(slot: Control, token) -> void:
+	if slot == null:
+		return
+	slot.set_meta("token_data", token)
+	if slot.has_method("_apply"):
+		slot.call("_apply", token)
+		return
+	for prop in slot.get_property_list():
+		if String(prop.get("name", "")) == "data":
+			slot.set("data", token)
+			return
+	var child := slot.get_node_or_null("slotItem")
+	if child != null and child.has_method("set"):
+		child.set("data", token)
+
+func _set_inventory_preview(active: bool) -> void:
+	_inventory_preview_active = active
+	if inventory_strip == null or not is_instance_valid(inventory_strip):
+		_update_inventory_strip()
+	if inventory_strip == null or not inventory_strip.has_method("set_items"):
+		return
+	if active:
+		inventory_strip.call("set_items", _deep_copy_inventory(_inventory_before_spin))
+	else:
+		inventory_strip.call("set_items", items)
+
+func _deep_copy_inventory(source: Array) -> Array:
+	var out: Array = []
+	if source == null:
+		return out
+	for it in source:
+		if it is Resource:
+			var dup := (it as Resource).duplicate(true)
+			if dup != null:
+				_init_token_base_value(dup)
+				out.append(dup)
+			continue
+		out.append(it)
+	return out
+
+func _refresh_inventory_baseline() -> void:
+	if _spinning:
+		return
+	_inventory_before_spin = _deep_copy_inventory(items)
+	if _inventory_preview_active:
+		_set_inventory_preview(true)
+
+func _resolve_preview_label(popup: Control) -> Node:
+	if popup == null:
+		return null
+	var label := popup.get_node_or_null("labelMarginContainer/labelContainer/popupValueLabel")
+	if label == null:
+		label = popup.get_node_or_null("valueLabel")
+	if label == null:
+		for child in popup.get_children():
+			if child is Label or child is RichTextLabel:
+				label = child
+				break
+	return label
+
+func _ensure_popup_for_slot(slot: Control) -> Dictionary:
+	var popup := slot.get_node_or_null("FloatingPopup")
+	var created := false
+	if popup == null:
+		popup = _create_preview_popup(slot)
+		created = true
+	return {
+		"popup": popup,
+		"label": _resolve_preview_label(popup),
+		"created": created
+	}
+
+func _create_preview_popup(slot: Control) -> Control:
+	var popup: Control = null
+	if floating_label_scene != null:
+		popup = floating_label_scene.instantiate() as Control
+	if popup == null:
+		popup = Control.new()
+		popup.custom_minimum_size = Vector2(120, 48)
+		var lbl := Label.new()
+		lbl.name = "valueLabel"
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		popup.add_child(lbl)
+	popup.name = "FloatingPopup"
+	popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if popup is CanvasItem:
+		(popup as CanvasItem).z_index = 5
+	slot.add_child(popup)
+	var target_pos := Vector2(slot.size.x - popup.size.x, 15)
+	popup.position = target_pos
+	popup.call_deferred("set_position", target_pos)
+	popup.call_deferred("set", "pivot_offset", popup.size * 0.5)
+	popup.visible = true
+	return popup
+
+func _capture_popup_state(slot: Control) -> Dictionary:
+	var info := {}
+	var popup := slot.get_node_or_null("FloatingPopup")
+	info["popup"] = popup
+	var label := _resolve_preview_label(popup)
+	if label is RichTextLabel:
+		info["label_is_rich"] = true
+		info["text"] = (label as RichTextLabel).text
+		info["bbcode_enabled"] = (label as RichTextLabel).bbcode_enabled
+	elif label is Label:
+		info["label_is_rich"] = false
+		info["text"] = (label as Label).text
+	else:
+		info["label_is_rich"] = false
+		info["text"] = ""
+	return info
+
+func _set_preview_label_text(label: Node, value: int) -> void:
+	var rich := "+%d[color=gold]G[/color]" % value
+	var plain := "+%d G" % value
+	if label is RichTextLabel:
+		var rtl := label as RichTextLabel
+		rtl.bbcode_enabled = true
+		rtl.clear()
+		rtl.parse_bbcode(rich)
+	elif label is Label:
+		(label as Label).text = plain
+
+func _clear_preview_popups() -> void:
+	for popup in _preview_popups:
+		if popup != null and is_instance_valid(popup):
+			popup.queue_free()
+	_preview_popups.clear()
+
+func _restore_slots_from_preview() -> void:
+	for slot in _preview_slot_cache.keys():
+		if slot == null or !is_instance_valid(slot):
+			continue
+		var snapshot = _preview_slot_cache[slot]
+		if snapshot is Dictionary:
+			_set_slot_token(slot, snapshot.get("token"))
+			var popup_info = snapshot.get("popup_info")
+			if popup_info is Dictionary:
+				var popup = popup_info.get("popup")
+				if popup != null and is_instance_valid(popup):
+					var label := _resolve_preview_label(popup)
+					if label != null:
+						if bool(popup_info.get("label_is_rich", false)) and label is RichTextLabel:
+							var rtl := label as RichTextLabel
+							rtl.bbcode_enabled = bool(popup_info.get("bbcode_enabled", true))
+							rtl.clear()
+							rtl.parse_bbcode(String(popup_info.get("text", "")))
+						elif not bool(popup_info.get("label_is_rich", false)) and label is Label:
+							(label as Label).text = String(popup_info.get("text", ""))
+	_preview_slot_cache.clear()
+
+func _ingest_baseline_from_result(result: Dictionary) -> void:
+	_last_spin_baseline.clear()
+	if result == null:
+		return
+	var raw = result.get("baseline")
+	if raw == null or not (raw is Array):
+		return
+	var by_offset: Dictionary = {}
+	for entry in raw:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var dict := entry as Dictionary
+		var offset := int(dict.get("offset", 0))
+		var record := {}
+		record["offset"] = offset
+		record["token"] = dict.get("token")
+		record["base_value"] = int(dict.get("base_value", dict.get("base", 0)))
+		record["kind"] = String(dict.get("kind", ""))
+		var name_str := String(dict.get("token_name", ""))
+		if name_str.strip_edges() == "":
+			var tk = record["token"]
+			if tk != null and (tk as Object).has_method("get"):
+				var nm = tk.get("name")
+				if typeof(nm) == TYPE_STRING:
+					name_str = String(nm)
+		record["token_name"] = name_str
+		var icon_val = dict.get("icon")
+		if icon_val == null:
+			var tk2 = record["token"]
+			if tk2 != null and (tk2 as Object).has_method("get"):
+				var icon_from_token = tk2.get("icon")
+				if icon_from_token is Texture2D:
+					icon_val = icon_from_token
+		record["icon"] = icon_val
+		var res_path = dict.get("resource_path")
+		if res_path != null:
+			record["resource_path"] = res_path
+		by_offset[offset] = record
+	for off in [-2, -1, 0, 1, 2]:
+		if by_offset.has(off):
+			_last_spin_baseline.append(by_offset[off])
+			by_offset.erase(off)
+	for remaining in by_offset.values():
+		_last_spin_baseline.append(remaining)
+	if _preview_visible:
+		_apply_baseline_to_slots()
+
 # ---------- Minimal reactions to CoinManager ----------
 
 func _on_winner_description_shown(winner, text: String) -> void:
 	pass
 
 func _on_spin_totals_ready(result: Dictionary) -> void:
+	_ingest_baseline_from_result(result)
 	_spinning = false
 	_apply_spin_button_state()
 	set_process(false)
@@ -302,6 +585,9 @@ func _try_speedup(factor: float) -> bool:
 func spin() -> void:
 	if _spinning:
 		return
+
+	_inventory_before_spin = _deep_copy_inventory(items)
+	hide_base_preview()
 
 	_spin_done = false
 	_spinning = true
@@ -421,11 +707,13 @@ func _on_loot_choice_selected(round_num: int, token: TokenLootData) -> void:
 	var copies := _copies_to_add_for_token(token)
 	_insert_token_replacing_empties(token, copies)
 	_update_inventory_strip()
+	_refresh_inventory_baseline()
 
 func _on_loot_choice_replaced(round_num: int, token: TokenLootData, index: int) -> void:
 	# When CoinManager performs replacement directly into an inventory array,
 	# just refresh our UI from current items.
 	_update_inventory_strip()
+	_refresh_inventory_baseline()
 
 func _copies_to_add_for_token(token: TokenLootData) -> int:
 	var copies := 1
@@ -490,6 +778,7 @@ func _on_game_reset() -> void:
 		_rebuild_idle_strip()
 	else:
 		_update_inventory_strip()
+	_inventory_before_spin = _deep_copy_inventory(items)
 
 func _update_inventory_strip() -> void:
 	if inventory_strip == null:
