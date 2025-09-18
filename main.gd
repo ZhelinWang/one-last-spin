@@ -62,7 +62,7 @@ func add_vignette_to_ui(root: Control) -> void:
 func _connect_hover_signals(root: Node, overlay: ColorRect) -> void:
 	if overlay == null:
 		return
-	var spin_root := root.find_child("spinRoot", true, false)
+	var spin_root: Node = root.find_child("spinRoot", true, false)
 	if spin_root == null:
 		return
 	if not spin_root.has_signal("eye_hover_started") or not spin_root.has_signal("eye_hover_ended"):
@@ -82,7 +82,7 @@ func _connect_hover_signals(root: Node, overlay: ColorRect) -> void:
 
 func _prepare_vignette_material_defaults(overlay: ColorRect) -> void:
 	if overlay.material is ShaderMaterial:
-		var mat := overlay.material as ShaderMaterial
+		var mat: ShaderMaterial = overlay.material as ShaderMaterial
 		if mat.shader != null:
 			mat.set_shader_parameter("width_px", overlay.get_meta("__base_width"))
 			mat.set_shader_parameter("softness_px", overlay.get_meta("__base_softness"))
@@ -96,7 +96,7 @@ func _apply_time_scale_for_overlay(overlay: ColorRect, multiplier: float) -> voi
 func _on_eye_hover_started(overlay: ColorRect) -> void:
 	_apply_time_scale_for_overlay(overlay, float(overlay.get_meta("__warp_time_scale", 0.35)))
 	if overlay.material is ShaderMaterial:
-		var mat := overlay.material as ShaderMaterial
+		var mat: ShaderMaterial = overlay.material as ShaderMaterial
 		if mat.shader != null:
 			mat.set_shader_parameter("width_px", overlay.get_meta("__warp_width", 220.0))
 			mat.set_shader_parameter("softness_px", overlay.get_meta("__warp_softness", 420.0))
@@ -105,7 +105,7 @@ func _on_eye_hover_started(overlay: ColorRect) -> void:
 func _on_eye_hover_ended(overlay: ColorRect) -> void:
 	_apply_time_scale_for_overlay(overlay, 1.0)
 	if overlay.material is ShaderMaterial:
-		var mat := overlay.material as ShaderMaterial
+		var mat: ShaderMaterial = overlay.material as ShaderMaterial
 		if mat.shader != null:
 			mat.set_shader_parameter("width_px", overlay.get_meta("__base_width", 50.0))
 			mat.set_shader_parameter("softness_px", overlay.get_meta("__base_softness", 512.0))

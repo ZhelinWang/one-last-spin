@@ -48,6 +48,7 @@ var _preview_popups: Array[Node] = []
 var _preview_visible := false
 var _inventory_before_spin: Array = []
 var _inventory_preview_active := false
+var _slot_baseline_tokens: Dictionary = {}
 
 # SFX internals
 var _sfx_pool: Array[AudioStreamPlayer] = []
@@ -81,6 +82,7 @@ func _ready() -> void:
 	_rebuild_idle_strip()
 	_update_inventory_strip()
 	_inventory_before_spin = _deep_copy_inventory(items)
+	_capture_slot_baseline_for_preview()
 
 	# Use a press handler that supports "Speed up" while spinning
 	spin_button.pressed.connect(_on_spin_button_pressed)
@@ -133,6 +135,7 @@ func _rebuild_idle_strip() -> void:
 		_add_slot(it)
 	scroll_container.scroll_horizontal = 0
 	_update_inventory_strip()
+	_capture_slot_baseline_for_preview()
 
 func _clear(node: Node) -> void:
 	for c in node.get_children():
@@ -202,6 +205,7 @@ func _apply_spin_button_state() -> void:
 func _finish_spin() -> void:
 	# Keep _spinning true until totals are applied (or fallback finishes)
 	var neighbors: Array = _gather_neighbor_tokens(_last_winning_slot_idx)
+	_capture_slot_baseline_for_preview()
 
 	# Preferred path: CoinManager orchestrates visuals; pass slot_map and optional popup scene
 	if coin_mgr and coin_mgr.has_method("play_spin"):
@@ -261,6 +265,25 @@ func _slot_for_offset(offset: int) -> Control:
 		return null
 	return slots_hbox.get_child(idx) as Control
 
+func _clone_token_ref(token):
+	if token is Resource:
+		var dup := (token as Resource).duplicate(true)
+		if dup != null:
+			_init_token_base_value(dup)
+			return dup
+	return token
+
+func _capture_slot_baseline_for_preview() -> void:
+	_slot_baseline_tokens.clear()
+	var kids = slots_hbox.get_children()
+	for node in kids:
+		if node is Control:
+			var ctrl: Control = node as Control
+			if !ctrl.has_meta("token_data"):
+				continue
+			var tok = ctrl.get_meta("token_data")
+			_slot_baseline_tokens[ctrl] = _clone_token_ref(tok)
+
 # ---------- Eye hover preview ----------
 func show_base_preview() -> void:
 	if _spinning:
@@ -288,11 +311,13 @@ func hide_base_preview() -> void:
 func _apply_baseline_to_slots() -> void:
 	_restore_slots_from_preview()
 	_clear_preview_popups()
+	var handled_slots: Dictionary = {}
 	for entry in _ordered_baseline_entries():
 		var offset := int(entry.get("offset", 0))
 		var slot := _slot_for_offset(offset)
 		if slot == null:
 			continue
+		handled_slots[slot] = true
 		if !_preview_slot_cache.has(slot):
 			var snapshot := {}
 			snapshot["token"] = slot.get_meta("token_data")
@@ -307,6 +332,22 @@ func _apply_baseline_to_slots() -> void:
 			_set_preview_label_text(label, base_val)
 		if bool(popup_bundle.get("created", false)):
 			_preview_popups.append(popup_bundle.get("popup"))
+	for key in _slot_baseline_tokens.keys():
+		if !(key is Control):
+			continue
+		var ctrl: Control = key
+		if ctrl == null or !is_instance_valid(ctrl):
+			continue
+		if handled_slots.has(ctrl):
+			continue
+		if !_preview_slot_cache.has(ctrl):
+			var snapshot := {}
+			snapshot["token"] = ctrl.get_meta("token_data")
+			snapshot["popup_info"] = _capture_popup_state(ctrl)
+			_preview_slot_cache[ctrl] = snapshot
+		var base_token = _slot_baseline_tokens[ctrl]
+		var apply_token = _clone_token_ref(base_token)
+		_set_slot_token(ctrl, apply_token)
 
 func _ordered_baseline_entries() -> Array:
 	var ordered: Array = []

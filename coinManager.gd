@@ -1443,7 +1443,15 @@ func _on_winner_description_shown(winner, _text_ignored: String) -> void:
 	if lbl is RichTextLabel:
 		var rtl := lbl as RichTextLabel
 		rtl.bbcode_enabled = true
-		rtl.bbcode_text = "[color=%s]%s:[/color] %s" % [title_hex, title.to_upper(), desc.to_upper()]
+		if rtl.get_meta("__base_font_size", null) == null:
+			var base_size := rtl.get_theme_font_size("normal_font_size", "RichTextLabel")
+			if base_size <= 0:
+				base_size = 24
+			rtl.set_meta("__base_font_size", base_size)
+		var text := "[color=%s]%s:[/color] %s" % [title_hex, title.to_upper(), desc.to_upper()]
+		rtl.bbcode_text = text
+		rtl.set_meta("__font_reduced", false)
+		call_deferred("_adjust_active_effect_label_font", rtl)
 	else:
 		_set_node_text(lbl, "%s\n%s" % [title.to_upper(), desc.to_upper()])
 
@@ -1452,6 +1460,26 @@ func _resolve_active_effect_label() -> Node:
 		return _active_effect_label
 	_active_effect_label = _resolve_ui_node(_owner_node(), "%activeEffect", "activeEffect")
 	return _active_effect_label
+
+func _adjust_active_effect_label_font(rtl: RichTextLabel) -> void:
+	if rtl == null or !is_instance_valid(rtl):
+		return
+	var base_size := int(rtl.get_meta("__base_font_size", 24))
+	var was_reduced := bool(rtl.get_meta("__font_reduced", false))
+	var line_count := 1
+	if rtl.has_method("get_visible_line_count"):
+		line_count = int(rtl.call("get_visible_line_count"))
+	elif rtl.has_method("get_line_count"):
+		line_count = int(rtl.call("get_line_count"))
+	var threshold := int(rtl.get_meta("__line_threshold", 1))
+	var needs_reduce := line_count > threshold or rtl.text.length() > 80
+	if needs_reduce and !was_reduced:
+		var target_size: int = max(12, base_size - 6)
+		rtl.add_theme_font_size_override("normal_font_size", target_size)
+		rtl.set_meta("__font_reduced", true)
+	elif !needs_reduce and was_reduced:
+		rtl.remove_theme_font_size_override("normal_font_size")
+		rtl.set_meta("__font_reduced", false)
 
 # ---------- Loot overlay + picking ----------
 func _trigger_loot_choice(round_num: int) -> void:
