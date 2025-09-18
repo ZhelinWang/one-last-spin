@@ -14,6 +14,10 @@ class_name InventoryStrip
 
 var _items: Array[TokenLootData] = []
 var _counts: Dictionary = {}
+var _live_items: Array = []
+var _pending_items: Array = []
+var _preview_items: Array = []
+var _preview_active: bool = false
 
 func _key_for_token(td) -> String:
 	# Prefer stable, human-meaningful grouping by lowercase name.
@@ -46,12 +50,22 @@ func clear_icons() -> void:
 	for c in get_children():
 		c.queue_free()
 
-func set_items(items: Array) -> void:
-	# Accepts Array[TokenLootData]
+func _clone_items(items: Array) -> Array:
+	var out: Array = []
+	if items == null:
+		return out
+	for it in items:
+		if it is Resource:
+			var dup := (it as Resource).duplicate(true)
+			if dup != null:
+				out.append(dup)
+				continue
+		out.append(it)
+	return out
+
+func _apply_items(items: Array) -> void:
 	_items.clear()
 	_counts.clear()
-
-	# Aggregate by resource path if available; else by instance id
 	for it in items:
 		if it == null:
 			continue
@@ -59,6 +73,42 @@ func set_items(items: Array) -> void:
 		var key := _key_for_token(it)
 		_counts[key] = int(_counts.get(key, 0)) + 1
 	_render()
+
+func set_items(items: Array) -> void:
+	var clone := _clone_items(items)
+	if _preview_active:
+		_pending_items = clone
+		return
+	_live_items = clone
+	_apply_items(clone)
+
+func begin_preview(items: Array) -> void:
+	var clone := _clone_items(items)
+	if _preview_active:
+		update_preview(items)
+		return
+	_preview_active = true
+	_preview_items = clone
+	_apply_items(clone)
+
+func update_preview(items: Array) -> void:
+	if not _preview_active:
+		begin_preview(items)
+		return
+	_preview_items = _clone_items(items)
+	_apply_items(_preview_items)
+
+func end_preview() -> void:
+	_preview_active = false
+	_preview_items.clear()
+	var to_apply: Array
+	if !_pending_items.is_empty():
+		to_apply = _pending_items
+		_live_items = _pending_items
+		_pending_items = []
+	else:
+		to_apply = _live_items
+	_apply_items(_clone_items(to_apply))
 
 func _render() -> void:
 	clear_icons()

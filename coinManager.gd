@@ -2385,18 +2385,47 @@ func _shake_active_effect_label() -> void:
 	fx.tween_property(ci, "modulate", Color(base_mod.r, base_mod.g, base_mod.b, 0.90), 0.04).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	fx.chain().tween_property(ci, "modulate", base_mod, 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
-	# Small positional shake if it's a Control
+	# Shake effect if it's a Control (rotation to avoid layout shifts)
 	if ci is Control:
 		var ctrl := ci as Control
 		var rng := _mk_rng()
-		var orig_pos := ctrl.position
+		var meta_key := "__active_effect_shake"
+		if ctrl.has_meta(meta_key):
+			var prev_state = ctrl.get_meta(meta_key)
+			if typeof(prev_state) == TYPE_DICTIONARY:
+				var prev_tween = prev_state.get("tween")
+				if prev_tween != null and prev_tween is Object:
+					var tween_obj := prev_tween as Object
+					if tween_obj.has_method("kill"):
+						tween_obj.call("kill")
+				if prev_state.has("pivot"):
+					ctrl.pivot_offset = prev_state["pivot"]
+				if prev_state.has("rotation"):
+					ctrl.rotation = prev_state["rotation"]
+			ctrl.remove_meta(meta_key)
+		var orig_pivot := ctrl.pivot_offset
+		var orig_rotation := ctrl.rotation
+		var size := ctrl.size
+		if size != Vector2.ZERO:
+			ctrl.pivot_offset = size * 0.5
 		var shake := get_tree().create_tween()
+		var state := {
+			"pivot": orig_pivot,
+			"rotation": orig_rotation,
+			"tween": shake
+		}
+		ctrl.set_meta(meta_key, state)
 		var shakes := 3
-		var strength: float = 8.0
+		var rotation_strength: float = deg_to_rad(2.5)
 		for i in range(shakes):
-			var offv := Vector2(rng.randf_range(-strength, strength), rng.randf_range(-strength, strength))
-			shake.tween_property(ctrl, "position", orig_pos + offv, 0.03).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		shake.tween_property(ctrl, "position", orig_pos, 0.04).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			var angle := rng.randf_range(-rotation_strength, rotation_strength)
+			shake.tween_property(ctrl, "rotation", angle, 0.03).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		shake.tween_property(ctrl, "rotation", orig_rotation, 0.04).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		shake.finished.connect(func():
+			ctrl.rotation = orig_rotation
+			ctrl.pivot_offset = orig_pivot
+			ctrl.remove_meta(meta_key)
+		)
 
 # Rarity-driven unique picks: choose rarity by adjusted weights, then choose a token within that rarity using token.weight.
 func _pick_with_rarity_schedule(
