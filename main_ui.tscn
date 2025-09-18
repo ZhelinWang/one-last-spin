@@ -267,7 +267,7 @@ size_flags_vertical = 2
 theme_override_constants/margin_left = 0
 theme_override_constants/margin_top = 0
 theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_bottom = 5
 
 [node name="topUIContainer" type="HBoxContainer" parent="mainContainer/topUIMarginContainer"]
 layout_mode = 2
@@ -434,6 +434,8 @@ slots_hbox = NodePath("spinner/spinnerTilesMargin/scrollContainer/slotsHBox")
 slot_item_scene = ExtResource("5_sd2ej")
 class_data = ExtResource("6_dnsp1")
 floating_label_scene = ExtResource("7_mcdcf")
+overshoot_slot_fraction = 1.5
+undershoot_slot_fraction = 0.5
 
 [node name="spinner" type="MarginContainer" parent="mainContainer/spinMarginContainer/gameElementsContainer/spinRoot"]
 layout_mode = 1

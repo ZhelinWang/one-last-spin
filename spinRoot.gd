@@ -21,6 +21,9 @@ signal eye_hover_ended
 @export var spin_duration_sec := 6
 @export var trans := Tween.TRANS_CUBIC
 @export var easing := Tween.EASE_OUT
+@export_range(0.0, 1.5, 0.01) var overshoot_slot_fraction := 0.65
+@export_range(0.0, 0.5, 0.01) var undershoot_slot_fraction := 0.35
+@export var overshoot_settle_duration := 0.25
 
 # Selector alignment (0 = left, 0.5 = center, 1 = right)
 @export_range(0.0, 1.0, 0.01) var selector_align_ratio := 0.5
@@ -49,6 +52,7 @@ var _preview_visible := false
 var _inventory_before_spin: Array = []
 var _inventory_preview_active := false
 var _slot_baseline_tokens: Dictionary = {}
+var _overshoot_offset: float = 0.0
 
 # SFX internals
 var _sfx_pool: Array[AudioStreamPlayer] = []
@@ -283,6 +287,30 @@ func _capture_slot_baseline_for_preview() -> void:
 				continue
 			var tok = ctrl.get_meta("token_data")
 			_slot_baseline_tokens[ctrl] = _clone_token_ref(tok)
+func _compute_overshoot_scroll(target_scroll: float) -> float:
+	_overshoot_offset = 0.0
+	if overshoot_slot_fraction <= 0.0:
+		return target_scroll
+	var slot: Control = _slot_for_offset(0)
+	var slot_width: float = 0.0
+	if slot != null:
+		slot_width = slot.size.x
+	if slot_width <= 0.0:
+		return target_scroll
+	var max_over: float = slot_width * overshoot_slot_fraction
+	var max_under: float = slot_width * undershoot_slot_fraction
+	var offset: float = _rng.randf_range(-max_under, max_over)
+	if abs(offset) < 1.0:
+		return target_scroll
+	var max_scroll: int = max(0, int(slots_hbox.size.x - scroll_container.size.x))
+	var candidate: float = clamp(target_scroll + offset, 0.0, float(max_scroll))
+	_overshoot_offset = candidate - target_scroll
+	if abs(_overshoot_offset) < 1.0:
+		_overshoot_offset = 0.0
+		return target_scroll
+	return candidate
+
+
 
 # ---------- Eye hover preview ----------
 func show_base_preview() -> void:
@@ -666,15 +694,25 @@ func spin() -> void:
 
 	# 6) tween
 	_target_scroll = _scroll_for_aligning(slot)
+	var overshoot_scroll := _compute_overshoot_scroll(_target_scroll)
 
 	# Prepare slot-pass thresholds and start polling
-	_prepare_pass_sfx(0.0, float(_target_scroll))
+	var start_scroll := float(scroll_container.scroll_horizontal)
+	_prepare_pass_sfx(start_scroll, overshoot_scroll)
 	set_process(true)
 
 	_current_tween = get_tree().create_tween()
-	_current_tween.tween_property(scroll_container, "scroll_horizontal", _target_scroll, spin_duration_sec).set_trans(trans).set_ease(easing)
+	_current_tween.tween_property(scroll_container, "scroll_horizontal", overshoot_scroll, spin_duration_sec).set_trans(trans).set_ease(easing)
 
 	await _current_tween.finished
+
+	if abs(_overshoot_offset) > 0.5:
+		_current_tween = get_tree().create_tween()
+		_current_tween.tween_property(scroll_container, "scroll_horizontal", _target_scroll, overshoot_settle_duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		await _current_tween.finished
+	else:
+		scroll_container.scroll_horizontal = _target_scroll
+
 	_finish_spin()
 
 func _build_strip_for_spin(laps: int) -> int:
