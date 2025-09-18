@@ -1,6 +1,8 @@
 extends Control
 
 signal spin_finished(selected: TokenLootData, total_value: int)
+signal eye_hover_started
+signal eye_hover_ended
 
 # Inspector-driven references
 @export var scroll_container: ScrollContainer
@@ -265,17 +267,23 @@ func show_base_preview() -> void:
 		return
 	if _last_spin_baseline.is_empty():
 		return
+	var was_active := _preview_visible
 	if not _inventory_preview_active:
 		_set_inventory_preview(true)
 	_preview_visible = true
 	_apply_baseline_to_slots()
+	if not was_active:
+		emit_signal("eye_hover_started")
 
 func hide_base_preview() -> void:
+	var was_active := _preview_visible
 	_preview_visible = false
 	_restore_slots_from_preview()
 	_clear_preview_popups()
 	if _inventory_preview_active:
 		_set_inventory_preview(false)
+	if was_active:
+		emit_signal("eye_hover_ended")
 
 func _apply_baseline_to_slots() -> void:
 	_restore_slots_from_preview()

@@ -57,3 +57,56 @@ func add_vignette_to_ui(root: Control) -> void:
 	overlay.material = mat
 
 	root.add_child(overlay)
+	_connect_hover_signals(root, overlay)
+
+func _connect_hover_signals(root: Node, overlay: ColorRect) -> void:
+	if overlay == null:
+		return
+	var spin_root := root.find_child("spinRoot", true, false)
+	if spin_root == null:
+		return
+	if not spin_root.has_signal("eye_hover_started") or not spin_root.has_signal("eye_hover_ended"):
+		return
+	if overlay.get_meta("__base_width", null) == null:
+		overlay.set_meta("__base_width", 50.0)
+		overlay.set_meta("__base_softness", 512.0)
+		overlay.set_meta("__base_intensity", 0.05)
+		overlay.set_meta("__warp_time_scale", 0.35)
+		overlay.set_meta("__warp_width", 220.0)
+		overlay.set_meta("__warp_softness", 420.0)
+		overlay.set_meta("__warp_intensity", 0.35)
+		overlay.set_meta("__base_time_scale", Engine.time_scale)
+	_prepare_vignette_material_defaults(overlay)
+	spin_root.connect("eye_hover_started", Callable(self, "_on_eye_hover_started").bind(overlay))
+	spin_root.connect("eye_hover_ended", Callable(self, "_on_eye_hover_ended").bind(overlay))
+
+func _prepare_vignette_material_defaults(overlay: ColorRect) -> void:
+	if overlay.material is ShaderMaterial:
+		var mat := overlay.material as ShaderMaterial
+		if mat.shader != null:
+			mat.set_shader_parameter("width_px", overlay.get_meta("__base_width"))
+			mat.set_shader_parameter("softness_px", overlay.get_meta("__base_softness"))
+			mat.set_shader_parameter("intensity", overlay.get_meta("__base_intensity"))
+	_apply_time_scale_for_overlay(overlay, 1.0)
+
+func _apply_time_scale_for_overlay(overlay: ColorRect, multiplier: float) -> void:
+	var base := float(overlay.get_meta("__base_time_scale", 1.0))
+	Engine.time_scale = clampf(base * multiplier, 0.05, 2.0)
+
+func _on_eye_hover_started(overlay: ColorRect) -> void:
+	_apply_time_scale_for_overlay(overlay, float(overlay.get_meta("__warp_time_scale", 0.35)))
+	if overlay.material is ShaderMaterial:
+		var mat := overlay.material as ShaderMaterial
+		if mat.shader != null:
+			mat.set_shader_parameter("width_px", overlay.get_meta("__warp_width", 220.0))
+			mat.set_shader_parameter("softness_px", overlay.get_meta("__warp_softness", 420.0))
+			mat.set_shader_parameter("intensity", overlay.get_meta("__warp_intensity", 0.35))
+
+func _on_eye_hover_ended(overlay: ColorRect) -> void:
+	_apply_time_scale_for_overlay(overlay, 1.0)
+	if overlay.material is ShaderMaterial:
+		var mat := overlay.material as ShaderMaterial
+		if mat.shader != null:
+			mat.set_shader_parameter("width_px", overlay.get_meta("__base_width", 50.0))
+			mat.set_shader_parameter("softness_px", overlay.get_meta("__base_softness", 512.0))
+			mat.set_shader_parameter("intensity", overlay.get_meta("__base_intensity", 0.05))
