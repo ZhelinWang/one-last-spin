@@ -7,7 +7,7 @@
 
 [sub_resource type="Resource" id="Resource_ylgm7"]
 script = ExtResource("2_dg2i8")
-match_tag = "worker"
+match_tag = "Worker"
 metadata/_custom_type_script = "uid://bbflpk0whoeeu"
 
 [resource]

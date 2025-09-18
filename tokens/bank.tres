@@ -7,28 +7,17 @@
 
 [sub_resource type="Resource" id="Resource_u22t0"]
 script = ExtResource("2_q05v7")
-require_any = true
-amount = 1
 match_tag = "coin"
 match_name = "coin"
-id = ""
-trigger = 0
-target_kind = 0
-target_offset = 0
-target_tag = ""
-target_name = ""
 winner_only = true
-desc_template = ""
 metadata/_custom_type_script = "uid://bftaioc8dl7hx"
 
 [resource]
 script = ExtResource("2_nv4mw")
 name = "Bank"
-weight = 1.0
-rarity = "common"
 icon = ExtResource("3_3sd5l")
 value = 10
-tags = null
+tags = PackedStringArray("Building")
 abilities = Array[ExtResource("1_1qk44")]([SubResource("Resource_u22t0")])
 activeDescription = "This token's value is equal to X% of current Gold"
 passiveDescription = "X is how many coins you have in your inventory"

@@ -7,12 +7,9 @@
 [resource]
 script = ExtResource("1_mxont")
 name = "Capybara"
-weight = 1.0
 rarity = "legendary"
 icon = ExtResource("1_yy4g2")
-value = 1
 tags = null
-abilities = Array[ExtResource("1_m0emr")]([])
 activeDescription = "Double all non-winner slot values"
 passiveDescription = "Hello World"
 metadata/_custom_type_script = "uid://2lqsh3g3xqag"
