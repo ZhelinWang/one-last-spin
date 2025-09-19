@@ -173,7 +173,7 @@ bg_color = Color(0, 0, 0, 0.19607843)
 corner_detail = 1
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_v3yyu"]
-bg_color = Color(1.3957917e-06, 0.7159944, 0.4001968, 1)
+bg_color = Color(0.8901961, 0.8392157, 0, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_llbac"]
 bg_color = Color(1, 0.883333, 0, 0.588235)
@@ -280,28 +280,28 @@ size_flags_vertical = 2
 theme_override_constants/margin_left = 0
 theme_override_constants/margin_top = 0
 theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_bottom = 12
 
-[node name="progressBar" type="Panel" parent="mainContainer/topUIMarginContainer"]
+[node name="goldStatusBar" type="Panel" parent="mainContainer/topUIMarginContainer"]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_mgxdc")
 
-[node name="topUIContainer" type="HBoxContainer" parent="mainContainer/topUIMarginContainer/progressBar"]
+[node name="topUIContainer" type="HBoxContainer" parent="mainContainer/topUIMarginContainer/goldStatusBar"]
 layout_mode = 0
 offset_right = 1920.0
 offset_bottom = 150.0
 theme_override_constants/separation = 0
 
-[node name="Panel" type="Panel" parent="mainContainer/topUIMarginContainer/progressBar/topUIContainer"]
+[node name="Panel" type="Panel" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer"]
 custom_minimum_size = Vector2(0, 130)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_vxg6n")
 
-[node name="valueLabel" type="RichTextLabel" parent="mainContainer/topUIMarginContainer/progressBar/topUIContainer/Panel"]
+[node name="valueLabel" type="RichTextLabel" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer/Panel"]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -317,7 +317,7 @@ text = "0[font_size=20][color=gold][outline_size=32]G[/outline_size][/color][/fo
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="deadlineDisplay" type="Panel" parent="mainContainer/topUIMarginContainer/progressBar/topUIContainer"]
+[node name="deadlineDisplay" type="Panel" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer"]
 material = SubResource("ShaderMaterial_yubjs")
 custom_minimum_size = Vector2(600, 150)
 layout_mode = 2
@@ -325,7 +325,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_n1q3t")
 
-[node name="roundLabel" type="RichTextLabel" parent="mainContainer/topUIMarginContainer/progressBar/topUIContainer/deadlineDisplay"]
+[node name="roundLabel" type="RichTextLabel" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer/deadlineDisplay"]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -344,7 +344,7 @@ text = "ROUND 1"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="deadlineLabel" type="RichTextLabel" parent="mainContainer/topUIMarginContainer/progressBar/topUIContainer/deadlineDisplay"]
+[node name="deadlineLabel" type="RichTextLabel" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer/deadlineDisplay"]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -360,14 +360,14 @@ text = "25[font_size=20][color=gold][outline_size=32]G[/outline_size][/color][/f
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="characterDisplay" type="Panel" parent="mainContainer/topUIMarginContainer/progressBar/topUIContainer"]
+[node name="characterDisplay" type="Panel" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer"]
 custom_minimum_size = Vector2(0, 130)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_1v8me")
 
-[node name="classLabel" type="RichTextLabel" parent="mainContainer/topUIMarginContainer/progressBar/topUIContainer/characterDisplay"]
+[node name="classLabel" type="RichTextLabel" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer/characterDisplay"]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -731,10 +731,13 @@ icon_spacing = 4
 
 [node name="artifactXPBar" type="Panel" parent="mainContainer/bottomUIMarginContainer/VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(1920, 30)
+custom_minimum_size = Vector2(1920, 20)
 layout_mode = 2
+mouse_default_cursor_shape = 16
 theme_override_styles/panel = SubResource("StyleBoxFlat_v3yyu")
 script = ExtResource("100_artxp")
+border_color = Color(0, 0, 0, 1)
+border_width_px = 0.5
 
 [node name="bottomRow" type="HBoxContainer" parent="mainContainer/bottomUIMarginContainer"]
 visible = false
