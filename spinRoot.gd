@@ -9,6 +9,7 @@ signal eye_hover_ended
 @export var slots_hbox: HBoxContainer
 @export var slot_item_scene: PackedScene
 @export var class_data: CharacterClassData
+@export var artifact_xp_schedule: Array[int] = [4, 4, 4, 4, 5]
 
 @onready var main_ui := get_tree().get_root().get_node("mainUI") as Control
 
@@ -63,10 +64,13 @@ var _prev_scroll: float = 0.0
 @onready var spin_button: Button = %spinButton
 @onready var coin_mgr: Node = get_node_or_null("/root/coinManager")
 @onready var inventory_strip: Node = %inventoryStrip
+@onready var artifact_xp_bar: ArtifactXPBar = %artifactXPBar
 
 func _ready() -> void:
 	_rng.randomize()
 	_wire_check()
+	if artifact_xp_bar:
+		artifact_xp_bar.set_segment_schedule(artifact_xp_schedule)
 
 	if class_data:
 		items = class_data.startingTokens.duplicate()
@@ -823,14 +827,24 @@ func _insert_token_replacing_empties(token: TokenLootData, copies: int) -> void:
 		var ep = coin_mgr.get("empty_token_path")
 		if typeof(ep) == TYPE_STRING:
 			empty_path = String(ep)
-		for i in range(max(1, copies)):
-			var inst: TokenLootData = token if i == 0 else ((token as Resource).duplicate(true) as TokenLootData)
-			_init_token_base_value(inst)
-			var idx := _find_empty_index_in_items(empty_path)
-			if idx >= 0:
-				items[idx] = inst
-			else:
-				items.append(inst)
+	var added_count := 0
+	for i in range(max(1, copies)):
+		var inst: TokenLootData = token if i == 0 else ((token as Resource).duplicate(true) as TokenLootData)
+		_init_token_base_value(inst)
+		var idx := _find_empty_index_in_items(empty_path)
+		if idx >= 0:
+			items[idx] = inst
+		else:
+			items.append(inst)
+		added_count += 1
+	if added_count > 0:
+		_on_tokens_added_to_inventory(added_count)
+
+func _on_tokens_added_to_inventory(count: int) -> void:
+	if count <= 0:
+		return
+	if artifact_xp_bar:
+		artifact_xp_bar.add_tokens(count)
 
 func _find_empty_index_in_items(empty_path: String) -> int:
 	var candidates: Array[int] = []
@@ -866,6 +880,8 @@ func _on_game_reset() -> void:
 	else:
 		_update_inventory_strip()
 	_inventory_before_spin = _deep_copy_inventory(items)
+	if artifact_xp_bar:
+		artifact_xp_bar.reset_bar()
 
 func _update_inventory_strip() -> void:
 	if inventory_strip == null:

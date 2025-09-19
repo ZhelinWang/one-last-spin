@@ -1,4 +1,4 @@
-[gd_scene load_steps=46 format=3 uid="uid://c5rvk15uv8cxf"]
+[gd_scene load_steps=47 format=3 uid="uid://c5rvk15uv8cxf"]
 
 [ext_resource type="Script" uid="uid://cyvguba1sinbr" path="res://main.gd" id="1_im5q1"]
 [ext_resource type="Shader" uid="uid://c1th2tmqhx4vk" path="res://shaders/swirl.gdshader" id="2_8yam0"]
@@ -19,6 +19,7 @@
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="12_v54cu"]
 [ext_resource type="Script" uid="uid://dacke4sdlhooa" path="res://eyeHover.gd" id="13_eye"]
 [ext_resource type="Script" uid="uid://c0k5fkukw4tni" path="res://inventoryStrip.gd" id="99_inv"]
+[ext_resource type="Script" uid="uid://v2imfisnus7d" path="res://artifactXPBar.gd" id="100_artxp"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_v54cu"]
 shader = ExtResource("2_8yam0")
@@ -729,9 +730,11 @@ icon_size = Vector2i(32, 32)
 icon_spacing = 4
 
 [node name="artifactXPBar" type="Panel" parent="mainContainer/bottomUIMarginContainer/VBoxContainer"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(1920, 30)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_v3yyu")
+script = ExtResource("100_artxp")
 
 [node name="bottomRow" type="HBoxContainer" parent="mainContainer/bottomUIMarginContainer"]
 visible = false
