@@ -2,11 +2,11 @@ shader_type canvas_item;
 render_mode unshaded, blend_mix;
 
 // Overall opacity of the dark blobs
-uniform float base_alpha = 0.55;      // 0..1
+uniform float base_alpha = 0.50;      // 0..1
 // Pixel scale of the pattern (bigger => chunkier)
-uniform float tile_px = 36.0;         // pixels per cell
+uniform float tile_px = 200.0;         // pixels per cell
 // Animation speed in pixels per second
-uniform float flow_speed_px = 8.0;
+uniform float flow_speed_px = 50.0;
 // Threshold and edge for blob coverage
 uniform float threshold = 0.45;       // 0..1
 uniform float edge_feather = 0.0;     // in 0..1 (set 0 for hard pixel edges)

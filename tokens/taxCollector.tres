@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://dll3cdxejshnh"]
+
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dhr77k4c5cd3v" path="res://abilties/taxCollectorActiveAbility.gd" id="3_active"]
+[ext_resource type="Script" uid="uid://bp4m1a725lajo" path="res://abilties/genericPermanentAdjustAbility.gd" id="4_passive"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
+
+[sub_resource type="Resource" id="TaxCollectorActive"]
+script = ExtResource("3_active")
+id = "tax_collector_active"
+winner_only = true
+
+[sub_resource type="Resource" id="TaxCollectorPassive"]
+script = ExtResource("4_passive")
+amount = 2
+destroy_if_zero = false
+propagate_same_key = true
+id = "tax_collector_passive"
+target_kind = 3
+target_tag = "coin"
+winner_only = true
+
+[resource]
+script = ExtResource("1_token")
+name = "Tax Collector"
+rarity = "rare"
+icon = ExtResource("5_icon")
+value = 8
+tags = PackedStringArray("Worker")
+abilities = Array[ExtResource("2_abilities")]([SubResource("TaxCollectorActive"), SubResource("TaxCollectorPassive")])
+activeDescription = "Reduce the value of all triggered tokens by 2. Gain +4 value permanently."
+passiveDescription = "Permanently give all coin tokens +2."
+metadata/_custom_type_script = "uid://2lqsh3g3xqag"
