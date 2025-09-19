@@ -4,7 +4,7 @@ class_name ArtifactXPBar
 signal artifact_selection_ready
 
 @export var default_segment_requirements: Array[int] = [4, 4, 4, 4, 5]
-@export var segment_gap_px: float = 6.0
+@export var segment_gap_px: float = 10.0
 @export var empty_segment_color: Color = Color(0.08, 0.08, 0.08, 0.6)
 @export var fill_segment_color: Color = Color(0.06, 0.62, 0.36, 1.0)
 @export var completed_segment_color: Color = Color(0.09, 0.45, 0.28, 1.0)
