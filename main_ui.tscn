@@ -65,7 +65,7 @@ shader_parameter/swirl_strength = 1.5
 shader_parameter/scale = 4.0
 shader_parameter/center_softness = 2.5
 shader_parameter/color_a = Color(0.856353, 0.711391, 0.434909, 0.0784314)
-shader_parameter/color_b = Color(0.405123, 0.318839, 0.151613, 0.0980392)
+shader_parameter/color_b = Color(0.40392157, 0.31764707, 0.15294118, 0.09803922)
 shader_parameter/pixel_size = 0.008
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ilgax"]
@@ -78,6 +78,8 @@ shader_parameter/edge_feather = 0.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mgxdc"]
 bg_color = Color(0.888826, 0.8396304, 0, 1)
+border_width_bottom = 8
+border_color = Color(0, 0, 0, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vxg6n"]
 bg_color = Color(0, 0, 0, 1)
@@ -257,7 +259,7 @@ size_flags_vertical = 2
 theme_override_constants/margin_left = 0
 theme_override_constants/margin_top = 0
 theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 12
+theme_override_constants/margin_bottom = 10
 
 [node name="goldStatusBar" type="Panel" parent="mainContainer/topUIMarginContainer"]
 custom_minimum_size = Vector2(0, 150)
@@ -671,7 +673,7 @@ theme_override_constants/separation = 0
 
 [node name="Panel" type="Panel" parent="mainContainer/bottomUIMarginContainer/VBoxContainer"]
 material = SubResource("ShaderMaterial_v3yyu")
-custom_minimum_size = Vector2(1920, 80)
+custom_minimum_size = Vector2(1920, 90)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_i3676")
