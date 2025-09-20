@@ -13,6 +13,7 @@ op = "add"
 amount_mode = "self_value"
 apply_self_mult_after = true
 self_factor = 0.5
+use_self_loss_for_amount = true
 winner_only = true
 
 [sub_resource type="Resource" id="InvestorPassive"]

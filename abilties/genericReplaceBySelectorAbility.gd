@@ -5,7 +5,7 @@
 # - On ties, picks using `tie_break`: "leftmost", "rightmost", or "random" (uses ctx.rng if provided).
 # - Emits a command to replace the selected slot with `replace_with_path`.
 #   - If preserve_value_from_selected = true, passes the selected value via set_value so the replacement starts with it.
-#   - Otherwise sends set_value = -1, signaling the executor to use the replacement’s default value.
+#   - Otherwise sends set_value = -1, signaling the executor to use the replacementÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢s default value.
 #   - preserve_tags = true so the executor can carry over tags from the removed token if desired.
 #
 # Usage:
@@ -13,14 +13,14 @@
 # - Configure:
 #   - selector: LOWEST or HIGHEST.
 #   - replace_with_path: resource path of the replacement token.
-#   - preserve_value_from_selected: whether to seed the new token’s value with the selected contrib’s value.
+#   - preserve_value_from_selected: whether to seed the new tokenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢s value with the selected contribÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢s value.
 #   - tie_break: how to resolve ties ("leftmost" | "rightmost" | "random").
-# - RNG: If ctx.rng isn’t present, the script creates and randomizes a local RNG.
+# - RNG: If ctx.rng isnÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢t present, the script creates and randomizes a local RNG.
 #
 # Executor requirements:
 # - Support command:
 #   { op: "replace_at_offset", offset:int, token_path:String, set_value:int, preserve_tags:bool }
-#   - set_value = -1 means “use replacement’s default value”.
+#   - set_value = -1 means ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“use replacementÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢s default valueÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â.
 #   - If preserve_tags is true, consider merging or copying tags from the removed token to the new one.
 #
 # Notes:
@@ -43,6 +43,7 @@ enum Selector { LOWEST, HIGHEST, RANDOM_NEIGHBOR }
 @export var amount: int = 0                  # used when amount_mode == "fixed"
 @export var apply_self_mult_after: bool = false
 @export var self_factor: float = 1.0         # e.g., 0.5 to halve self
+@export var use_self_loss_for_amount: bool = false
 
 func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) -> Array:
 	if trigger != Trigger.ACTIVE_DURING_SPIN or contribs.is_empty(): return []
@@ -118,7 +119,12 @@ func build_final_steps(ctx: Dictionary, contribs: Array, source_token: Resource)
 	# Amount to add
 	var amt_to_add: int = amount
 	if amount_mode == "self_value":
-		amt_to_add = _contrib_value(self_c)
+		var self_val := _contrib_value(self_c)
+		amt_to_add = self_val
+		if use_self_loss_for_amount and apply_self_mult_after:
+			var loss := _compute_self_loss(self_c, self_factor)
+			if loss > 0:
+				amt_to_add = loss
 	if amt_to_add != 0:
 		out.append({
 			"kind": "add",
@@ -141,3 +147,15 @@ func build_final_steps(ctx: Dictionary, contribs: Array, source_token: Resource)
 		})
 
 	return out
+
+func _compute_self_loss(contrib: Dictionary, factor: float) -> int:
+	if contrib.is_empty():
+		return 0
+	var sum: int = int(contrib.get("base", 0)) + int(contrib.get("delta", 0))
+	if sum < 0:
+		sum = 0
+	var mult_before: float = float(max(float(contrib.get("mult", 1.0)), 0.0))
+	var pre_val: int = int(floor(float(sum) * mult_before))
+	var mult_after: float = mult_before * float(max(factor, 0.0))
+	var post_val: int = int(floor(float(sum) * mult_after))
+	return max(pre_val - post_val, 0)

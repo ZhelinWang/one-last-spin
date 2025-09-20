@@ -111,6 +111,9 @@ var _bank_tween: Tween = null
 var _shown_total: int = 0
 var _active_effect_label: Node = null
 var _token_value_offsets: Dictionary = {} # key (resource_path or name) -> cumulative permanent offset for this run
+var _token_tag_offsets: Dictionary = {} # normalized tag -> cumulative permanent offset for this run
+var _token_name_offsets: Dictionary = {} # normalized name -> cumulative permanent offset for this run
+var _token_global_offset: int = 0 # global permanent offset applied to all tokens
 const META_ZERO_REPLACED := "__zero_replaced"
 const META_ZERO_REASON := "__zero_reason"
 const ZERO_REPLACEMENT_VALUE := 1
@@ -185,6 +188,9 @@ func reset_run() -> void:
 	_loot_gen += 1
 	# Clear any per-token permanent offsets (future runs start from baseline)
 	_token_value_offsets.clear()
+	_token_tag_offsets.clear()
+	_token_name_offsets.clear()
+	_token_global_offset = 0
 	if is_instance_valid(_bank_tween):
 		_bank_tween.kill()
 	_bank_tween = null
@@ -506,6 +512,8 @@ func _apply_steps_now(i: int, c: Dictionary, steps: Array, ctx: Dictionary, sour
 		if debug_spin:
 			print("	[Apply] offset=", c.offset, " kind=", stepn.get("kind"), " +", stepn.get("amount", 0), " x", stepn.get("factor", 1.0), " src=", stepn.get("source", "unknown"))
 		_apply_step(c, stepn)
+		var base_new_val: int = _compute_value(c)
+		_invoke_on_value_changed(ctx, source_token, c, prev_val, base_new_val, stepn)
 		var new_val: int = _compute_value(c)
 		var delta := new_val - prev_val
 		var shake_mag := 0.0
@@ -529,9 +537,6 @@ func _apply_steps_now(i: int, c: Dictionary, steps: Array, ctx: Dictionary, sour
 
 		# Popup + shake
 		_play_counting_popup(ctx, c, prev_val, new_val, false)
-
-		# Ability on_value_changed hooks (target + source)
-		_invoke_on_value_changed(ctx, source_token, c, prev_val, new_val, stepn)
 
 		if shake_mag > 0.0:
 			if not _is_contrib_zero_replaced(c):
@@ -654,6 +659,8 @@ func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Arr
 			print("    [Apply-Parallel] offset=", c.offset, " kind=", step.get("kind"), " +", step.get("amount", 0), " x", step.get("factor", 1.0), " src=", step.get("source", "unknown"))
 		var prev_val := _compute_value(c)
 		_apply_step(c, step)
+		var base_new_val := _compute_value(c)
+		_invoke_on_value_changed(ctx, null, c, prev_val, base_new_val, step)
 		var new_val := _compute_value(c)
 		var delta := new_val - prev_val
 		var shake_mag := 0.0
@@ -2065,6 +2072,42 @@ func _token_key(t) -> String:
 		return nm
 	return str(t)
 
+func _collect_token_tags(tok) -> Array:
+	var out: Array = []
+	if tok == null or not tok.has_method("get"):
+		return out
+	var tags = tok.get("tags")
+	if tags is Array:
+		for s in tags:
+			if typeof(s) == TYPE_STRING:
+				var norm := String(s).strip_edges().to_lower()
+				if norm != "":
+					out.append(norm)
+	elif typeof(tags) == TYPE_PACKED_STRING_ARRAY:
+		var psa: PackedStringArray = tags
+		for s in psa:
+			var norm2 := String(s).strip_edges().to_lower()
+			if norm2 != "":
+				out.append(norm2)
+	return out
+
+func _normalize_token_name(name: String) -> String:
+	return String(name).strip_edges().to_lower()
+
+func _compute_permanent_offset(tok) -> int:
+	var key := _token_key(tok)
+	var total := int(_token_value_offsets.get(key, 0))
+	if _token_global_offset != 0:
+		total += _token_global_offset
+	if not _token_name_offsets.is_empty():
+		var nm := _normalize_token_name(_token_name(tok))
+		if nm != "":
+			total += int(_token_name_offsets.get(nm, 0))
+	if not _token_tag_offsets.is_empty():
+		for tag in _collect_token_tags(tok):
+			total += int(_token_tag_offsets.get(tag, 0))
+	return total
+
 # ---------- ability field helpers ----------
 func _ability_is_active_during_spin(ab) -> bool:
 	if ab == null:
@@ -2302,6 +2345,8 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 				print("	[Apply] offset=", c.offset, " kind=", stepn.get("kind"), " +", stepn.get("amount", 0), " x", stepn.get("factor", 1.0), " src=", stepn.get("source", "winner_active"))
 			var prev_val := _compute_value(c)
 			_apply_step(c, stepn)
+			var base_new_val := _compute_value(c)
+			_invoke_on_value_changed(ctx, winner, c, prev_val, base_new_val, stepn)
 			var new_val := _compute_value(c)
 			var delta := new_val - prev_val
 			var shake_mag := 0.0
@@ -2351,14 +2396,6 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 		if shake_mag > 0.0:
 			_shake_slot_for_contrib(ctx, c)
 			await _apply_screen_shake(shake_mag, screen_shake_duration)
-
-	# Ability on_value_changed once per target for the batch
-	for i in targets:
-		var idx := int(i)
-		var c: Dictionary = contribs[idx]
-		if _is_contrib_zero_replaced(c):
-			continue
-		_invoke_on_value_changed(ctx, winner, c, int(prev_vals[idx]), _compute_value(c), {"kind":"batch","source":"winner_active"})
 
 	# Replace any tokens that hit zero during broadcast steps
 	for i in targets:
@@ -2692,25 +2729,38 @@ func _invoke_on_value_changed(ctx: Dictionary, source_token, target_contrib: Dic
 # ---------- Ability command collection/execution ----------
 func _collect_winner_ability_commands(ctx: Dictionary, contribs: Array, winner) -> Array:
 	var out: Array = []
-	if winner == null:
+	if not (contribs is Array):
 		return out
-	if winner.has_method("get"):
-		var abilities = winner.get("abilities")
-		if abilities is Array:
-			for ab in abilities:
-				if ab == null:
+	var winner_token = null
+	if winner != null and winner.has_method("get"):
+		winner_token = winner
+	# Allow non-winner abilities (winner_only = false) to emit inventory commands
+	for raw in contribs:
+		if not (raw is Dictionary):
+			continue
+		var contrib: Dictionary = raw
+		var token = contrib.get("token")
+		if token == null or not token.has_method("get"):
+			continue
+		var abilities = token.get("abilities")
+		if not (abilities is Array):
+			continue
+		var is_winner_token: bool = int(contrib.get("offset", 99)) == 0
+		for ab in abilities:
+			if ab == null:
+				continue
+			if not _ability_is_active_during_spin(ab):
+				continue
+			var requires_winner := _ability_winner_only(ab)
+			if requires_winner:
+				if not is_winner_token:
 					continue
-				# Only consider Active During Spin and winner_only abilities for commands
-				if not _ability_is_active_during_spin(ab):
-					continue
-				if not _ability_winner_only(ab):
-					continue
-				if (ab as Object).has_method("build_commands"):
-					var arr = ab.build_commands(ctx, contribs, winner)
-					if arr is Array:
-						for cmd in arr:
-							if typeof(cmd) == TYPE_DICTIONARY:
-								out.append(cmd)
+			if (ab as Object).has_method("build_commands"):
+				var arr = ab.build_commands(ctx, contribs, token)
+				if arr is Array:
+					for cmd in arr:
+						if typeof(cmd) == TYPE_DICTIONARY:
+							out.append(cmd)
 	return out
 
 func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array) -> void:
@@ -3053,7 +3103,8 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 	if owner == null or not owner.has_method("get"):
 		return
 	var prop := String(inventory_property)
-	if prop.strip_edges() == "": prop = "items"
+	if prop.strip_edges() == "":
+		prop = "items"
 	var arr = owner.get(prop)
 	if typeof(arr) != TYPE_ARRAY:
 		# Fallbacks: try common inventory properties
@@ -3069,50 +3120,73 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 			else:
 				return
 
+	var kind_norm := String(target_kind).strip_edges().to_lower()
+	var tag_norm := String(target_tag).strip_edges().to_lower()
+	var name_norm := String(target_name).strip_edges().to_lower()
+	var use_tag_offsets := kind_norm == "tag" and tag_norm != ""
+	var use_name_offsets := kind_norm == "name" and name_norm != ""
+	var use_global_offsets := kind_norm == "any"
+
+	if use_tag_offsets:
+		_token_tag_offsets[tag_norm] = int(_token_tag_offsets.get(tag_norm, 0)) + amount
+	elif use_name_offsets:
+		_token_name_offsets[name_norm] = int(_token_name_offsets.get(name_norm, 0)) + amount
+	elif use_global_offsets:
+		_token_global_offset += amount
+
 	var anchor_token = null
 	var anchor_key := ""
-	if (target_kind == "self" or target_kind == "offset" or propagate_same_key):
+	if kind_norm == "self" or kind_norm == "offset" or propagate_same_key:
 		var anchor_slot := _slot_from_ctx(ctx, target_offset)
 		if anchor_slot != null and anchor_slot.has_meta("token_data"):
 			anchor_token = anchor_slot.get_meta("token_data")
 			anchor_key = _token_key(anchor_token)
+
 	var matches_token = func(tok) -> bool:
 		if tok == null:
 			return false
-		if target_kind == "self" or target_kind == "offset":
-			if anchor_token != null:
-				return tok == anchor_token
-			return false
-		var name_ok: bool = true
-		var tag_ok: bool = true
-		if target_kind == "name" and target_name.strip_edges() != "":
-			name_ok = (_token_name(tok) == target_name)
-		if target_kind == "tag" and target_tag.strip_edges() != "":
-			tag_ok = _token_has_tag(tok, target_tag)
-		if target_kind == "any":
-			return true
-		return name_ok and tag_ok
+		match kind_norm:
+			"self", "offset":
+				if anchor_token != null:
+					return tok == anchor_token
+				return false
+			"name":
+				if name_norm != "":
+					return _normalize_token_name(_token_name(tok)) == name_norm
+				return false
+			"tag":
+				if tag_norm != "":
+					return _token_has_tag(tok, target_tag)
+				return false
+			"any":
+				return true
+			_:
+				return false
 
-	# Update per-run offsets for all matched token types
 	var affected: Dictionary = {}
-	for i in range((arr as Array).size()):
-		var tok = (arr as Array)[i]
-		var matched: bool = matches_token.call(tok)
+	var per_key_incremented: Dictionary = {}
+	var list: Array = arr
+
+	for i in range(list.size()):
+		var tok = list[i]
+		var matched: bool = bool(matches_token.call(tok))
 		if not matched and propagate_same_key and anchor_key != "":
 			matched = (_token_key(tok) == anchor_key)
 		if matched:
 			var key := _token_key(tok)
-			if affected.has(key):
-				continue
-			var cur := int(_token_value_offsets.get(key, 0))
-			_token_value_offsets[key] = cur + amount
 			affected[key] = true
+			if not use_tag_offsets and not use_name_offsets and not use_global_offsets:
+				if not per_key_incremented.has(key):
+					var cur := int(_token_value_offsets.get(key, 0))
+					_token_value_offsets[key] = cur + amount
+					per_key_incremented[key] = true
 
-	# Apply recalculated value (base + new offset) to all instances of affected types
 	var changed := false
 	var replaced_tokens: Array = []
-	for i in range((arr as Array).size()):
-		var tok = (arr as Array)[i]
+	for i in range(list.size()):
+		var tok = list[i]
+		if tok == null:
+			continue
 		var key := _token_key(tok)
 		if not affected.has(key):
 			continue
@@ -3128,14 +3202,14 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 			if empty_res is Resource:
 				var inst := (empty_res as Resource).duplicate(true)
 				_init_token_base_value(inst)
-				(arr as Array)[i] = inst
+				list[i] = inst
 				replaced_tokens.append({"old": orig_token, "new": inst})
 				changed = true
 				continue
 		changed = true
 
 	if changed:
-		owner.set(prop, arr)
+		owner.set(prop, list)
 		if owner.has_method("_update_inventory_strip"):
 			owner.call_deferred("_update_inventory_strip")
 		if ctx != null and ctx is Dictionary:
@@ -3143,7 +3217,6 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 			if not replaced_tokens.is_empty():
 				_update_slot_map_for_replacements(ctx, replaced_tokens)
 
-# Ensure a token tracks its baseline value in metadata so resets can restore it
 func _init_token_base_value(tok) -> void:
 	if tok == null:
 		return
@@ -3165,10 +3238,9 @@ func _init_token_base_value(tok) -> void:
 		if (tok as Object).has_method("set_meta"):
 			tok.set_meta("base_value", base)
 	# Apply per-run offset for this token type
-	var key := _token_key(tok)
-	var off := int(_token_value_offsets.get(key, 0))
+	var total_off := _compute_permanent_offset(tok)
 	if (tok as Object).has_method("set"):
-		tok.set("value", max(0, base + off))
+		tok.set("value", max(0, base + total_off))
 
 func _collect_on_removed_commands(ctx: Dictionary, removed_token) -> Array:
 	var out: Array = []

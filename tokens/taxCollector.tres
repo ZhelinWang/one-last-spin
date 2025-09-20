@@ -8,6 +8,7 @@
 
 [sub_resource type="Resource" id="TaxCollectorActive"]
 script = ExtResource("3_active")
+self_permanent_gain = 0
 id = "tax_collector_active"
 winner_only = true
 
@@ -19,16 +20,15 @@ propagate_same_key = true
 id = "tax_collector_passive"
 target_kind = 3
 target_tag = "coin"
-winner_only = true
 
 [resource]
 script = ExtResource("1_token")
 name = "Tax Collector"
-rarity = "rare"
+rarity = "legendary"
 icon = ExtResource("5_icon")
-value = 8
+value = 3
 tags = PackedStringArray("Worker")
 abilities = Array[ExtResource("2_abilities")]([SubResource("TaxCollectorActive"), SubResource("TaxCollectorPassive")])
-activeDescription = "Reduce the value of all triggered tokens by 2. Gain +4 value permanently."
+activeDescription = "Reduce the value of all other triggered tokens by 2."
 passiveDescription = "Permanently give all coin tokens +2."
 metadata/_custom_type_script = "uid://2lqsh3g3xqag"
