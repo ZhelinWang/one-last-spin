@@ -34,7 +34,7 @@ signal eye_hover_ended
 @export var pass_sfx: AudioStream
 @export var pass_sfx_bus: String = "SFX"
 @export var pass_sfx_volume_db: float = 0.0
-@export var pass_sfx_pitch_jitter: float = 0.05  # ±5%
+@export var pass_sfx_pitch_jitter: float = 0.05  # Â±5%
 
 # Internal state
 var items: Array[TokenLootData] = []
@@ -926,4 +926,4 @@ func _reset_array_to_base(arr: Array) -> void:
 		if (t as Object).has_method("has_meta") and t.has_meta("base_value") and (t as Object).has_method("set"):
 			var bv = t.get_meta("base_value")
 			if bv != null:
-				t.set("value", int(bv))
+				t.set("value", max(1, int(bv)))

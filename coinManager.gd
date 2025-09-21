@@ -1267,8 +1267,9 @@ func _apply_step(c: Dictionary, step: Dictionary) -> void:
 		if f < 0.0:
 			f = 0.0
 		c.mult = float(c.mult) * f
-	if int(c.base) + int(c.delta) < 0:
-		c.delta = -int(c.base)
+	# Clamp base permanent value to at least 1
+	if int(c.base) + int(c.delta) < 1:
+		c.delta = 1 - int(c.base)
 	if float(c.mult) < 0.0:
 		c.mult = 0.0
 	var after: Dictionary = {
@@ -2880,16 +2881,20 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 			print("[Commands] Could not locate target token in inventory for offset ", offset)
 		return null
 
-	var rep := ResourceLoader.load(token_path)
+	var rep: Resource = ResourceLoader.load(token_path)
 	if rep == null or not (rep is Resource):
 		return null
-	var inst := (rep as Resource).duplicate(true)
+	var inst: Resource = (rep as Resource).duplicate(true)
 	_init_token_base_value(inst)
 	# Optional: set incoming value and preserve tags
 	if inst.has_method("set") and set_value >= 0:
-		inst.set("value", set_value)
+		var clamped: int = max(1, int(set_value))
+		inst.set("value", clamped)
+		if inst.has_method("set_meta"):
+			inst.set_meta("base_value", clamped)
+		_init_token_base_value(inst)
 	if preserve_tags:
-		var src_tags = null
+		var src_tags: Variant = null
 		if target_token != null and (target_token as Object).has_method("get"):
 			src_tags = target_token.get("tags")
 		if src_tags is Array and inst.has_method("set"):
@@ -2936,7 +2941,7 @@ func _apply_token_to_slot(slot: Control, token: Resource) -> void:
 func _replace_board_tag_in_slotmap(ctx: Dictionary, target_tag: String, token_path: String) -> void:
 	if token_path.strip_edges() == "":
 		return
-	var rep := ResourceLoader.load(token_path)
+	var rep: Resource = ResourceLoader.load(token_path)
 	if rep == null or not (rep is Resource):
 		return
 	var slots := _visible_slots_from_ctx(ctx)
@@ -2948,7 +2953,7 @@ func _replace_board_tag_in_slotmap(ctx: Dictionary, target_tag: String, token_pa
 		var tok = (slot as Control).get_meta("token_data") if (slot as Control).has_meta("token_data") else null
 		if _token_has_tag(tok, target_tag):
 			_shake_slot(slot as Control)
-			var inst := (rep as Resource).duplicate(true)
+			var inst: Resource = (rep as Resource).duplicate(true)
 			_init_token_base_value(inst)
 			_apply_token_to_slot(slot as Control, inst)
 
@@ -2982,7 +2987,7 @@ func _update_slot_map_for_replacements(ctx: Dictionary, replacements: Array) -> 
 func _replace_board_empties_in_slotmap(ctx: Dictionary, token_path: String) -> void:
 	if token_path.strip_edges() == "":
 		return
-	var rep := ResourceLoader.load(token_path)
+	var rep: Resource = ResourceLoader.load(token_path)
 	if rep == null or not (rep is Resource):
 		return
 	var slots := _visible_slots_from_ctx(ctx)
@@ -2994,7 +2999,7 @@ func _replace_board_empties_in_slotmap(ctx: Dictionary, token_path: String) -> v
 		var tok = (slot as Control).get_meta("token_data") if (slot as Control).has_meta("token_data") else null
 		if _is_empty_token(tok):
 			_shake_slot(slot as Control)
-			var inst := (rep as Resource).duplicate(true)
+			var inst: Resource = (rep as Resource).duplicate(true)
 			_init_token_base_value(inst)
 			_apply_token_to_slot(slot as Control, inst)
 
@@ -3082,14 +3087,14 @@ func _replace_all_empties_in_inventory(token_path: String) -> void:
 				arr = arr_tokens
 			else:
 				return
-	var rep := ResourceLoader.load(token_path)
+	var rep: Resource = ResourceLoader.load(token_path)
 	if rep == null or not (rep is Resource):
 		return
 	var changed := false
 	for i in range((arr as Array).size()):
 		var it = (arr as Array)[i]
 		if _is_empty_token(it):
-			var inst := (rep as Resource).duplicate(true)
+			var inst: Resource = (rep as Resource).duplicate(true)
 			_init_token_base_value(inst)
 			(arr as Array)[i] = inst
 			changed = true
@@ -3197,7 +3202,8 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 			var vv2 = tok.get("value")
 			if vv2 != null:
 				curv = int(vv2)
-		if curv <= 0:
+		# Only destroy if temporary value (not base) drops below 1, or by explicit effect
+		if destroy_if_zero and curv < 1:
 			var empty_res := _load_empty_token()
 			if empty_res is Resource:
 				var inst := (empty_res as Resource).duplicate(true)
@@ -3217,12 +3223,12 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 			if not replaced_tokens.is_empty():
 				_update_slot_map_for_replacements(ctx, replaced_tokens)
 
-func _init_token_base_value(tok) -> void:
+func _init_token_base_value(tok, min_value: int = 1) -> void:
 	if tok == null:
 		return
 	if not (tok as Object).has_method("get"):
 		return
-	var base: int = 0
+	var base: int = min_value
 	var has_meta_flag: bool = false
 	if (tok as Object).has_method("has_meta"):
 		has_meta_flag = tok.has_meta("base_value")
@@ -3235,12 +3241,18 @@ func _init_token_base_value(tok) -> void:
 		if vv == null:
 			return
 		base = int(vv)
-		if (tok as Object).has_method("set_meta"):
-			tok.set_meta("base_value", base)
+	# Enforce base permanent value cannot go below 1
+	if base < min_value:
+		base = min_value
+	if (tok as Object).has_method("set_meta"):
+		tok.set_meta("base_value", base)
 	# Apply per-run offset for this token type
 	var total_off := _compute_permanent_offset(tok)
+	var final_val := base + total_off
+	if final_val < min_value:
+		final_val = min_value
 	if (tok as Object).has_method("set"):
-		tok.set("value", max(0, base + total_off))
+		tok.set("value", final_val)
 
 func _collect_on_removed_commands(ctx: Dictionary, removed_token) -> Array:
 	var out: Array = []
