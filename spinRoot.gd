@@ -73,9 +73,9 @@ func _ready() -> void:
 		artifact_xp_bar.set_segment_schedule(artifact_xp_schedule)
 
 	if class_data:
-		items = class_data.startingTokens.duplicate()
-		# Snapshot baseline values for all starting tokens
+		# Snapshot baseline values for authoring resources, then clone unique instances for the run
 		_snapshot_base_values(class_data.startingTokens)
+		items = _deep_copy_inventory(class_data.startingTokens)
 		_snapshot_base_values(items)
 	else:
 		push_error("spinRoot: class_data NOT assigned")
@@ -438,20 +438,20 @@ func _set_inventory_preview(active: bool) -> void:
 	else:
 		inventory_strip.call("set_items", items)
 
-func _deep_copy_inventory(source: Array) -> Array:
-	var out: Array = []
+func _deep_copy_inventory(source: Array[TokenLootData]) -> Array[TokenLootData]:
+	var out: Array[TokenLootData] = []
 	if source == null:
 		return out
 	for it in source:
 		if it is Resource:
-			var dup := (it as Resource).duplicate(true)
+			var dup := (it as Resource).duplicate(true) as TokenLootData
 			if dup != null:
 				_init_token_base_value(dup)
 				out.append(dup)
-			continue
-		out.append(it)
+		else:
+			out.append(it as TokenLootData)
 	return out
-
+	
 func _refresh_inventory_baseline() -> void:
 	if _spinning:
 		return
@@ -875,7 +875,7 @@ func _on_game_reset() -> void:
 	if class_data:
 		# Restore baseline values on authoring resources, then rebuild items from that list
 		_reset_array_to_base(class_data.startingTokens)
-		items = class_data.startingTokens.duplicate()
+		items = _deep_copy_inventory(class_data.startingTokens)
 		_rebuild_idle_strip()
 	else:
 		_update_inventory_strip()
