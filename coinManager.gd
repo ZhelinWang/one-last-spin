@@ -78,6 +78,10 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 @export var screen_shake_moderate_intensity := 1.5
 @export var screen_shake_heavy_intensity := 2
 @export var screen_shake_duration := 0.5
+@export var highlight_flash_color: Color = Color(0.588, 0.588, 0.588, 1.0)
+@export var highlight_flash_in_sec: float = 0.5
+@export var highlight_flash_out_sec: float = 0.5
+@export var highlight_flash_pause_sec: float = 1
 
 var total_active: int = 0
 var total_passive: int = 0
@@ -114,6 +118,12 @@ var _token_value_offsets: Dictionary = {} # key (resource_path or name) -> cumul
 var _token_tag_offsets: Dictionary = {} # normalized tag -> cumulative permanent offset for this run
 var _token_name_offsets: Dictionary = {} # normalized name -> cumulative permanent offset for this run
 var _token_global_offset: int = 0 # global permanent offset applied to all tokens
+var _effect_targets: Dictionary = {} # token_uid -> {targets: Array[int]}
+var _token_controls: Dictionary = {} # token_uid -> Array[WeakRef]
+var _current_effect_source: Object = null
+var _active_effect_highlight: Dictionary = {}
+var _highlight_tweens: Array = []
+var _next_highlight_uid: int = 1
 const META_ZERO_REPLACED := "__zero_replaced"
 const META_ZERO_REASON := "__zero_reason"
 const ZERO_REPLACEMENT_VALUE := 1
@@ -198,6 +208,9 @@ func reset_run() -> void:
 	_update_round_and_deadline_labels()
 	_update_spin_counters(true)
 	_hide_game_over()
+	_effect_targets.clear()
+	_kill_active_highlight()
+	_current_effect_source = null
 	_hide_loot_overlay()
 	emit_signal("game_reset")
 
@@ -306,6 +319,12 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 	# 1) base popup; 2) token passive; 3) artifacts; (winner active deferred)
 	for i in range(contribs.size()):
 		var c: Dictionary = contribs[i]
+		var effect_token = c.get("token")
+		if effect_token != null:
+			var slot_ctrl := _slot_from_ctx(ctx, int(c.offset))
+			if slot_ctrl is Control:
+				_register_token_control(effect_token, slot_ctrl)
+			_reset_effect_tracking_for_token(effect_token)
 		emit_signal("token_sequence_started", i, c.offset, c)
 
 		# 1) Base value popup + shake
@@ -484,7 +503,7 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 		if not late.is_empty():
 			if debug_spin:
 				print("[Commands] Found ", late.size(), " command(s). Executing...")
-			_execute_ability_commands(late, ctx, contribs)
+			_execute_ability_commands(late, ctx, contribs, winner)
 
 	if enable_game_over:
 		var spr: int = max(spins_per_round, 1)
@@ -507,6 +526,12 @@ func _apply_steps_now(i: int, c: Dictionary, steps: Array, ctx: Dictionary, sour
 				print("	[Filter] step canceled for offset=", c.offset, " src=", stepn.get("source", "unknown"))
 			continue
 		stepn = filtered
+
+		var step_source := String(stepn.get("source", ""))
+		var prev_effect_source: Variant = _current_effect_source
+		var is_effect_step := source_token != null and step_source.begins_with("ability:")
+		if is_effect_step:
+			_current_effect_source = source_token
 
 		var prev_val: int = _compute_value(c)
 		if debug_spin:
@@ -542,6 +567,13 @@ func _apply_steps_now(i: int, c: Dictionary, steps: Array, ctx: Dictionary, sour
 			if not _is_contrib_zero_replaced(c):
 				_shake_slot_for_contrib(ctx, c)
 			await _apply_screen_shake(shake_mag, screen_shake_duration)
+
+		if is_effect_step and source_token != null:
+			var target_token = c.get("token")
+			if target_token != null:
+				if source_token != target_token:
+					_register_effect_target(source_token, target_token)
+					_current_effect_source = prev_effect_source
 
 		var reason := "%s:%s" % [String(stepn.get("source", "unknown")), String(stepn.get("kind", ""))]
 		var destroyed_this_step := _maybe_replace_contrib_with_empty(ctx, c, prev_val, new_val, reason)
@@ -639,6 +671,7 @@ func _shake_slot_for_contrib(ctx: Dictionary, contrib: Dictionary) -> void:
 
 # NEW: Apply one global step across multiple tokens simultaneously
 func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Array, ctx: Dictionary) -> void:
+	var prev_effect_source: Variant = _current_effect_source
 	# Snapshot previous values
 	var prev_vals: Array[int] = []
 	prev_vals.resize(indices.size())
@@ -713,6 +746,7 @@ func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Arr
 
 	# Shared delay once per global step (not per token)
 	await _pause(step_delay_sec)
+	_current_effect_source = prev_effect_source
 
 # Winner final active hooks
 # Winner final active hooks (only abilities with winner_only=true contribute here)
@@ -1206,6 +1240,8 @@ func _on_last_spin_pressed() -> void:
 # ---------- Token calc helpers ----------
 func _mk_contrib(token, kind: String, base_val: int, offset: int) -> Dictionary:
 	var rarity_val = null
+	if token != null:
+		_ensure_token_uid(token)
 	if token != null and token.has_method("get"):
 		var rv = token.get("rarity")
 		if rv != null:
@@ -2110,6 +2146,328 @@ func _token_key(t) -> String:
 		return nm
 	return str(t)
 
+func ensure_token_uid(token: Variant) -> int:
+	return _ensure_token_uid(token)
+
+func _ensure_token_uid(token: Variant) -> int:
+	if token == null:
+		return 0
+	if not (token as Object).has_method("set_meta"):
+		return 0
+	var existing_uid := 0
+	var owner_id := 0
+	if (token as Object).has_method("has_meta"):
+		if token.has_meta("__highlight_uid"):
+			existing_uid = int(token.get_meta("__highlight_uid"))
+		if token.has_meta("__highlight_uid_owner"):
+			owner_id = int(token.get_meta("__highlight_uid_owner"))
+	var inst_id := 0
+	if (token as Object).has_method("get_instance_id"):
+		inst_id = int(token.get_instance_id())
+	if existing_uid != 0 and owner_id == inst_id and existing_uid != 0:
+		return existing_uid
+	var uid := existing_uid
+	uid = _next_highlight_uid
+	_next_highlight_uid += 1
+	token.set_meta("__highlight_uid", uid)
+	if inst_id != 0:
+		token.set_meta("__highlight_uid_owner", inst_id)
+	return uid
+
+func _reset_effect_tracking_for_token(token) -> void:
+	var uid := _ensure_token_uid(token)
+	if uid == 0:
+		return
+	_effect_targets[uid] = {"targets": [], "target_controls": [], "source_token": token, "source_controls": []}
+
+func _prepare_effect_tracking(token: Variant) -> Dictionary:
+	var uid := _ensure_token_uid(token)
+	if uid == 0:
+		return {}
+	var entry_var: Variant = _effect_targets.get(uid)
+	var entry: Dictionary = entry_var if entry_var is Dictionary else {}
+	if entry.is_empty():
+		entry = {"targets": [], "target_controls": [], "source_token": token, "source_controls": []}
+		_effect_targets[uid] = entry
+	else:
+		entry["source_token"] = token
+	if not entry.has("target_controls"):
+		entry["target_controls"] = []
+	if not entry.has("source_controls"):
+		entry["source_controls"] = []
+	var src_controls = _get_controls_for_uid(uid)
+	_append_control_refs(entry, "source_controls", src_controls)
+	return entry
+
+func _register_effect_target(source_token: Variant, target_token: Variant) -> void:
+	if source_token == null or target_token == null:
+		return
+	var entry: Dictionary = _prepare_effect_tracking(source_token)
+	if entry.is_empty():
+		return
+	var target_uid := _ensure_token_uid(target_token)
+	if target_uid == 0:
+		return
+	var targets_var: Variant = entry.get("targets", [])
+	var targets: Array = targets_var if targets_var is Array else []
+	if not targets.has(target_uid):
+		targets.append(target_uid)
+	entry["targets"] = targets
+	var target_controls = _get_controls_for_uid(target_uid)
+	_append_control_refs(entry, "target_controls", target_controls)
+
+func _register_effect_target_current(target_token: Variant) -> void:
+	if _current_effect_source == null:
+		return
+	if _current_effect_source != target_token:
+		_register_effect_target(_current_effect_source, target_token)
+
+func register_token_control(token: Variant, control: Control) -> void:
+	_register_token_control(token, control)
+
+func unregister_token_control(token: Variant, control: Control) -> void:
+	_unregister_token_control(token, control)
+
+func _register_token_control(token: Variant, control: Control) -> void:
+	if token == null or control == null:
+		return
+	var uid := _ensure_token_uid(token)
+	if uid == 0:
+		return
+	var list: Array = _token_controls.get(uid, [])
+	list = _cleanup_token_controls(uid, list)
+	var ref: WeakRef = weakref(control)
+	for existing in list:
+		if existing is WeakRef and existing.get_ref() == control:
+			return
+	list.append(ref)
+	_token_controls[uid] = list
+	control.set_meta("__highlight_uid", uid)
+	var entry_var = _effect_targets.get(uid)
+	if entry_var is Dictionary:
+		var entry: Dictionary = entry_var
+		_append_control_refs(entry, "source_controls", [control])
+	var child := control.get_node_or_null("slotItem")
+	if child is Control:
+		_register_token_control(token, child)
+
+func _unregister_token_control(token: Variant, control: Control) -> void:
+
+	if token == null or control == null:
+
+		return
+
+	var uid := _ensure_token_uid(token)
+
+	if uid == 0:
+
+		return
+
+	var list: Array = _token_controls.get(uid, [])
+
+	var cleaned: Array = []
+
+	for existing in list:
+
+		if not (existing is WeakRef):
+
+			continue
+
+		var ctrl: Variant = existing.get_ref()
+
+		if ctrl == null:
+
+			continue
+
+		if ctrl == control:
+
+			if control.has_meta("__highlight_uid"):
+
+				control.set_meta("__highlight_uid", null)
+
+			continue
+
+		cleaned.append(existing)
+
+	_token_controls[uid] = cleaned
+
+	var child := control.get_node_or_null("slotItem")
+
+	if child is Control:
+
+		_unregister_token_control(token, child)
+
+
+
+
+func _cleanup_token_controls(uid: int, list: Array = []) -> Array:
+	var cleaned: Array = []
+	for existing in list:
+		if not (existing is WeakRef):
+			continue
+		var ctrl: Variant = existing.get_ref()
+		if ctrl == null:
+			continue
+		cleaned.append(existing)
+	_token_controls[uid] = cleaned
+	var entry_var = _effect_targets.get(uid)
+	if entry_var is Dictionary:
+		var entry: Dictionary = entry_var
+		_prune_control_refs(entry, "source_controls")
+		_prune_control_refs(entry, "target_controls")
+	return cleaned
+
+func _get_controls_for_uid(uid: int) -> Array:
+	var list: Array = _token_controls.get(uid, [])
+	list = _cleanup_token_controls(uid, list)
+	var controls: Array = []
+	for existing in list:
+		if not (existing is WeakRef):
+			continue
+		var ctrl: Variant = existing.get_ref()
+		if ctrl is Control:
+			controls.append(ctrl)
+	return controls
+
+func _controls_from_refs(refs_variant) -> Array:
+	var out: Array = []
+	if refs_variant is Array:
+		var refs: Array = refs_variant
+		for ref in refs:
+			if not (ref is WeakRef):
+				continue
+			var ctrl = ref.get_ref()
+			if ctrl is Control:
+				out.append(ctrl)
+	return out
+
+func _append_control_refs(entry: Dictionary, key: String, controls: Array) -> void:
+	var refs_variant = entry.get(key, [])
+	var refs: Array = refs_variant if refs_variant is Array else []
+	var changed := false
+	for ctrl in controls:
+		if ctrl == null or not (ctrl is Control):
+			continue
+		var exists := false
+		for ref in refs:
+			if ref is WeakRef and ref.get_ref() == ctrl:
+				exists = true
+				break
+		if exists:
+			continue
+		refs.append(weakref(ctrl))
+		changed = true
+	if changed:
+		entry[key] = refs
+
+func _prune_control_refs(entry: Dictionary, key: String) -> void:
+	var refs_variant = entry.get(key, [])
+	if not (refs_variant is Array):
+		return
+	var refs: Array = refs_variant
+	var cleaned: Array = []
+	for ref in refs:
+		if not (ref is WeakRef):
+			continue
+		var ctrl = ref.get_ref()
+		if ctrl is Control:
+			cleaned.append(ref)
+	entry[key] = cleaned
+
+func start_effect_highlight_for_token(token: Variant) -> void:
+	_kill_active_highlight()
+	var uid := _ensure_token_uid(token)
+	if uid == 0:
+		return
+	var entry_var: Variant = _effect_targets.get(uid)
+	if entry_var == null:
+		return
+	var entry: Dictionary = entry_var if entry_var is Dictionary else {}
+	if entry.is_empty():
+		return
+	var recorded_source = entry.get("source_token")
+	if recorded_source != null and recorded_source != token:
+		return
+	var targets_var: Variant = entry.get("targets", [])
+	var targets: Array = targets_var if targets_var is Array else []
+	if targets.is_empty():
+		return
+	_active_effect_highlight = {"source": uid, "targets": targets.duplicate()}
+	_start_highlight_flash(uid, targets)
+
+func stop_effect_highlight_for_token(_token: Variant = null) -> void:
+	_kill_active_highlight()
+
+func _start_highlight_flash(source_uid: int, target_uids: Array) -> void:
+	var controls: Array = []
+	var entry: Dictionary = {}
+	var entry_var = _effect_targets.get(source_uid)
+	if entry_var is Dictionary:
+		entry = entry_var
+		_prune_control_refs(entry, "source_controls")
+		_prune_control_refs(entry, "target_controls")
+		var stored_source := _controls_from_refs(entry.get("source_controls", []))
+		for ctrl in stored_source:
+			if ctrl != null and not controls.has(ctrl):
+				controls.append(ctrl)
+		var stored_targets := _controls_from_refs(entry.get("target_controls", []))
+		for ctrl in stored_targets:
+			if ctrl != null and not controls.has(ctrl):
+				controls.append(ctrl)
+	var source_controls: Array = _get_controls_for_uid(source_uid)
+	for ctrl in source_controls:
+		if ctrl != null and not controls.has(ctrl):
+			controls.append(ctrl)
+	if not entry.is_empty():
+		_append_control_refs(entry, "source_controls", source_controls)
+	for uid in target_uids:
+		var uid_int := int(uid)
+		if uid_int == source_uid:
+			continue
+		var target_controls: Array = _get_controls_for_uid(uid_int)
+		for ctrl in target_controls:
+			if ctrl != null and not controls.has(ctrl):
+				controls.append(ctrl)
+		if not entry.is_empty():
+			_append_control_refs(entry, "target_controls", target_controls)
+	if controls.is_empty():
+		return
+	var unique_controls: Array = []
+	for ctrl in controls:
+		if ctrl != null and not unique_controls.has(ctrl):
+			unique_controls.append(ctrl)
+	_highlight_tweens.clear()
+	var entries: Array = []
+	for ctrl in unique_controls:
+		if not (ctrl is CanvasItem):
+			continue
+		var base_color: Color = ctrl.modulate
+		var entry_dict := {"control": ctrl, "base": base_color}
+		entries.append(entry_dict)
+		var tween := create_tween()
+		tween.set_loops(0)
+		_highlight_tweens.append(tween)
+		tween.tween_property(ctrl, "modulate", highlight_flash_color, max(0.01, highlight_flash_in_sec)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tween.tween_property(ctrl, "modulate", base_color, max(0.01, highlight_flash_out_sec)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		if highlight_flash_pause_sec > 0.0:
+			tween.tween_interval(highlight_flash_pause_sec)
+	_active_effect_highlight["entries"] = entries
+
+func _kill_active_highlight() -> void:
+	for tween in _highlight_tweens:
+		if tween != null and tween is Tween:
+			tween.kill()
+	_highlight_tweens.clear()
+	if _active_effect_highlight.has("entries"):
+		for entry in _active_effect_highlight["entries"]:
+			if typeof(entry) != TYPE_DICTIONARY:
+				continue
+			var ctrl = entry.get("control")
+			var base_color = entry.get("base")
+			if is_instance_valid(ctrl) and base_color is Color:
+				ctrl.modulate = base_color
+	_active_effect_highlight.clear()
+
 func _collect_token_tags(tok) -> Array:
 	var out: Array = []
 	if tok == null or not tok.has_method("get"):
@@ -2296,6 +2654,10 @@ func _set_node_text(node: Node, txt: String) -> void:
 # Apply all winner global steps to all matching tokens simultaneously (single shared delay)
 func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Dictionary, winner) -> void:
 	_shake_active_effect_label()
+	var prev_effect_source: Variant = _current_effect_source
+	if winner != null:
+		_prepare_effect_tracking(winner)
+		_current_effect_source = winner
 	await _pause(active_desc_pause_sec)
 
 	# After the active effect label shake, run any board-visual commands (e.g., Mint replacing coins on board)
@@ -2303,14 +2665,14 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 	if __board_cmds is Array and not (__board_cmds as Array).is_empty():
 		if debug_spin:
 			print("[Board-Visual] Executing ", int((__board_cmds as Array).size()), " command(s) after shake")
-		_execute_ability_commands(__board_cmds, ctx, contribs)
+		_execute_ability_commands(__board_cmds, ctx, contribs, winner)
 
 	# Also run any post-shake inventory commands (e.g., Hustler permanent_add) before totals
 	var __post_cmds = ctx.get("__post_shake_cmds")
 	if __post_cmds is Array and not (__post_cmds as Array).is_empty():
 		if debug_spin:
 			print("[Post-Shake] Executing ", int((__post_cmds as Array).size()), " inventory command(s)")
-		_execute_ability_commands(__post_cmds, ctx, contribs)
+		_execute_ability_commands(__post_cmds, ctx, contribs, winner)
 
 		# Visual confirmation: if a self-target permanent_add was applied by the winner, show +amt on each same-type token
 		var self_amt: int = 0
@@ -2361,6 +2723,7 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 			steps_by_index[i] = lst
 
 	if targets.is_empty():
+		_current_effect_source = prev_effect_source
 		return
 
 	# Snapshot previous values per target
@@ -2385,6 +2748,11 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 			_apply_step(c, stepn)
 			var base_new_val := _compute_value(c)
 			_invoke_on_value_changed(ctx, winner, c, prev_val, base_new_val, stepn)
+			if _current_effect_source != null and String(stepn.get("source", "")).begins_with("ability:"):
+				var target_token: Variant = c.get("token")
+				if target_token != null:
+					if _current_effect_source != target_token:
+						_register_effect_target(_current_effect_source, target_token)
 			var new_val := _compute_value(c)
 			var delta := new_val - prev_val
 			var shake_mag := 0.0
@@ -2805,13 +3173,25 @@ func _collect_winner_ability_commands(ctx: Dictionary, contribs: Array, winner) 
 				if arr is Array:
 					for cmd in arr:
 						if typeof(cmd) == TYPE_DICTIONARY:
-							out.append(cmd)
+							var cmd_dict: Dictionary = (cmd as Dictionary).duplicate(true)
+							cmd_dict["__effect_source_token"] = token
+							cmd_dict["__ability_ref"] = ab
+							if not cmd_dict.has("source"):
+								cmd_dict["source"] = "ability:" + _ability_id_or_class(ab)
+							out.append(cmd_dict)
 	return out
 
-func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array) -> void:
+func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, effect_source: Variant = null) -> void:
 	for cmd in cmds:
 		if typeof(cmd) != TYPE_DICTIONARY:
 			continue
+		var cmd_source: Variant = effect_source
+		if (cmd as Dictionary).has("__effect_source_token"):
+			cmd_source = (cmd as Dictionary)["__effect_source_token"]
+		var prev_effect_source: Variant = _current_effect_source
+		if cmd_source != null:
+			_prepare_effect_tracking(cmd_source)
+			_current_effect_source = cmd_source
 		var op := String((cmd as Dictionary).get("op", "")).to_lower()
 		match op:
 			"replace_at_offset":
@@ -2865,6 +3245,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array) -
 				if debug_spin:
 					print("[Commands] Unknown op: ", op)
 
+		_current_effect_source = prev_effect_source
 func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 	if contribs == null or not (contribs is Array):
 		return
@@ -3235,7 +3616,7 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	if target_token != null:
 		var removed_cmds := _collect_on_removed_commands(ctx, target_token)
 		if removed_cmds is Array and not removed_cmds.is_empty():
-			_execute_ability_commands(removed_cmds, ctx, [])
+			_execute_ability_commands(removed_cmds, ctx, [], target_token)
 
 	var owner := _resolve_inventory_owner_node()
 	if owner == null:
@@ -3285,6 +3666,7 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 		return null
 	var inst: Resource = (rep as Resource).duplicate(true)
 	_init_token_base_value(inst)
+	_ensure_token_uid(inst)
 	# Optional: set incoming value and preserve tags
 	if inst.has_method("set") and set_value >= 0:
 		var clamped: int = max(1, int(set_value))
@@ -3312,13 +3694,23 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	if ctx != null and ctx is Dictionary:
 		ctx["board_tokens"] = _get_inventory_array()
 
+	_register_effect_target_current(inst)
+
 	return inst
 
 func _apply_token_to_slot(slot: Control, token: Resource) -> void:
 	if slot == null or token == null:
 		return
 	# Update meta used everywhere
+	var prev_token = null
+	if slot.has_meta("token_data"):
+		prev_token = slot.get_meta("token_data")
+		if prev_token != null:
+			_unregister_token_control(prev_token, slot)
+	_ensure_token_uid(token)
 	slot.set_meta("token_data", token)
+	_register_token_control(token, slot)
+	_register_effect_target_current(token)
 	# Try preferred API: set exported `data` property on the root control
 	var has_data_prop := false
 	for p in slot.get_property_list():
@@ -3495,7 +3887,9 @@ func _replace_all_empties_in_inventory(token_path: String, ctx: Variant = null) 
 		if _is_empty_token(it):
 			var inst: Resource = (rep as Resource).duplicate(true)
 			_init_token_base_value(inst)
+			_ensure_token_uid(inst)
 			(arr as Array)[i] = inst
+			_register_effect_target_current(inst)
 			changed = true
 	if changed:
 		owner.set(prop, arr)
@@ -3610,11 +4004,15 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 			if empty_res is Resource:
 				var inst := (empty_res as Resource).duplicate(true)
 				_init_token_base_value(inst)
+				_ensure_token_uid(inst)
 				list[i] = inst
 				replaced_tokens.append({"old": orig_token, "new": inst})
+				_register_effect_target_current(inst)
 				changed = true
 				continue
 		changed = true
+		_ensure_token_uid(tok)
+		_register_effect_target_current(tok)
 
 	if changed:
 		owner.set(prop, list)
@@ -3660,8 +4058,10 @@ func _destroy_inventory_coins(max_to_destroy: int, ctx: Dictionary) -> int:
 			continue
 		var inst: Resource = (empty_res as Resource).duplicate(true)
 		_init_token_base_value(inst)
+		_ensure_token_uid(inst)
 		(arr as Array)[i] = inst
 		replaced_tokens.append({"old": tok, "new": inst})
+		_register_effect_target_current(inst)
 		destroyed += 1
 	if destroyed == 0:
 		return 0
@@ -3679,6 +4079,7 @@ func _init_token_base_value(tok, min_value: int = 1) -> void:
 		return
 	if not (tok as Object).has_method("get"):
 		return
+	_ensure_token_uid(tok)
 	var base: int = min_value
 	var has_meta_flag: bool = false
 	if (tok as Object).has_method("has_meta"):

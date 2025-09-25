@@ -5,6 +5,7 @@ class_name TooltipSpawner
 var _tooltip: TokenTooltipView
 var _owner_ctrl: Control
 var _overlay_root: CanvasItem
+var _highlight_token = null
 
 func _ready() -> void:
 	_owner_ctrl = get_parent() as Control
@@ -26,6 +27,7 @@ func _on_entered() -> void:
 	if _owner_ctrl != null:
 		data = _owner_ctrl.get_meta("token_data") as TokenLootData
 	if data == null:
+		_highlight_token = null
 		return
 	if _overlay_root == null:
 		_overlay_root = get_tree().current_scene
@@ -44,8 +46,16 @@ func _on_entered() -> void:
 	_tooltip.set_data(data)
 	_tooltip.visible = true
 	_position_tooltip()
+	_highlight_token = data
+	var coin_mgr := get_node_or_null("/root/coinManager")
+	if coin_mgr != null and coin_mgr.has_method("start_effect_highlight_for_token"):
+		coin_mgr.call("start_effect_highlight_for_token", data)
 
 func _on_exited() -> void:
+	var coin_mgr := get_node_or_null("/root/coinManager")
+	if coin_mgr != null and coin_mgr.has_method("stop_effect_highlight_for_token") and _highlight_token != null:
+		coin_mgr.call("stop_effect_highlight_for_token", _highlight_token)
+	_highlight_token = null
 	if is_instance_valid(_tooltip):
 		_tooltip.queue_free()
 		_tooltip = null

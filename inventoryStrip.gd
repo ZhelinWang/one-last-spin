@@ -54,18 +54,28 @@ func _clone_items(items: Array) -> Array:
 	var out: Array = []
 	if items == null:
 		return out
+	var coin_mgr := get_node_or_null("/root/coinManager")
 	for it in items:
+		var dup: Variant = it
 		if it is Resource:
-			var dup := (it as Resource).duplicate(true)
-			if dup != null:
-				out.append(dup)
-				continue
-		out.append(it)
+			var uid := 0
+			if coin_mgr != null and coin_mgr.has_method("ensure_token_uid"):
+				uid = int(coin_mgr.call("ensure_token_uid", it))
+			dup = (it as Resource).duplicate(true)
+			if dup != null and uid != 0 and (dup as Object).has_method("set_meta"):
+				dup.set_meta("__highlight_uid", uid)
+				if (dup as Object).has_method("get_instance_id"):
+					dup.set_meta("__highlight_uid_owner", int(dup.get_instance_id()))
+		if dup != null:
+			out.append(dup)
+		else:
+			out.append(it)
 	return out
 
 func _apply_items(items: Array) -> void:
 	_items.clear()
 	_counts.clear()
+	var coin_mgr := get_node_or_null("/root/coinManager")
 	for it in items:
 		if it == null:
 			continue
@@ -115,6 +125,7 @@ func _render() -> void:
 	if _items.is_empty():
 		return
 	# Build a stable order of unique tokens (by key)
+	var coin_mgr := get_node_or_null("/root/coinManager")
 	var seen: Dictionary = {}
 	for td in _items:
 		if td == null:
@@ -133,6 +144,8 @@ func _render() -> void:
 		holder.mouse_filter = Control.MOUSE_FILTER_STOP
 		# Attach token data for tooltip system to read from this control
 		holder.set_meta("token_data", td)
+		if coin_mgr != null and coin_mgr.has_method("register_token_control"):
+			coin_mgr.call("register_token_control", td, holder)
 		# Inventory tooltips should show base values only
 		holder.set_meta("tooltip_base_only", true)
 
