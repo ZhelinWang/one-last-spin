@@ -87,14 +87,69 @@ func test_apply_permanent_add_inventory_propagates_same_key() -> void:
 	assert_eq(ctx["board_tokens"].size(), 3, "context board tokens should refresh inventory snapshot")
 	assert_eq(coin_manager._token_value_offsets.get("coin", 0), 2, "per-run offset should track one increment per key")
 
-func test_collect_on_removed_commands_returns_executive_penalty() -> void:
+func test_collect_on_removed_commands_destroys_coins_for_executive() -> void:
+	var coin_template := load(COIN_TOKEN_PATH)
+	var coin_a := coin_template.duplicate(true)
+	var coin_b := coin_template.duplicate(true)
+	var coin_c := coin_template.duplicate(true)
+	var owner := _add_inventory_owner([coin_a, coin_b, coin_c])
+
+	var slot_a := Control.new()
+	slot_a.set_meta("token_data", coin_a)
+	add_child_autofree(slot_a)
+	var slot_b := Control.new()
+	slot_b.set_meta("token_data", coin_b)
+	add_child_autofree(slot_b)
+	var slot_c := Control.new()
+	slot_c.set_meta("token_data", coin_c)
+	add_child_autofree(slot_c)
+
+	var ctx := {
+		"slot_map": {0: slot_a, 1: slot_b, 2: slot_c}
+	}
+
 	var exec_token := load(EXECUTIVE_TOKEN_PATH).duplicate(true)
-	exec_token.set("value", 4)
-	var cmds := coin_manager._collect_on_removed_commands({}, exec_token)
-	assert_true(cmds.size() > 0, "executive should emit a removal penalty command")
-	var found := false
-	for cmd in cmds:
-		if typeof(cmd) == TYPE_DICTIONARY and String(cmd.get("op", "")) == "adjust_run_total":
-			assert_eq(cmd.get("amount", 0), -20, "penalty amount should be -5x token value")
-			found = true
-	assert_true(found, "penalty command should be present for executive fallback")
+	var cmds := coin_manager._collect_on_removed_commands(ctx, exec_token)
+	assert_eq(cmds.size(), 0, "executive fallback should not emit extra commands")
+	assert_true(coin_manager._is_empty_token(owner.items[0]), "first coin should be replaced with an empty")
+	assert_true(coin_manager._is_empty_token(owner.items[1]), "second coin should be replaced with an empty")
+	assert_true(coin_manager._token_has_tag(owner.items[2], "coin"), "third coin should remain intact")
+	assert_true(ctx.has("board_tokens"), "context should capture refreshed board tokens")
+	var empties := 0
+	for token in ctx["board_tokens"]:
+		if coin_manager._is_empty_token(token):
+			empties += 1
+	assert_eq(empties, 2, "two empties should be present after destruction")
+
+func test_resync_permanent_add_updates_triggered_coin() -> void:
+	var coin_template := load(COIN_TOKEN_PATH)
+	var coin := coin_template.duplicate(true)
+	coin.set("value", 2)
+	var owner := _add_inventory_owner([coin])
+
+	var slot := Control.new()
+	slot.set_meta("token_data", coin)
+	add_child_autofree(slot)
+
+	var contrib := {
+		"offset": 0,
+		"token": coin,
+		"base": 2,
+		"delta": 0,
+		"mult": 1.0,
+		"steps": [],
+		"meta": {}
+	}
+	var contribs := [contrib]
+	var ctx := {
+		"slot_map": {0: slot}
+	}
+
+	coin_manager._apply_permanent_add_inventory("tag", 0, "coin", "", -1, false, ctx, false)
+	coin_manager._resync_contribs_from_board(ctx, contribs)
+
+	assert_eq(contrib["base"], 1, "coin base should drop by 1 after permanent add")
+	assert_eq(coin_manager._compute_value(contrib), 1, "triggered coin value should reflect updated base")
+	assert_true(contrib.has("steps") and contrib["steps"] is Array and !contrib["steps"].is_empty(), "resync should log a replacement/value step")
+	assert_true(ctx.has("board_tokens"), "context should refresh board snapshot after permanent add")
+	assert_eq(owner.items[0].get("value"), 1, "inventory coin should match updated value")

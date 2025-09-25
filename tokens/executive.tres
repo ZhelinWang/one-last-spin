@@ -18,5 +18,5 @@ value = 11
 tags = PackedStringArray("Worker")
 abilities = Array[ExtResource("2_abilities")]([SubResource("Resource_executive_active")])
 activeDescription = "Replace the lowest value triggered token with a coin."
-passiveDescription = "When removed, also lose 5x this token's value."
+passiveDescription = "When removed, destroy up to 2 Coins from your inventory."
 metadata/_custom_type_script = "uid://2lqsh3g3xqag"

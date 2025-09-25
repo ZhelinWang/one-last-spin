@@ -1,4 +1,4 @@
-extends Node
+﻿extends Node
 class_name CoinManager
 
 signal spin_sequence_started(ctx)
@@ -2065,6 +2065,13 @@ func _token_has_tag(t, tag: String) -> bool:
 				return true
 	return false
 
+func _token_is_coin(t) -> bool:
+	if t == null:
+		return false
+	if _token_has_tag(t, "coin"):
+		return true
+	return _token_name(t).to_lower() == "coin"
+
 func _token_key(t) -> String:
 	if t is Resource and (t as Resource).resource_path != "":
 		return String((t as Resource).resource_path)
@@ -2776,9 +2783,11 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array) -
 				var set_value := int((cmd as Dictionary).get("set_value", -1))
 				var preserve_tags := bool((cmd as Dictionary).get("preserve_tags", false))
 				_replace_token_at_offset(ctx, off, token_path, set_value, preserve_tags)
+				_resync_contribs_from_board(ctx, _contribs)
 			"replace_all_empties":
 				var token_path2 := String((cmd as Dictionary).get("token_path", ""))
 				_replace_all_empties_in_inventory(token_path2)
+				_resync_contribs_from_board(ctx, _contribs)
 			"permanent_add":
 				var tk := String((cmd as Dictionary).get("target_kind", "any")).to_lower()
 				var toff := int((cmd as Dictionary).get("target_offset", 0))
@@ -2788,13 +2797,16 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array) -
 				var diz := bool((cmd as Dictionary).get("destroy_if_zero", false))
 				var propagate_same_key := bool((cmd as Dictionary).get("propagate_same_key", false))
 				_apply_permanent_add_inventory(tk, toff, ttag, tname, amt2, diz, ctx, propagate_same_key)
+				_resync_contribs_from_board(ctx, _contribs)
 			"replace_board_tag":
 				var tag := String((cmd as Dictionary).get("target_tag", ""))
 				var tpath := String((cmd as Dictionary).get("token_path", ""))
 				_replace_board_tag_in_slotmap(ctx, tag, tpath)
+				_resync_contribs_from_board(ctx, _contribs)
 			"replace_board_empties":
 				var tpath2 := String((cmd as Dictionary).get("token_path", ""))
 				_replace_board_empties_in_slotmap(ctx, tpath2)
+				_resync_contribs_from_board(ctx, _contribs)
 			"adjust_run_total":
 				var amt := int((cmd as Dictionary).get("amount", 0))
 				if amt != 0:
@@ -2805,9 +2817,85 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array) -
 				var empty_res := _load_empty_token()
 				if empty_res != null and empty_res is Resource:
 					_replace_token_at_offset(ctx, off2, (empty_res as Resource).resource_path, -1, false)
+					_resync_contribs_from_board(ctx, _contribs)
 			_:
 				if debug_spin:
 					print("[Commands] Unknown op: ", op)
+
+func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
+	if contribs == null or not (contribs is Array):
+		return
+	for i in range(contribs.size()):
+		var entry = contribs[i]
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var contrib: Dictionary = entry
+		var prev_base := int(contrib.get("base", 0))
+		var prev_delta := int(contrib.get("delta", 0))
+		var prev_mult := float(contrib.get("mult", 1.0))
+		var prev_total := _compute_value(contrib)
+
+		var slot: Control = null
+		if ctx != null:
+			var off := int(contrib.get("offset", 999))
+			slot = _slot_from_ctx(ctx, off)
+		var slot_token = null
+		if slot != null and slot.has_meta("token_data"):
+			slot_token = slot.get_meta("token_data")
+
+		var prev_token = contrib.get("token")
+		var token = slot_token if slot_token != null else prev_token
+		if token == null:
+			continue
+		var token_changed: bool = prev_token != token
+		contrib["token"] = token
+		if token_changed:
+			contrib["delta"] = 0
+			contrib["mult"] = 1.0
+			contrib["steps"] = []
+
+		if token != null and (token as Object).has_method("get"):
+			var val = token.get("value")
+			if val != null:
+				contrib["base"] = max(int(val), 0)
+			var rarity_val = token.get("rarity")
+			if rarity_val != null and contrib.has("meta") and typeof(contrib["meta"]) == TYPE_DICTIONARY:
+				contrib["meta"]["rarity"] = rarity_val
+
+		if contrib.has("meta") and typeof(contrib["meta"]) == TYPE_DICTIONARY:
+			var meta = contrib["meta"]
+			meta["description"] = _get_token_description(token, String(contrib.get("kind", "")))
+			contrib["meta"] = meta
+
+		var new_total := _compute_value(contrib)
+		if token_changed or new_total != prev_total:
+			var steps_arr: Array = []
+			if contrib.has("steps") and typeof(contrib["steps"]) == TYPE_ARRAY:
+				steps_arr = contrib["steps"]
+			var before_info := {"base": prev_base, "delta": prev_delta, "mult": prev_mult, "val": prev_total}
+			var after_info := {"base": int(contrib.get("base", 0)), "delta": int(contrib.get("delta", 0)), "mult": float(contrib.get("mult", 1.0)), "val": new_total}
+			var delta_val := new_total - prev_total
+			var mult_change := float(contrib.get("mult", 1.0))
+			if prev_mult != 0.0:
+				mult_change = mult_change / prev_mult
+			var step_kind := "replace" if token_changed else "add"
+			var step_source := "command:%s" % ("replace" if token_changed else "value_sync")
+			var step_desc := "Token replaced" if token_changed else "Value adjusted"
+			var step_log := {
+				"source": step_source,
+				"kind": step_kind,
+				"desc": step_desc,
+				"before": before_info,
+				"after": after_info,
+				"add_applied": delta_val,
+				"mult_applied": mult_change
+			}
+			steps_arr.append(step_log)
+			contrib["steps"] = steps_arr
+			if ctx != null:
+				var from_val := 0 if token_changed else prev_total
+				_play_counting_popup(ctx, contrib, from_val, new_total, token_changed)
+			_invoke_on_value_changed(ctx, null, contrib, prev_total, new_total, step_log)
 
 func _resolve_inventory_owner_node() -> Node:
 	var owner := get_node_or_null(inventory_owner_path)
@@ -3223,6 +3311,55 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 			if not replaced_tokens.is_empty():
 				_update_slot_map_for_replacements(ctx, replaced_tokens)
 
+func _destroy_inventory_coins(max_to_destroy: int, ctx: Dictionary) -> int:
+	if max_to_destroy <= 0:
+		return 0
+	var owner := _resolve_inventory_owner_node()
+	if owner == null or not owner.has_method("get"):
+		return 0
+	var prop := String(inventory_property)
+	if prop.strip_edges() == "":
+		prop = "items"
+	var arr = owner.get(prop)
+	if typeof(arr) != TYPE_ARRAY:
+		var arr_items = owner.get("items")
+		if typeof(arr_items) == TYPE_ARRAY:
+			prop = "items"
+			arr = arr_items
+		else:
+			var arr_tokens = owner.get("tokens")
+			if typeof(arr_tokens) == TYPE_ARRAY:
+				prop = "tokens"
+				arr = arr_tokens
+			else:
+				return 0
+	var empty_res := _load_empty_token()
+	if empty_res == null or not (empty_res is Resource):
+		return 0
+	var destroyed := 0
+	var replaced_tokens: Array = []
+	for i in range((arr as Array).size()):
+		if destroyed >= max_to_destroy:
+			break
+		var tok = (arr as Array)[i]
+		if not _token_is_coin(tok):
+			continue
+		var inst: Resource = (empty_res as Resource).duplicate(true)
+		_init_token_base_value(inst)
+		(arr as Array)[i] = inst
+		replaced_tokens.append({"old": tok, "new": inst})
+		destroyed += 1
+	if destroyed == 0:
+		return 0
+	owner.set(prop, arr)
+	if owner.has_method("_update_inventory_strip"):
+		owner.call_deferred("_update_inventory_strip")
+	if ctx is Dictionary:
+		ctx["board_tokens"] = _get_inventory_array()
+		if not replaced_tokens.is_empty():
+			_update_slot_map_for_replacements(ctx, replaced_tokens)
+	return destroyed
+
 func _init_token_base_value(tok, min_value: int = 1) -> void:
 	if tok == null:
 		return
@@ -3282,12 +3419,8 @@ func _collect_on_removed_commands(ctx: Dictionary, removed_token) -> Array:
 	# Fallback for Executive if no ability authored
 	var name_l := _token_name(removed_token).to_lower()
 	if name_l == "executive" or _token_has_tag(removed_token, "executive"):
-		# Lose 5x removed token's value
-		var v = 0
-		if (removed_token as Object).has_method("get"):
-			var vv = removed_token.get("value")
-			if vv != null: v = int(vv)
-		if v > 0:
-			out.append({"op":"adjust_run_total", "amount": -5 * v, "source": "token:Executive", "desc": "Executive removal penalty"})
+		var destroyed := _destroy_inventory_coins(2, ctx)
+		if debug_spin and destroyed > 0:
+			print("[Executive] Destroyed %d coin(s) on removal" % destroyed)
 
 	return out

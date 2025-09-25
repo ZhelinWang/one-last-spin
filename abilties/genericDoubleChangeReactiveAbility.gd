@@ -31,7 +31,9 @@ func on_value_changed(ctx: Dictionary, prev_val: int, new_val: int, source_token
 	if extra == 0:
 		return
 
+	var final_val := new_val + extra
 	target_contrib["delta"] = int(target_contrib.get("delta", 0)) + extra
+	_update_last_step_log(target_contrib, extra, final_val)
 
 	if key != "":
 		processed[key] = true
@@ -55,6 +57,27 @@ func _ensure_owner(target_token) -> bool:
 			_owner_token = target_token
 			return true
 	return false
+
+func _update_last_step_log(target_contrib: Dictionary, extra: int, final_value: int) -> void:
+	var steps_var = target_contrib.get("steps")
+	if not (steps_var is Array):
+		return
+	var steps: Array = steps_var
+	if steps.is_empty():
+		return
+	var idx := steps.size() - 1
+	var last = steps[idx]
+	if typeof(last) != TYPE_DICTIONARY:
+		return
+	var last_dict: Dictionary = last
+	if last_dict.has("after") and typeof(last_dict["after"]) == TYPE_DICTIONARY:
+		var after: Dictionary = last_dict["after"]
+		after["delta"] = int(target_contrib.get("delta", 0))
+		after["val"] = max(int(final_value), 0)
+		last_dict["after"] = after
+	last_dict["add_applied"] = int(last_dict.get("add_applied", 0)) + extra
+	steps[idx] = last_dict
+	target_contrib["steps"] = steps
 
 func _owner_instance_id() -> int:
 	if _owner_token == null:
