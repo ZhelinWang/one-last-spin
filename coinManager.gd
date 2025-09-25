@@ -79,8 +79,8 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 @export var screen_shake_heavy_intensity := 2
 @export var screen_shake_duration := 0.5
 @export var highlight_flash_color: Color = Color(0.471, 0.471, 0.471, 1.0)
-@export var highlight_flash_in_sec: float = 0.5
-@export var highlight_flash_out_sec: float = 0.5
+@export var highlight_flash_in_sec: float = 0.8
+@export var highlight_flash_out_sec: float = 0.8
 @export var highlight_flash_pause_sec: float = 1.5
 
 var total_active: int = 0
@@ -3546,6 +3546,16 @@ func _refresh_contrib_log_with_steps(contrib: Dictionary, ability, existing: Arr
 			if _remove_log_effect(contrib, log):
 				changed = true
 			steps.remove_at(idx)
+	# If there are more new steps than existing logs, append them and apply to contrib.
+	if normalized.size() > existing.size():
+		for i in range(existing.size(), normalized.size()):
+			var s: Dictionary = normalized[i]
+			_apply_step(contrib, s)
+			changed = true
+		# steps were appended by _apply_step; refresh local steps var
+		steps = contrib.get("steps", steps)
+		if not (steps is Array):
+			steps = []
 	contrib["steps"] = steps
 	return changed
 
@@ -3565,6 +3575,23 @@ func _refresh_dynamic_passives(ctx: Variant, contribs: Array) -> void:
 	var ctx_dict: Dictionary = {}
 	if ctx is Dictionary:
 		ctx_dict = ctx as Dictionary
+
+	# Build an updated 5-slot view for abilities that depend on winner/neighbors.
+	# neighbors order: [-2, -1, 1, 2]
+	var view_ctx: Dictionary = ctx_dict.duplicate(true)
+	var by_offset: Dictionary = {}
+	for entry in contribs:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var c2: Dictionary = entry
+		by_offset[int(c2.get("offset", 999))] = c2.get("token")
+	if by_offset.has(0):
+		view_ctx["winner"] = by_offset.get(0)
+	var neighs: Array = []
+	for off in [-2, -1, 1, 2]:
+		neighs.append(by_offset.get(off))
+	view_ctx["neighbors"] = neighs
+
 	for entry in contribs:
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
@@ -3584,14 +3611,25 @@ func _refresh_dynamic_passives(ctx: Variant, contribs: Array) -> void:
 			if not _ability_should_refresh(ab):
 				continue
 			var logs := _find_refresh_logs_for_ability(contrib, ab)
-			if logs.is_empty():
-				continue
-			var matches: bool = ab.matches_target(ctx_dict, contrib, token)
+			var matches: bool = ab.matches_target(view_ctx, contrib, token)
 			var new_steps: Array = []
-			if matches and (ab as Object).has_method("build_steps"):
-				new_steps = ab.build_steps(ctx_dict, contrib, token)
-			if _refresh_contrib_log_with_steps(contrib, ab, logs, new_steps):
+			if (ab as Object).has_method("build_steps"):
+				if matches:
+					new_steps = ab.build_steps(view_ctx, contrib, token)
+				else:
+					new_steps = []
+			# If there are no existing logs but the ability now matches, add new steps.
+			if logs.is_empty() and matches and not new_steps.is_empty():
+				for step in new_steps:
+					if typeof(step) != TYPE_DICTIONARY:
+						continue
+					var step_norm := _normalize_step(step)
+					step_norm["_ability_ref"] = ab
+					_apply_step(contrib, step_norm)
 				updated = true
+			else:
+				if _refresh_contrib_log_with_steps(contrib, ab, logs, new_steps):
+					updated = true
 		if updated:
 			var new_val := _compute_value(contrib)
 			_update_slot_value(ctx_dict, contrib, new_val)

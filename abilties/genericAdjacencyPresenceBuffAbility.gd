@@ -119,3 +119,7 @@ func build_steps(ctx: Dictionary, contrib: Dictionary, source_token: Resource) -
 		merged.merge({"target_kind": "self"}, true)
 		return [merged]
 	return []
+
+func should_refresh_after_board_change() -> bool:
+	# This adjacency depends on neighbors; re-evaluate when the board changes mid-spin.
+	return true
