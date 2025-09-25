@@ -78,10 +78,10 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 @export var screen_shake_moderate_intensity := 1.5
 @export var screen_shake_heavy_intensity := 2
 @export var screen_shake_duration := 0.5
-@export var highlight_flash_color: Color = Color(0.588, 0.588, 0.588, 1.0)
+@export var highlight_flash_color: Color = Color(0.471, 0.471, 0.471, 1.0)
 @export var highlight_flash_in_sec: float = 0.5
 @export var highlight_flash_out_sec: float = 0.5
-@export var highlight_flash_pause_sec: float = 1
+@export var highlight_flash_pause_sec: float = 1.5
 
 var total_active: int = 0
 var total_passive: int = 0
@@ -2674,6 +2674,11 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 			print("[Post-Shake] Executing ", int((__post_cmds as Array).size()), " inventory command(s)")
 		_execute_ability_commands(__post_cmds, ctx, contribs, winner)
 
+		# Important: some post-shake commands (e.g., permanent_add) adjust per-run offsets.
+		# Ensure any tokens already shown on the board (created by board-visual commands)
+		# have their base values re-initialized to include the new offsets.
+		_refresh_all_slot_token_values(ctx)
+
 		# Visual confirmation: if a self-target permanent_add was applied by the winner, show +amt on each same-type token
 		var self_amt: int = 0
 		for cmd in (__post_cmds as Array):
@@ -3218,6 +3223,8 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				_apply_permanent_add_inventory(tk, toff, ttag, tname, amt2, diz, ctx, propagate_same_key)
 				_resync_contribs_from_board(ctx, _contribs)
 				_refresh_dynamic_passives(ctx, _contribs)
+				# After adjusting permanent offsets/inventory, re-initialize board slot token values
+				_refresh_all_slot_token_values(ctx)
 			"replace_board_tag":
 				var tag := String((cmd as Dictionary).get("target_tag", ""))
 				var tpath := String((cmd as Dictionary).get("token_path", ""))
@@ -3833,6 +3840,33 @@ func _visible_slots_from_ctx(ctx: Dictionary) -> Array:
 				out.append(c)
 	return out
 
+func _refresh_all_slot_token_values(ctx: Dictionary) -> void:
+	# Re-initialize base values for all tokens currently displayed in slots,
+	# so any new permanent offsets are applied to their displayed value.
+	if ctx == null or not ctx.has("slot_map"):
+		return
+	var sm = ctx["slot_map"]
+	if not (sm is Dictionary):
+		return
+	for k in (sm as Dictionary).keys():
+		var slot = (sm as Dictionary).get(k)
+		if not (slot is Control):
+			continue
+		var ctrl: Control = slot as Control
+		var tok = ctrl.get_meta("token_data") if ctrl.has_meta("token_data") else null
+		if tok == null:
+			continue
+		_init_token_base_value(tok)
+		# Update inline slot value label if present
+		var si := ctrl.get_node_or_null("slotItem")
+		if si != null and si.has_method("set_value"):
+			var vv := 0
+			if (tok as Object).has_method("get"):
+				var v = tok.get("value")
+				if v != null:
+					vv = int(v)
+			si.call_deferred("set_value", vv)
+
 func _shake_slot(slot: Control) -> void:
 	if slot == null:
 		return
@@ -3935,9 +3969,11 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 	elif use_global_offsets:
 		_token_global_offset += amount
 
+	# Only derive an anchor for self/offset targeting; tag/name/global should not use anchor-based propagation.
 	var anchor_token = null
 	var anchor_key := ""
-	if kind_norm == "self" or kind_norm == "offset" or propagate_same_key:
+	var allow_propagate_same_key := (kind_norm == "self" or kind_norm == "offset") and propagate_same_key
+	if kind_norm == "self" or kind_norm == "offset":
 		var anchor_slot := _slot_from_ctx(ctx, target_offset)
 		if anchor_slot != null and anchor_slot.has_meta("token_data"):
 			anchor_token = anchor_slot.get_meta("token_data")
@@ -3971,7 +4007,8 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 	for i in range(list.size()):
 		var tok = list[i]
 		var matched: bool = bool(matches_token.call(tok))
-		if not matched and propagate_same_key and anchor_key != "":
+		# Propagate by same-key only for self/offset modes when requested.
+		if not matched and allow_propagate_same_key and anchor_key != "":
 			matched = (_token_key(tok) == anchor_key)
 		if matched:
 			var key := _token_key(tok)
