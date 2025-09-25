@@ -33,7 +33,8 @@ func _collect_target_entries(contribs: Array, self_c: Dictionary, max_deduct: in
 		var value: int = max(0, _contrib_value(c))
 		if value <= 0:
 			continue
-		var deduct: int = min(max_deduct, value)
+		var safe_remaining: int = max(value - 1, 0)
+		var deduct: int = min(max_deduct, safe_remaining)
 		if deduct <= 0:
 			continue
 		entries.append({"offset": off, "deduct": deduct})
@@ -48,15 +49,16 @@ func _build_steal_steps(src: String, entries: Array[Dictionary]) -> Array[Dictio
 		if deduct <= 0:
 			continue
 		steps.append({
-			"kind": "add",
+			"kind": "final_add",
 			"amount": -deduct,
-			"factor": 1.0,
 			"desc": "Tax Collector steals %d" % deduct,
 			"source": src,
 			"target_kind": "offset",
-			"target_offset": off
+			"target_offset": off,
+			"min_value": 1
 		})
 	return steps
+
 
 func _build_gain_step(src: String, amount: int) -> Dictionary:
 	return {

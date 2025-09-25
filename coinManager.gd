@@ -1253,6 +1253,7 @@ func _snapshot_baseline_contribs(contribs: Array) -> Array:
 		snapshot.append(snap)
 	return snapshot
 
+
 func _apply_step(c: Dictionary, step: Dictionary) -> void:
 	var before: Dictionary = {
 		"base": int(c.base),
@@ -1260,13 +1261,29 @@ func _apply_step(c: Dictionary, step: Dictionary) -> void:
 		"mult": float(c.mult),
 		"val": _compute_value(c)
 	}
-	if step.get("kind", "") == "add":
-		c.delta = int(c.delta) + int(step.get("amount", 0))
-	elif step.get("kind", "") == "mult":
-		var f: float = float(step.get("factor", 1.0))
-		if f < 0.0:
-			f = 0.0
-		c.mult = float(c.mult) * f
+	var kind := String(step.get("kind", ""))
+	var prev_val := int(before.get("val", 0))
+	var final_applied := 0
+	match kind:
+		"add":
+			c.delta = int(c.delta) + int(step.get("amount", 0))
+		"mult":
+			var f: float = float(step.get("factor", 1.0))
+			if f < 0.0:
+				f = 0.0
+			c.mult = float(c.mult) * f
+		"final_add":
+			var amount := int(step.get("amount", 0))
+			var min_final := int(step.get("min_value", -1))
+			var target_val := prev_val + amount
+			if min_final >= 0 and target_val < min_final:
+				target_val = min_final
+			if target_val < 0:
+				target_val = 0
+			var achieved := _set_contrib_final_value(c, target_val)
+			final_applied = achieved - prev_val
+		_:
+			pass
 	# Clamp base permanent value to at least 1
 	if int(c.base) + int(c.delta) < 1:
 		c.delta = 1 - int(c.base)
@@ -1278,15 +1295,16 @@ func _apply_step(c: Dictionary, step: Dictionary) -> void:
 		"mult": float(c.mult),
 		"val": _compute_value(c)
 	}
+	if kind == "final_add":
+		final_applied = int(after.get("val", _compute_value(c))) - prev_val
 	var mult_applied: float = 0.0
 	if float(before.mult) != 0.0:
 		mult_applied = float(after.mult) / float(before.mult)
 	else:
 		mult_applied = float(after.mult)
-
 	var logged: Dictionary = {
 		"source": step.get("source", "unknown"),
-		"kind": step.get("kind", ""),
+		"kind": kind,
 		"desc": step.get("desc", ""),
 		"before": before,
 		"after": after,
@@ -1294,6 +1312,8 @@ func _apply_step(c: Dictionary, step: Dictionary) -> void:
 		"mult_applied": mult_applied,
 		"ability_ref": step.get("_ability_ref", null)
 	}
+	if kind == "final_add":
+		logged["final_applied"] = final_applied
 	(c.steps as Array).append(logged)
 
 func _compute_value(c: Dictionary) -> int:
@@ -2664,6 +2684,8 @@ func _normalize_step(d: Dictionary) -> Dictionary:
 		out["_ability_ref"] = d["_ability_ref"]
 	if d.has("_stage"):
 		out["_stage"] = String(d["_stage"])
+	if d.has("min_value"):
+		out["min_value"] = int(d["min_value"])
 	return out
 
 # Normalize a "global" step (winner final-phase). Defaults target_kind to "any" if missing.
@@ -2945,6 +2967,51 @@ func _value_from_components(base: int, delta: int, mult: float) -> int:
 	var mult_val: float = max(mult, 0.0)
 	return max(int(floor(sum_val * mult_val)), 0)
 
+func _set_contrib_final_value(contrib: Dictionary, target_value: int) -> int:
+	target_value = max(target_value, 0)
+	var base_val := int(contrib.get("base", 0))
+	var mult_val := float(contrib.get("mult", 1.0))
+	var original_delta := int(contrib.get("delta", 0))
+	if mult_val <= 0.0:
+		if target_value > 0:
+			target_value = 0
+		return _compute_value(contrib)
+	var approx_delta := int(round(float(target_value) / mult_val)) - base_val
+	var best_delta := approx_delta
+	var best_value: int = _value_from_components(base_val, best_delta, mult_val)
+	var best_diff: int = abs(best_value - target_value)
+	for candidate in [original_delta, approx_delta]:
+		var value: int = _value_from_components(base_val, candidate, mult_val)
+		var diff: int = abs(value - target_value)
+		if diff < best_diff:
+			best_diff = diff
+			best_delta = candidate
+			best_value = value
+	var visited: Dictionary = {}
+	visited[best_delta] = true
+	visited[original_delta] = true
+	var to_visit: Array = [best_delta - 1, best_delta + 1, original_delta - 1, original_delta + 1]
+	var guard := 0
+	while to_visit.size() > 0 and guard < 128 and best_diff != 0:
+		var candidate = to_visit.pop_back()
+		if visited.has(candidate):
+			continue
+		visited[candidate] = true
+		var value: int = _value_from_components(base_val, candidate, mult_val)
+		var diff: int = abs(value - target_value)
+		if diff < best_diff:
+			best_diff = diff
+			best_delta = candidate
+			best_value = value
+			if diff == 0:
+				break
+		if diff <= best_diff + 1:
+			to_visit.append(candidate - 1)
+			to_visit.append(candidate + 1)
+		guard += 1
+	contrib["delta"] = best_delta
+	return best_value
+
 func _update_log_effect(contrib: Dictionary, log_info: Dictionary, step_data: Dictionary) -> bool:
 	var log_variant: Variant = log_info.get("log", {})
 	var log: Dictionary = log_variant if log_variant is Dictionary else {}
@@ -3032,6 +3099,17 @@ func _remove_log_effect(contrib: Dictionary, log: Dictionary) -> bool:
 			return false
 		contrib["delta"] = int(contrib.get("delta", 0)) - amount
 		return true
+	elif kind == "final_add":
+		var before_state = log.get("before", {})
+		if before_state is Dictionary and before_state.has("val"):
+			_set_contrib_final_value(contrib, int(before_state.get("val", _compute_value(contrib))))
+			return true
+		var final_applied := int(log.get("final_applied", 0))
+		if final_applied != 0:
+			var target: int = max(_compute_value(contrib) - final_applied, 0)
+			_set_contrib_final_value(contrib, target)
+			return true
+		return false
 	return false
 
 func _refresh_contrib_log_with_steps(contrib: Dictionary, ability, existing: Array, new_steps_raw: Array) -> bool:
