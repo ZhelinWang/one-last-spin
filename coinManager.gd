@@ -78,7 +78,7 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 @export var screen_shake_moderate_intensity := 1.5
 @export var screen_shake_heavy_intensity := 2
 @export var screen_shake_duration := 0.5
-@export var highlight_flash_color: Color = Color(0.471, 0.471, 0.471, 1.0)
+@export var highlight_flash_color: Color = Color(0.392, 0.392, 0.392, 1.0)
 @export var highlight_flash_in_sec: float = 0.8
 @export var highlight_flash_out_sec: float = 0.8
 @export var highlight_flash_pause_sec: float = 1.5
@@ -4100,6 +4100,16 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 			ctx["board_tokens"] = _get_inventory_array()
 			if not replaced_tokens.is_empty():
 				_update_slot_map_for_replacements(ctx, replaced_tokens)
+			# Ensure all visible coins are registered as targets for highlight (flat, including board)
+			var slots := _visible_slots_from_ctx(ctx)
+			for slot in slots:
+				if not (slot is Control):
+					continue
+				var st := (slot as Control)
+				var stok: Variant = st.get_meta("token_data") if st.has_meta("token_data") else null
+
+				if _token_is_coin(stok):
+					_register_effect_target_current(stok)
 
 func _destroy_inventory_coins(max_to_destroy: int, ctx: Dictionary) -> int:
 	if max_to_destroy <= 0:
