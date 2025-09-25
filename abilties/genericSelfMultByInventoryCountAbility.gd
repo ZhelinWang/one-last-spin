@@ -25,3 +25,8 @@ func build_steps(ctx: Dictionary, contrib: Dictionary, source_token: Resource) -
 		fac = min_factor
 	var src_name := _token_name(source_token)
 	return [_mk_mult_step(fac, "Inventory coin count multiplier", "ability:%s" % id)]
+
+func should_refresh_after_board_change() -> bool:
+	return true
+
+

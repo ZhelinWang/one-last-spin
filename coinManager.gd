@@ -1,4 +1,4 @@
-﻿extends Node
+extends Node
 class_name CoinManager
 
 signal spin_sequence_started(ctx)
@@ -1291,7 +1291,8 @@ func _apply_step(c: Dictionary, step: Dictionary) -> void:
 		"before": before,
 		"after": after,
 		"add_applied": int(after.delta) - int(before.delta),
-		"mult_applied": mult_applied
+		"mult_applied": mult_applied,
+		"ability_ref": step.get("_ability_ref", null)
 	}
 	(c.steps as Array).append(logged)
 
@@ -1374,11 +1375,17 @@ func _collect_ability_spin_steps(ctx: Dictionary, contrib: Dictionary, winner) -
 			if arr is Array and not arr.is_empty():
 				if is_winner_only and is_winner_slot:
 					for s in arr:
-						(parts["deferred"] as Array).append(_normalize_step(s))
+						var step_norm := _normalize_step(s)
+						step_norm["_ability_ref"] = ab
+						step_norm["_stage"] = "ability_deferred"
+						(parts["deferred"] as Array).append(step_norm)
 					if debug_spin: print("  [Ability] +steps (deferred winner_only): ", arr.size())
 				else:
 					for s in arr:
-						(parts["immediate"] as Array).append(_normalize_step(s))
+						var step_norm := _normalize_step(s)
+						step_norm["_ability_ref"] = ab
+						step_norm["_stage"] = "ability"
+						(parts["immediate"] as Array).append(step_norm)
 					if debug_spin: print("  [Ability] +steps (immediate): ", arr.size())
 			continue
 
@@ -1417,10 +1424,13 @@ func _collect_ability_spin_steps(ctx: Dictionary, contrib: Dictionary, winner) -
 			"desc": desc,
 			"source": src
 		}
+		step["_ability_ref"] = ab
 		if is_winner_only and is_winner_slot:
+			step["_stage"] = "ability_deferred"
 			(parts["deferred"] as Array).append(step)
 			if debug_spin: print("  [Ability] +autostep (deferred winner_only): ", step)
 		else:
+			step["_stage"] = "ability"
 			(parts["immediate"] as Array).append(step)
 			if debug_spin: print("  [Ability] +autostep (immediate): ", step)
 
@@ -2639,7 +2649,7 @@ func _count_empties() -> int:
 
 # Normalize a step dictionary to expected fields
 func _normalize_step(d: Dictionary) -> Dictionary:
-	return {
+	var out := {
 		"kind": String(d.get("kind", "")),
 		"amount": int(d.get("amount", 0)),
 		"factor": float(d.get("factor", 1.0)),
@@ -2650,6 +2660,11 @@ func _normalize_step(d: Dictionary) -> Dictionary:
 		"target_tag": String(d.get("target_tag", "")),
 		"target_name": String(d.get("target_name", ""))
 	}
+	if d.has("_ability_ref"):
+		out["_ability_ref"] = d["_ability_ref"]
+	if d.has("_stage"):
+		out["_stage"] = String(d["_stage"])
+	return out
 
 # Normalize a "global" step (winner final-phase). Defaults target_kind to "any" if missing.
 func _normalize_global_step(d: Dictionary) -> Dictionary:
@@ -2784,10 +2799,12 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array) -
 				var preserve_tags := bool((cmd as Dictionary).get("preserve_tags", false))
 				_replace_token_at_offset(ctx, off, token_path, set_value, preserve_tags)
 				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
 			"replace_all_empties":
 				var token_path2 := String((cmd as Dictionary).get("token_path", ""))
-				_replace_all_empties_in_inventory(token_path2)
+				_replace_all_empties_in_inventory(token_path2, ctx)
 				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
 			"permanent_add":
 				var tk := String((cmd as Dictionary).get("target_kind", "any")).to_lower()
 				var toff := int((cmd as Dictionary).get("target_offset", 0))
@@ -2798,15 +2815,18 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array) -
 				var propagate_same_key := bool((cmd as Dictionary).get("propagate_same_key", false))
 				_apply_permanent_add_inventory(tk, toff, ttag, tname, amt2, diz, ctx, propagate_same_key)
 				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
 			"replace_board_tag":
 				var tag := String((cmd as Dictionary).get("target_tag", ""))
 				var tpath := String((cmd as Dictionary).get("token_path", ""))
 				_replace_board_tag_in_slotmap(ctx, tag, tpath)
 				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
 			"replace_board_empties":
 				var tpath2 := String((cmd as Dictionary).get("token_path", ""))
 				_replace_board_empties_in_slotmap(ctx, tpath2)
 				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
 			"adjust_run_total":
 				var amt := int((cmd as Dictionary).get("amount", 0))
 				if amt != 0:
@@ -2818,6 +2838,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array) -
 				if empty_res != null and empty_res is Resource:
 					_replace_token_at_offset(ctx, off2, (empty_res as Resource).resource_path, -1, false)
 					_resync_contribs_from_board(ctx, _contribs)
+					_refresh_dynamic_passives(ctx, _contribs)
 			_:
 				if debug_spin:
 					print("[Commands] Unknown op: ", op)
@@ -2896,6 +2917,218 @@ func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 				var from_val := 0 if token_changed else prev_total
 				_play_counting_popup(ctx, contrib, from_val, new_total, token_changed)
 			_invoke_on_value_changed(ctx, null, contrib, prev_total, new_total, step_log)
+
+func _ability_should_refresh(ab) -> bool:
+	if ab == null:
+		return false
+	if (ab as Object).has_method("should_refresh_after_board_change"):
+		return bool(ab.call("should_refresh_after_board_change"))
+	return false
+
+func _find_refresh_logs_for_ability(contrib: Dictionary, ability) -> Array:
+	var out: Array = []
+	if contrib == null:
+		return out
+	var steps_variant: Variant = contrib.get("steps", [])
+	if not (steps_variant is Array):
+		return out
+	for idx in range((steps_variant as Array).size()):
+		var log: Variant = (steps_variant as Array)[idx]
+		if not (log is Dictionary):
+			continue
+		if log.get("ability_ref") == ability:
+			out.append({"index": idx, "log": log})
+	return out
+
+func _value_from_components(base: int, delta: int, mult: float) -> int:
+	var sum_val: int = max(base + delta, 0)
+	var mult_val: float = max(mult, 0.0)
+	return max(int(floor(sum_val * mult_val)), 0)
+
+func _update_log_effect(contrib: Dictionary, log_info: Dictionary, step_data: Dictionary) -> bool:
+	var log_variant: Variant = log_info.get("log", {})
+	var log: Dictionary = log_variant if log_variant is Dictionary else {}
+	var kind := String(step_data.get("kind", ""))
+	if kind == "":
+		return false
+	var ability_ref: Variant = step_data.get("_ability_ref", log.get("ability_ref"))
+	log["ability_ref"] = ability_ref
+	log["source"] = step_data.get("source", log.get("source", "unknown"))
+	log["desc"] = step_data.get("desc", log.get("desc", ""))
+	var base := int(contrib.get("base", 0))
+	var changed := false
+	if kind == "mult":
+		var old_factor := float(log.get("mult_applied", 1.0))
+		var new_factor: float = max(float(step_data.get("factor", 1.0)), 0.0)
+		if abs(old_factor - new_factor) < 0.0001:
+			return false
+		var current_mult := float(contrib.get("mult", 1.0))
+		var before_mult: float = current_mult
+		if abs(old_factor) > 0.00001:
+			before_mult = current_mult / old_factor
+		var delta := int(contrib.get("delta", 0))
+		var before_state := {
+			"base": base,
+			"delta": delta,
+			"mult": before_mult,
+			"val": _value_from_components(base, delta, before_mult)
+		}
+		var after_mult: float = before_mult * new_factor
+		contrib["mult"] = after_mult
+		var after_state := {
+			"base": base,
+			"delta": delta,
+			"mult": after_mult,
+			"val": _value_from_components(base, delta, after_mult)
+		}
+		log["before"] = before_state
+		log["after"] = after_state
+		log["mult_applied"] = new_factor
+		log["add_applied"] = int(log.get("add_applied", 0))
+		changed = true
+	elif kind == "add":
+		var old_amount := int(log.get("add_applied", 0))
+		var new_amount := int(step_data.get("amount", 0))
+		if old_amount == new_amount:
+			return false
+		var current_delta := int(contrib.get("delta", 0)) - old_amount
+		var mult_val := float(contrib.get("mult", 1.0))
+		var before_state := {
+			"base": base,
+			"delta": current_delta,
+			"mult": mult_val,
+			"val": _value_from_components(base, current_delta, mult_val)
+		}
+		var new_delta := current_delta + new_amount
+		contrib["delta"] = new_delta
+		var after_state := {
+			"base": base,
+			"delta": new_delta,
+			"mult": mult_val,
+			"val": _value_from_components(base, new_delta, mult_val)
+		}
+		log["before"] = before_state
+		log["after"] = after_state
+		log["add_applied"] = new_amount
+		changed = true
+	else:
+		return false
+	log_info["log"] = log
+	return changed
+
+func _remove_log_effect(contrib: Dictionary, log: Dictionary) -> bool:
+	if log == null:
+		return false
+	var kind := String(log.get("kind", ""))
+	if kind == "mult":
+		var factor := float(log.get("mult_applied", 1.0))
+		if abs(factor) < 0.00001:
+			return false
+		contrib["mult"] = float(contrib.get("mult", 1.0)) / factor
+		return true
+	elif kind == "add":
+		var amount := int(log.get("add_applied", 0))
+		if amount == 0:
+			return false
+		contrib["delta"] = int(contrib.get("delta", 0)) - amount
+		return true
+	return false
+
+func _refresh_contrib_log_with_steps(contrib: Dictionary, ability, existing: Array, new_steps_raw: Array) -> bool:
+	var steps_variant: Variant = contrib.get("steps", [])
+	if not (steps_variant is Array):
+		return false
+	var steps: Array = steps_variant as Array
+	var normalized: Array = []
+	for step in new_steps_raw:
+		if typeof(step) != TYPE_DICTIONARY:
+			continue
+		var step_norm := _normalize_step(step)
+		step_norm["_ability_ref"] = ability
+		normalized.append(step_norm)
+	var changed := false
+	if normalized.is_empty():
+		for i in range(existing.size() - 1, -1, -1):
+			var info: Dictionary = existing[i]
+			var idx = int(info.get("index", -1))
+			if idx < 0 or idx >= steps.size():
+				continue
+			var log_variant: Variant = info.get("log", {})
+			var log: Dictionary = log_variant if log_variant is Dictionary else {}
+			if _remove_log_effect(contrib, log):
+				changed = true
+			steps.remove_at(idx)
+		contrib["steps"] = steps
+		return changed
+	var limit: int = min(existing.size(), normalized.size())
+	for i in range(limit):
+		var info: Dictionary = existing[i]
+		var idx = int(info.get("index", -1))
+		if idx < 0 or idx >= steps.size():
+			continue
+		if _update_log_effect(contrib, info, normalized[i]):
+			changed = true
+		steps[idx] = info.get("log", steps[idx])
+	if existing.size() > normalized.size():
+		for i in range(existing.size() - 1, normalized.size() - 1, -1):
+			var info: Dictionary = existing[i]
+			var idx = int(info.get("index", -1))
+			if idx < 0 or idx >= steps.size():
+				continue
+			var log_variant: Variant = info.get("log", {})
+			var log: Dictionary = log_variant if log_variant is Dictionary else {}
+			if _remove_log_effect(contrib, log):
+				changed = true
+			steps.remove_at(idx)
+	contrib["steps"] = steps
+	return changed
+
+func _update_slot_value(ctx: Dictionary, contrib: Dictionary, value: int) -> void:
+	if ctx == null or not (ctx is Dictionary):
+		return
+	var slot := _slot_from_ctx(ctx, int(contrib.get("offset", 0)))
+	if slot == null:
+		return
+	var si := slot.get_node_or_null("slotItem")
+	if si != null and si.has_method("set_value"):
+		si.call_deferred("set_value", value)
+
+func _refresh_dynamic_passives(ctx: Variant, contribs: Array) -> void:
+	if contribs == null or not (contribs is Array):
+		return
+	var ctx_dict: Dictionary = {}
+	if ctx is Dictionary:
+		ctx_dict = ctx as Dictionary
+	for entry in contribs:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var contrib: Dictionary = entry
+		var token = contrib.get("token")
+		if token == null or not token.has_method("get"):
+			continue
+		var abilities = token.get("abilities")
+		if not (abilities is Array):
+			continue
+		var updated := false
+		for ab in abilities:
+			if ab == null:
+				continue
+			if not _ability_is_active_during_spin(ab):
+				continue
+			if not _ability_should_refresh(ab):
+				continue
+			var logs := _find_refresh_logs_for_ability(contrib, ab)
+			if logs.is_empty():
+				continue
+			var matches: bool = ab.matches_target(ctx_dict, contrib, token)
+			var new_steps: Array = []
+			if matches and (ab as Object).has_method("build_steps"):
+				new_steps = ab.build_steps(ctx_dict, contrib, token)
+			if _refresh_contrib_log_with_steps(contrib, ab, logs, new_steps):
+				updated = true
+		if updated:
+			var new_val := _compute_value(contrib)
+			_update_slot_value(ctx_dict, contrib, new_val)
 
 func _resolve_inventory_owner_node() -> Node:
 	var owner := get_node_or_null(inventory_owner_path)
@@ -3152,7 +3385,7 @@ func _shake_slot(slot: Control) -> void:
 		shake.tween_property(shake_target, "position", orig_pos + offv, 0.03).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	shake.tween_property(shake_target, "position", orig_pos, 0.04).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
-func _replace_all_empties_in_inventory(token_path: String) -> void:
+func _replace_all_empties_in_inventory(token_path: String, ctx: Variant = null) -> void:
 	if token_path.strip_edges() == "":
 		return
 	var owner := _resolve_inventory_owner_node()
@@ -3190,6 +3423,9 @@ func _replace_all_empties_in_inventory(token_path: String) -> void:
 		owner.set(prop, arr)
 		if owner.has_method("_update_inventory_strip"):
 			owner.call_deferred("_update_inventory_strip")
+		if ctx is Dictionary:
+			var ctx_dict: Dictionary = ctx as Dictionary
+			ctx_dict["board_tokens"] = _get_inventory_array()
 
 func _apply_permanent_add_inventory(target_kind: String, target_offset: int, target_tag: String, target_name: String, amount: int, destroy_if_zero: bool, ctx: Dictionary, propagate_same_key: bool = false) -> void:
 	var owner := _resolve_inventory_owner_node()
