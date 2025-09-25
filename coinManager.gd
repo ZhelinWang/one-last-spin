@@ -3327,6 +3327,9 @@ func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 				var from_val := 0 if token_changed else prev_total
 				_play_counting_popup(ctx, contrib, from_val, new_total, token_changed)
 			_invoke_on_value_changed(ctx, null, contrib, prev_total, new_total, step_log)
+			# Emit signals so listeners (e.g., tooltip highlighter) can refresh mid-spin
+			emit_signal("token_step_applied", i, int(contrib.get("offset", 0)), step_log, new_total, contrib)
+			emit_signal("token_value_shown", i, int(contrib.get("offset", 0)), new_total, contrib)
 
 func _ability_should_refresh(ab) -> bool:
 	if ab == null:

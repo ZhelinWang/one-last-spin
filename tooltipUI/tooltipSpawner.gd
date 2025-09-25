@@ -6,6 +6,8 @@ var _tooltip: TokenTooltipView
 var _owner_ctrl: Control
 var _overlay_root: CanvasItem
 var _highlight_token = null
+var _coin_mgr: Node = null
+var _connected_refresh := false
 
 func _ready() -> void:
 	_owner_ctrl = get_parent() as Control
@@ -17,6 +19,8 @@ func _ready() -> void:
 	_owner_ctrl.focus_exited.connect(_on_exited)
 	_overlay_root = get_tree().current_scene
 	set_process(true)
+	# Cache CoinManager reference if available
+	_coin_mgr = get_node_or_null("/root/coinManager")
 
 func _process(_dt: float) -> void:
 	if follow_mouse and is_instance_valid(_tooltip):
@@ -47,18 +51,60 @@ func _on_entered() -> void:
 	_tooltip.visible = true
 	_position_tooltip()
 	_highlight_token = data
-	var coin_mgr := get_node_or_null("/root/coinManager")
-	if coin_mgr != null and coin_mgr.has_method("start_effect_highlight_for_token"):
-		coin_mgr.call("start_effect_highlight_for_token", data)
+	if _coin_mgr == null:
+		_coin_mgr = get_node_or_null("/root/coinManager")
+	if _coin_mgr != null and _coin_mgr.has_method("start_effect_highlight_for_token"):
+		_coin_mgr.call("start_effect_highlight_for_token", data)
+		# If the spin is still in progress, keep the highlight in sync as effects register.
+		_connect_highlight_refresh()
 
 func _on_exited() -> void:
-	var coin_mgr := get_node_or_null("/root/coinManager")
-	if coin_mgr != null and coin_mgr.has_method("stop_effect_highlight_for_token") and _highlight_token != null:
-		coin_mgr.call("stop_effect_highlight_for_token", _highlight_token)
+	_disconnect_highlight_refresh()
+	if _coin_mgr == null:
+		_coin_mgr = get_node_or_null("/root/coinManager")
+	if _coin_mgr != null and _coin_mgr.has_method("stop_effect_highlight_for_token") and _highlight_token != null:
+		_coin_mgr.call("stop_effect_highlight_for_token", _highlight_token)
 	_highlight_token = null
 	if is_instance_valid(_tooltip):
 		_tooltip.queue_free()
 		_tooltip = null
+
+func _connect_highlight_refresh() -> void:
+	if _connected_refresh:
+		return
+	if _coin_mgr == null:
+		return
+	# Refresh on each applied step (helps while spin is ongoing)
+	if _coin_mgr.has_signal("token_step_applied"):
+		_coin_mgr.connect("token_step_applied", Callable(self, "_refresh_highlight_if_hovering"))
+		_connected_refresh = true
+	# Also refresh when a token value is shown due to resync/replace
+	if _coin_mgr.has_signal("token_value_shown") and not _coin_mgr.is_connected("token_value_shown", Callable(self, "_refresh_highlight_if_hovering")):
+		_coin_mgr.connect("token_value_shown", Callable(self, "_refresh_highlight_if_hovering"))
+	# Ensure final refresh when totals are ready
+	if _coin_mgr.has_signal("spin_totals_ready") and not _coin_mgr.is_connected("spin_totals_ready", Callable(self, "_refresh_highlight_if_hovering")):
+		_coin_mgr.connect("spin_totals_ready", Callable(self, "_refresh_highlight_if_hovering"))
+
+func _disconnect_highlight_refresh() -> void:
+	if not _connected_refresh:
+		return
+	if _coin_mgr == null:
+		_coin_mgr = get_node_or_null("/root/coinManager")
+	if _coin_mgr != null:
+		if _coin_mgr.has_signal("token_step_applied") and _coin_mgr.is_connected("token_step_applied", Callable(self, "_refresh_highlight_if_hovering")):
+			_coin_mgr.disconnect("token_step_applied", Callable(self, "_refresh_highlight_if_hovering"))
+		if _coin_mgr.has_signal("token_value_shown") and _coin_mgr.is_connected("token_value_shown", Callable(self, "_refresh_highlight_if_hovering")):
+			_coin_mgr.disconnect("token_value_shown", Callable(self, "_refresh_highlight_if_hovering"))
+		if _coin_mgr.has_signal("spin_totals_ready") and _coin_mgr.is_connected("spin_totals_ready", Callable(self, "_refresh_highlight_if_hovering")):
+			_coin_mgr.disconnect("spin_totals_ready", Callable(self, "_refresh_highlight_if_hovering"))
+	_connected_refresh = false
+
+func _refresh_highlight_if_hovering(_a = null, _b = null, _c = null, _d = null, _e = null) -> void:
+	# Called during spin as effects register; rebuild the highlight set if still hovering.
+	if _highlight_token == null or _coin_mgr == null:
+		return
+	if _coin_mgr.has_method("start_effect_highlight_for_token"):
+		_coin_mgr.call("start_effect_highlight_for_token", _highlight_token)
 
 func _position_tooltip() -> void:
 	if not is_instance_valid(_tooltip):
