@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_1qk44"]
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="2_nv4mw"]
 [ext_resource type="Script" uid="uid://bftaioc8dl7hx" path="res://abilties/genericTransferAndSelfScaleAbility.gd" id="2_q05v7"]
-[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="3_3sd5l"]
+[ext_resource type="Texture2D" uid="uid://cp3iuwm7kpsmh" path="res://tokens/tokenAssets/bank/bank.png" id="3_q05v7"]
 
 [sub_resource type="Resource" id="Resource_u22t0"]
 script = ExtResource("2_q05v7")
@@ -15,7 +15,7 @@ metadata/_custom_type_script = "uid://bftaioc8dl7hx"
 [resource]
 script = ExtResource("2_nv4mw")
 name = "Bank"
-icon = ExtResource("3_3sd5l")
+icon = ExtResource("3_q05v7")
 value = 10
 tags = PackedStringArray("Building")
 abilities = Array[ExtResource("1_1qk44")]([SubResource("Resource_u22t0")])

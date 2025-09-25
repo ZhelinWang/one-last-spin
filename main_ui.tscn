@@ -715,11 +715,11 @@ tooltip_text = "Artifact progress"
 mouse_default_cursor_shape = 16
 theme_override_styles/panel = SubResource("StyleBoxFlat_v3yyu")
 script = ExtResource("100_artxp")
-segment_gap_px = 1.0
+segment_gap_px = 0.0
 fill_segment_color = Color(0.8901961, 0.8392157, 0, 1)
 completed_segment_color = Color(0.8901961, 0.8392157, 0, 1)
 border_color = Color(0, 0, 0, 1)
-border_width_px = 4.0
+border_width_px = 5.0
 
 [node name="template" type="Sprite2D" parent="."]
 position = Vector2(-1320, 370)

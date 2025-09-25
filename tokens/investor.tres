@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
 [ext_resource type="Script" uid="uid://bj21i7mjr26x1" path="res://abilties/genericReplaceBySelectorAbility.gd" id="3_active"]
 [ext_resource type="Script" uid="uid://bbflpk0whoeeu" path="res://abilties/genericAdjacencyPresenceBuffAbility.gd" id="4_passive"]
-[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
+[ext_resource type="Texture2D" uid="uid://dclsfyocxs0ec" path="res://tokens/tokenAssets/investor/investor.png" id="4_r18kb"]
 
 [sub_resource type="Resource" id="InvestorActive"]
 script = ExtResource("3_active")
@@ -26,7 +26,7 @@ emit_as_spin_steps = true
 script = ExtResource("1_token")
 name = "Investor"
 rarity = "rare"
-icon = ExtResource("5_icon")
+icon = ExtResource("4_r18kb")
 value = 9
 tags = PackedStringArray("Worker")
 abilities = Array[ExtResource("2_abilities")]([SubResource("InvestorActive"), SubResource("InvestorPassive")])
