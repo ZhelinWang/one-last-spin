@@ -1,0 +1,20 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="1_1v8so"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="2_v3p8m"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("2_v3p8m")
+op = "add"
+amount = 2
+desc_template = "+%d (spec)"
+
+[resource]
+script = ExtResource("1_1v8so")
+id = "ex_add_self"
+trigger = 0 # ACTIVE_DURING_SPIN
+target_kind = 0 # SELF
+winner_only = false
+desc_template = "+%d from %s"
+actions = [ SubResource("1") ]
+

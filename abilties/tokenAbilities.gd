@@ -1,18 +1,57 @@
 extends Resource
 class_name TokenAbility
 
+## Base ability for tokens/artifacts.
+## Designers can attach Ability resources to a token's `abilities` list.
+## Each ability can emit spin steps (temporary adds/mults), global steps on the winner,
+## and/or inventory/board commands.
+
+## When the ability runs.
+## - ACTIVE_DURING_SPIN: runs as part of the spin (most abilities)
+## - ON_ACQUIRE: runs when the token is acquired/added to inventory
+## - ON_REMOVED: runs when the token is removed/destroyed
 enum Trigger { ACTIVE_DURING_SPIN, ON_ACQUIRE, ON_REMOVED }
+
+## How this ability picks targets for its effects.
+## - SELF: the source token only (usually the winner during final phase)
+## - MIDDLE: the center slot (winner) regardless of source
+## - OFFSET: specific offset relative to center (-2,-1,0,1,2)
+## - TAG: any token with a matching tag (case-insensitive)
+## - NAME: any token with an exact name match
+## - ANY: all tokens (broadcast)
+## - NEIGHBORS: adjacent left and right slots (offset -1 and +1)
+## - LEFT/RIGHT: neighbor immediately left/right of center
+## - EDGES: outer slots (offset -2 and +2)
+## - ACTIVE/PASSIVE: only the active (center) or passive (others) contribs
+## - OTHERS: everyone except the source token
 enum TargetKind { SELF, MIDDLE, OFFSET, TAG, NAME, ANY, NEIGHBORS, LEFT, RIGHT, EDGES, ACTIVE, PASSIVE, OTHERS }
 
+## Legacy helper: if true and no custom builders are provided, autogenerates a simple self step
+## from `amount`/`factor` fields on the ability (if present). Prefer explicit builders.
 @export var auto_self_step: bool = false
 
+## Unique identifier for debugging, analytics, and description logs.
 @export var id: String = ""
+
+## When the ability runs. See Trigger enum above.
 @export var trigger: Trigger = Trigger.ACTIVE_DURING_SPIN
+
+## How to pick targets for non-self/global steps and commands. See TargetKind.
 @export var target_kind: TargetKind = TargetKind.SELF
+
+## For target_kind == OFFSET: which slot relative to center (-2..2)
 @export var target_offset: int = 0
+
+## For target_kind == TAG: tag to match (case-insensitive)
 @export var target_tag: String = ""
+
+## For target_kind == NAME: exact token name to match
 @export var target_name: String = ""
+
+## If true, effects only apply when this token is the winner (center slot) this spin.
 @export var winner_only: bool = false
+
+## Optional text template for UI logs. Supports %d (amount), %f (factor), %s (source name).
 @export var desc_template: String = ""
 
 func build_steps(ctx: Dictionary, contrib: Dictionary, source_token: Resource) -> Array:

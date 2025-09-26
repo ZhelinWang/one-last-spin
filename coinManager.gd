@@ -220,6 +220,10 @@ func begin_spin() -> void:
 	spin_index += 1
 	_update_spin_counters(false)
 
+	# Per-spin highlight scope: clear any recorded effect targets/highlights from prior spins
+	_effect_targets.clear()
+	_kill_active_highlight()
+
 func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 
 	var ctx: Dictionary = {
@@ -2698,6 +2702,9 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 				var c2: Dictionary = contribs[i]
 				if _token_key(c2.get("token")) != k:
 					continue
+				# Avoid double visual on the winner; winner already shows its own adjustment via resync later.
+				if int(c2.get("offset", 0)) == 0:
+					continue
 				var pv: int = _compute_value(c2)
 				var nv: int = pv + self_amt
 				_play_counting_popup(ctx, c2, pv, nv, false)
@@ -3309,7 +3316,7 @@ func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 			var mult_change := float(contrib.get("mult", 1.0))
 			if prev_mult != 0.0:
 				mult_change = mult_change / prev_mult
-			var step_kind := "replace" if token_changed else "add"
+			var step_kind := "replace" if token_changed else "value_sync"
 			var step_source := "command:%s" % ("replace" if token_changed else "value_sync")
 			var step_desc := "Token replaced" if token_changed else "Value adjusted"
 			var step_log := {
@@ -3327,9 +3334,10 @@ func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 				var from_val := 0 if token_changed else prev_total
 				_play_counting_popup(ctx, contrib, from_val, new_total, token_changed)
 			_invoke_on_value_changed(ctx, null, contrib, prev_total, new_total, step_log)
-			# Emit signals so listeners (e.g., tooltip highlighter) can refresh mid-spin
-			emit_signal("token_step_applied", i, int(contrib.get("offset", 0)), step_log, new_total, contrib)
-			emit_signal("token_value_shown", i, int(contrib.get("offset", 0)), new_total, contrib)
+			if true:
+				# Emit signals so listeners (e.g., tooltip highlighter) can refresh mid-spin
+				emit_signal("token_step_applied", i, int(contrib.get("offset", 0)), step_log, new_total, contrib)
+				emit_signal("token_value_shown", i, int(contrib.get("offset", 0)), new_total, contrib)
 
 func _ability_should_refresh(ab) -> bool:
 	if ab == null:
@@ -3484,11 +3492,13 @@ func _remove_log_effect(contrib: Dictionary, log: Dictionary) -> bool:
 			return false
 		contrib["mult"] = float(contrib.get("mult", 1.0)) / factor
 		return true
-	elif kind == "add":
+	elif kind == "add" or kind == "value_sync":
 		var amount := int(log.get("add_applied", 0))
 		if amount == 0:
 			return false
-		contrib["delta"] = int(contrib.get("delta", 0)) - amount
+		# For value_sync, we only log; do not invert base changes here.
+		if kind == "add":
+			contrib["delta"] = int(contrib.get("delta", 0)) - amount
 		return true
 	elif kind == "final_add":
 		var before_state = log.get("before", {})
@@ -4100,16 +4110,8 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 			ctx["board_tokens"] = _get_inventory_array()
 			if not replaced_tokens.is_empty():
 				_update_slot_map_for_replacements(ctx, replaced_tokens)
-			# Ensure all visible coins are registered as targets for highlight (flat, including board)
-			var slots := _visible_slots_from_ctx(ctx)
-			for slot in slots:
-				if not (slot is Control):
-					continue
-				var st := (slot as Control)
-				var stok: Variant = st.get_meta("token_data") if st.has_meta("token_data") else null
-
-				if _token_is_coin(stok):
-					_register_effect_target_current(stok)
+			# Note: do not auto-register unrelated tokens as highlight targets here.
+			# Targets are registered individually when they are actually affected above.
 
 func _destroy_inventory_coins(max_to_destroy: int, ctx: Dictionary) -> int:
 	if max_to_destroy <= 0:

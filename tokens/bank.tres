@@ -1,16 +1,32 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://cu4yq5c4neqvu"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3 uid="uid://cu4yq5c4neqvu"]
 
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_1qk44"]
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="2_nv4mw"]
-[ext_resource type="Script" uid="uid://bftaioc8dl7hx" path="res://abilties/genericTransferAndSelfScaleAbility.gd" id="2_q05v7"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
+[ext_resource type="Script" path="res://abilties/specs/ConditionSpec.gd" id="Z_cond"]
 [ext_resource type="Texture2D" uid="uid://cp3iuwm7kpsmh" path="res://tokens/tokenAssets/bank/bank.png" id="3_q05v7"]
 
-[sub_resource type="Resource" id="Resource_u22t0"]
-script = ExtResource("2_q05v7")
-match_tag = "coin"
-match_name = "coin"
+[sub_resource type="Resource" id="Bank_Cond"]
+script = ExtResource("Z_cond")
+kind = "adjacent_count_tag_at_least"
+tag = "coin"
+min_count = 1
+
+[sub_resource type="Resource" id="Bank_Action"]
+script = ExtResource("Z_action")
+op = "add"
+amount = 1
+target_override_kind = "self"
+desc_template = "+%d adjacency"
+
+[sub_resource type="Resource" id="Bank_Spec"]
+script = ExtResource("Z_effect")
+id = "bank_adjacent_coin_self_add"
+trigger = 0
 winner_only = true
-metadata/_custom_type_script = "uid://bftaioc8dl7hx"
+conditions = [ SubResource("Bank_Cond") ]
+actions = [ SubResource("Bank_Action") ]
 
 [resource]
 script = ExtResource("2_nv4mw")
@@ -18,7 +34,7 @@ name = "Bank"
 icon = ExtResource("3_q05v7")
 value = 10
 tags = PackedStringArray("Building")
-abilities = Array[ExtResource("1_1qk44")]([SubResource("Resource_u22t0")])
+abilities = Array[ExtResource("1_1qk44")]([SubResource("Bank_Spec")])
 activeDescription = "This token's value is equal to X% of current Gold"
 passiveDescription = "X is how many coins you have in your inventory"
 metadata/_custom_type_script = "uid://2lqsh3g3xqag"

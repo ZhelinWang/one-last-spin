@@ -1,11 +1,22 @@
 extends TokenAbility
 class_name GenericAdjacencyPresenceBuffAbility
 
+## When per_adjacent is false: if true, at least one adjacent must match; otherwise all must match.
 @export var require_any: bool = true			# used when per_adjacent == false
+
+## If true, emit one add step per matching neighbor; otherwise a single add when condition passes.
 @export var per_adjacent: bool = false		  # true -> one add per matching neighbor
+
+## Amount to add to self when condition passes.
 @export var amount: int = 1
-@export var match_tag: String = ""			  # e.g., "coin", "worker"
-@export var match_name: String = ""			 # alternative to tag
+
+## Tag to match on adjacent tokens (case-insensitive), e.g., "coin", "worker".
+@export var match_tag: String = ""
+
+## Name to match on adjacent tokens; use instead of tag if set.
+@export var match_name: String = ""
+
+## If true, run during per-token phase (self only) instead of winner final phase.
 @export var emit_as_spin_steps: bool = false	# when true, emit during per-token phase instead of final
 
 # Toggle whether the manager treats this as Active During Spin for per-token collection

@@ -31,18 +31,45 @@ extends TokenAbility
 class_name GenericReplaceBySelectorAbility
 
 enum Selector { LOWEST, HIGHEST, RANDOM_NEIGHBOR }
+## How the target is chosen:
+## - LOWEST/HIGHEST: pick the lowest/highest current value among visible slots (excluding self for add op)
+## - RANDOM_NEIGHBOR: pick a random adjacent slot
 @export var selector: Selector = Selector.LOWEST
+
+## Replacement token resource path (used when op == "replace").
 @export var replace_with_path: String = "res://tokens/coin.tres"
+
+## If true, seed the new token's value with the selected token's current value; otherwise use replacement default.
 @export var preserve_value_from_selected: bool = true
+
+## When multiple candidates tie, pick using: "leftmost" | "rightmost" | "random".
 @export var tie_break: String = "leftmost"  # "leftmost" | "rightmost" | "random"
+
+## If true, copy tags from the removed token to the replacement.
 @export var preserve_tags: bool = false      # if true, carry over tags from removed token
 
 # Extended operation modes beyond replacement
-@export var op: String = "replace"          # "replace" | "add"
-@export var amount_mode: String = "fixed"    # "fixed" | "self_value"
-@export var amount: int = 0                  # used when amount_mode == "fixed"
+## Operation mode:
+## - "replace": replace the selected token
+## - "add": add amount to the selected target (and optionally scale self after)
+@export var op: String = "replace"
+
+## How the add amount is computed when op == "add":
+## - "fixed": use `amount` as-is
+## - "self_value": use self's current computed value
+@export var amount_mode: String = "fixed"
+
+## Amount to use when amount_mode == "fixed".
+@export var amount: int = 0
+
+## When op == "add": if true, multiply self by `self_factor` after adding to target.
 @export var apply_self_mult_after: bool = false
-@export var self_factor: float = 1.0         # e.g., 0.5 to halve self
+
+## Self multiplier factor (e.g., 0.5 halves self).
+@export var self_factor: float = 1.0
+
+## When amount_mode == "self_value" and apply_self_mult_after == true:
+## use the amount of value self loses from the multiplication as the add amount to target.
 @export var use_self_loss_for_amount: bool = false
 
 func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) -> Array:

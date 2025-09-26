@@ -1,6 +1,7 @@
 extends TokenAbility
 class_name ExecutiveReplaceLowestAbility
 
+## Replacement token for the lowest non-winner slot (usually a Coin).
 @export var coin_token_path: String = "res://tokens/coin.tres"
 
 func _init():

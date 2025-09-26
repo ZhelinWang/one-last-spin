@@ -7,12 +7,7 @@
 [resource]
 script = ExtResource("1_1yh0o")
 name = "Empty"
-weight = 1.0
-rarity = "common"
 icon = ExtResource("1_ap2sj")
-value = 1
-tags = null
-abilities = Array[ExtResource("1_2urgk")]([])
-activeDescription = ""
+tags = PackedStringArray()
 passiveDescription = "3% increased chance for rarer tokens to spawn"
 metadata/_custom_type_script = "uid://2lqsh3g3xqag"

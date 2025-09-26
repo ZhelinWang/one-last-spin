@@ -1,9 +1,16 @@
 extends TokenAbility
 class_name TaxCollectorActiveAbility
 
+## Maximum amount to steal from each other triggered token (never reduces below 1 during steal).
 @export var steal_amount: int = 2
+
+## Permanent gain applied to self each time the active triggers.
 @export var self_permanent_gain: int = 4
+
+## Permanent bonus awarded to all Coin tokens each time the active triggers.
 @export var coin_permanent_bonus: int = 2
+
+## If true, skip targets that currently have final value <= 0 (prevents stealing from zeros).
 @export var require_positive_targets: bool = true
 
 func _source_id() -> String:

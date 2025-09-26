@@ -1,10 +1,12 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://dll3cdxejshnh"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=12 format=3 uid="uid://dll3cdxejshnh"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
 [ext_resource type="Script" uid="uid://dhr77k4c5cd3v" path="res://abilties/taxCollectorActiveAbility.gd" id="3_active"]
-[ext_resource type="Script" uid="uid://bp4m1a725lajo" path="res://abilties/genericPermanentAdjustAbility.gd" id="4_passive"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="4_n4f2a"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
 
 [sub_resource type="Resource" id="TaxCollectorActive"]
 script = ExtResource("3_active")
@@ -12,14 +14,24 @@ self_permanent_gain = 0
 id = "tax_collector_active"
 winner_only = true
 
-[sub_resource type="Resource" id="TaxCollectorPassive"]
-script = ExtResource("4_passive")
+[sub_resource type="Resource" id="TaxCollectorPassive_Action"]
+script = ExtResource("Z_action")
+op = "permanent_add"
 amount = 2
-destroy_if_zero = false
-propagate_same_key = true
-id = "tax_collector_passive"
-target_kind = 3
+desc_template = "+%d to coins (perm)"
+target_override_kind = "tag"
 target_tag = "coin"
+propagate_same_key = true
+
+[sub_resource type="Resource" id="TaxCollectorPassive_NotWinner"]
+script = ExtResource("4_n4f2a")
+kind = "not_winner"
+
+[sub_resource type="Resource" id="TaxCollectorPassive"]
+script = ExtResource("Z_effect")
+conditions = Array[ExtResource("4_n4f2a")]([SubResource("TaxCollectorPassive_NotWinner")])
+actions = Array[ExtResource("Z_action")]([SubResource("TaxCollectorPassive_Action")])
+id = "tax_collector_passive"
 
 [resource]
 script = ExtResource("1_token")

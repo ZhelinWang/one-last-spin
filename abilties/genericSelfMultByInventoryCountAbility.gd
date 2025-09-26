@@ -1,8 +1,13 @@
 extends TokenAbility
 class_name GenericSelfMultByInventoryCountAbility
 
+## Count tokens in inventory with this tag; use the count as a multiplier.
 @export var tag: String = "coin"
+
+## If the count is >= threshold, do not apply the multiplier (acts as a cap gate).
 @export var threshold: int = 5
+
+## Minimum multiplier to apply (clamps the count if too low).
 @export var min_factor: float = 0.0 # clamp to at least this value
 
 func build_steps(ctx: Dictionary, contrib: Dictionary, source_token: Resource) -> Array:

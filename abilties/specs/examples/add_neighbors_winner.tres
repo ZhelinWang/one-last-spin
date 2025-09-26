@@ -1,0 +1,20 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="1_efx"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="2_act"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("2_act")
+op = "add"
+amount = 1
+desc_template = "Buff neighbors +%d"
+target_override_kind = "neighbors"
+
+[resource]
+script = ExtResource("1_efx")
+id = "ex_add_neighbors_winner"
+trigger = 0 # ACTIVE_DURING_SPIN
+target_kind = 6 # NEIGHBORS (enum in TokenAbility, but override provided)
+winner_only = true
+actions = [ SubResource("1") ]
+

@@ -1,6 +1,7 @@
 extends TokenAbility
 class_name GenericMultiplyAbility
 
+## Temporary multiplier to apply (e.g., 2.0 doubles the value) to the selected target(s).
 @export var factor: float = 2.0
 
 func build_steps(ctx: Dictionary, contrib: Dictionary, source_token: Resource) -> Array:

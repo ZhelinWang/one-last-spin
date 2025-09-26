@@ -28,9 +28,16 @@
 extends TokenAbility
 class_name GenericPermanentAdjustAbility
 
+## Permanent change to affected tokens' base value (negative to subtract, positive to add).
 @export var amount: int = -1
+
+## If true, destroy tokens whose permanent value drops below 1.
 @export var destroy_if_zero: bool = true
+
+## If true, target all other current spin slots (excluding the source) instead of using target_kind.
 @export var exclude_self: bool = false
+
+## If true and targeting self/offset, also affect all tokens with the same internal key (i.e., copies of this token).
 @export var propagate_same_key: bool = false
 
 func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) -> Array:

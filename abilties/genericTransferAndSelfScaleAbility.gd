@@ -21,10 +21,17 @@
 extends TokenAbility
 class_name GenericTransferAndSelfScaleAbility
 
+## For adjacency checks: if true, pass when at least one neighbor matches; otherwise require all neighbors to match.
 @export var require_any: bool = true
+
+## Amount to add to self when the condition passes.
 @export var amount: int = 1
-@export var match_tag: String = ""     # e.g., "coin", "worker"
-@export var match_name: String = ""    # alternative to tag
+
+## Match by tag on neighbors, e.g., "coin", "worker" (case-insensitive).
+@export var match_tag: String = ""
+
+## Alternative to tag: match by exact token name on neighbors.
+@export var match_name: String = ""
 
 func _match_token(tok) -> bool:
 	if match_tag.strip_edges() != "": return _token_has_tag(tok, match_tag)

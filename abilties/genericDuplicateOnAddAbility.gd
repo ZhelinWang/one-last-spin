@@ -23,6 +23,8 @@
 extends TokenAbility
 class_name GenericDuplicateOnAddAbility
 
+## On being added to inventory, ensure there are this many total copies of this token (including the original).
+## The executor is expected to spawn additional copies if needed.
 @export var total_copies: int = 2
 
 func on_added_to_inventory(board_tokens: Array, ctx: Dictionary, source_token: Resource) -> void:

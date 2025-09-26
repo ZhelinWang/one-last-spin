@@ -1,6 +1,7 @@
 extends TokenAbility
 class_name GenericAddAbility
 
+## Temporary add amount to apply (+N value) to the selected target(s).
 @export var amount: int = 1
 
 func _desc_or_default(src_name: String) -> String:

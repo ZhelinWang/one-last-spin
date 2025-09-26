@@ -1,17 +1,31 @@
 extends Resource
 class_name TokenLootData
 
+## In-game display name for this token.
 @export var name: String
+
+## Rarity weight used by loot/selection systems (higher = more common).
 @export var weight: float = 1.0
-@export var rarity: String = "common"     # common | uncommon | rare | legendary
+
+## Rarity label used for visuals and balancing: common | uncommon | rare | legendary
+@export var rarity: String = "common"
+
+## Icon shown in UI for this token.
 @export var icon: Texture2D = load("res://placehold.jpg")
 
+## Base value before spin-time modifications.
 @export var value: int = 1
+
+## Tags used by abilities/selectors/conditions (e.g., "Coin", "Worker").
 @export var tags: PackedStringArray = PackedStringArray([])
 
-#Ability
+## The list of abilities attached to this token (data-driven or scripted).
 @export var abilities: Array[TokenAbility] = []
+
+## Short active effect description (displayed when token is the winner).
 @export var activeDescription: String
+
+## Short passive effect description (displayed otherwise or in tooltips).
 @export var passiveDescription: String
 
 const RARITY_COLORS := {
