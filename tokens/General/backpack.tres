@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/onAcquireAddEmptiesAbility.gd" id="3_onadd"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+
+[sub_resource type="Resource" id="A_onadd"]
+script = ExtResource("3_onadd")
+count = 3
+id = "backpack_onadd_empties"
+
+[resource]
+script = ExtResource("1_token")
+name = "Backpack"
+rarity = "common"
+icon = ExtResource("4_icon")
+value = 2
+tags = PackedStringArray("common", "General")
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_onadd")])
+passiveDescription = "On add: Add 3 Empties to inventory."
+

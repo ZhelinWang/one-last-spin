@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/onRemovedAdjustRunTotalAbility.gd" id="3_onremoved"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+
+[sub_resource type="Resource" id="A_onremoved"]
+script = ExtResource("3_onremoved")
+multiplier = 1.5
+id = "tipjar_gain_on_destroy"
+trigger = 2 # ON_REMOVED
+
+[resource]
+script = ExtResource("1_token")
+name = "Tip Jar"
+rarity = "common"
+icon = ExtResource("4_icon")
+value = 2
+tags = PackedStringArray("common", "Hoarder")
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_onremoved")])
+passiveDescription = "When destroyed, gain 1.5× its value."
+

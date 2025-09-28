@@ -221,6 +221,7 @@ func _finish_spin() -> void:
 			"class_data": class_data,
 			"defer_winner_active": true,
 			"slot_map": _build_slot_map(),
+			"spin_root": self,
 			"floating_label_scene": floating_label_scene
 		})
 		emit_signal("spin_finished", _win_item, int(result.get("spin_total", 0)))
@@ -796,7 +797,8 @@ func _on_loot_choice_selected(round_num: int, token: TokenLootData) -> void:
 	if token == null:
 		return
 	var copies := _copies_to_add_for_token(token)
-	_insert_token_replacing_empties(token, copies)
+	var added := _insert_token_replacing_empties(token, copies)
+	_apply_on_added_abilities(added)
 	_update_inventory_strip()
 	_refresh_inventory_baseline()
 
@@ -821,13 +823,14 @@ func _copies_to_add_for_token(token: TokenLootData) -> int:
 					copies = max(copies, int(tc))
 	return max(1, copies)
 
-func _insert_token_replacing_empties(token: TokenLootData, copies: int) -> void:
+func _insert_token_replacing_empties(token: TokenLootData, copies: int) -> Array[TokenLootData]:
 	var empty_path: String = ""
 	if coin_mgr != null and coin_mgr.has_method("get"):
 		var ep = coin_mgr.get("empty_token_path")
 		if typeof(ep) == TYPE_STRING:
 			empty_path = String(ep)
 	var added_count := 0
+	var instances: Array[TokenLootData] = []
 	for i in range(max(1, copies)):
 		var inst: TokenLootData = token if i == 0 else ((token as Resource).duplicate(true) as TokenLootData)
 		_init_token_base_value(inst)
@@ -837,8 +840,106 @@ func _insert_token_replacing_empties(token: TokenLootData, copies: int) -> void:
 		else:
 			items.append(inst)
 		added_count += 1
+		instances.append(inst)
 	if added_count > 0:
 		_on_tokens_added_to_inventory(added_count)
+	return instances
+
+func _apply_on_added_abilities(instances: Array) -> void:
+	if instances == null or instances.is_empty():
+		return
+	var ctx := {
+		"spin_root": self,
+		"coin_mgr": coin_mgr,
+		"rng": _rng,
+		"board_tokens": items
+	}
+	for inst in instances:
+		if inst == null or not (inst as Object).has_method("get"):
+			continue
+		var abilities = inst.get("abilities")
+		if abilities is Array:
+			for ab in abilities:
+				if ab == null: continue
+				if (ab as Object).has_method("on_added_to_inventory"):
+					(ab as Object).call_deferred("on_added_to_inventory", items, ctx, inst)
+
+func add_empty_slots(count: int) -> void:
+	if count <= 0:
+		return
+	var empty_path: String = "res://tokens/empty.tres"
+	if coin_mgr != null and coin_mgr.has_method("get"):
+		var ep = coin_mgr.get("empty_token_path")
+		if typeof(ep) == TYPE_STRING:
+			empty_path = String(ep)
+	var empty_res = ResourceLoader.load(empty_path)
+	if empty_res == null:
+		return
+	for i in range(count):
+		var inst: Resource = (empty_res as Resource).duplicate(true)
+		_init_token_base_value(inst)
+		items.append(inst)
+	_on_tokens_added_to_inventory(count)
+	_update_inventory_strip()
+	_refresh_inventory_baseline()
+
+signal target_chosen(offset: int)
+
+func choose_target_offset(exclude_center: bool = true) -> int:
+	# Allow player to click one of the currently triggered slots (neighbors + edges), optionally excluding center.
+	var offsets: Array[int] = [-2, -1, 0, 1, 2]
+	if exclude_center:
+		offsets = [-2, -1, 1, 2]
+	var overlays: Array[Node] = []
+	for off in offsets:
+		var slot := _slot_for_offset(off)
+		if slot == null:
+			continue
+		var btn := Button.new()
+		btn.name = "_TargetPick"
+		btn.flat = true
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		btn.modulate = Color(1, 1, 1, 0.001)
+		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+		if btn.is_connected("pressed", Callable(self, "_on_target_pick_pressed")):
+			btn.pressed.disconnect(Callable(self, "_on_target_pick_pressed"))
+		btn.pressed.connect(_on_target_pick_pressed.bind(off))
+		slot.add_child(btn)
+		overlays.append(btn)
+	var picked: Variant = await self.target_chosen
+	for ov in overlays:
+		if ov != null and is_instance_valid(ov):
+			ov.queue_free()
+	return int(picked)
+
+func _on_target_pick_pressed(off: int) -> void:
+	emit_signal("target_chosen", off)
+
+func replace_token_in_inventory(old_token: Resource, new_token: Resource) -> void:
+	if old_token == null or new_token == null:
+		return
+	var idx := -1
+	for i in range(items.size()):
+		if items[i] == old_token:
+			idx = i
+			break
+	if idx == -1:
+		# Try by name equality fallback
+		var n_old := String(old_token.get("name")) if old_token.has_method("get") else ""
+		for i in range(items.size()):
+			var it = items[i]
+			if it != null and (it as Object).has_method("get"):
+				if String(it.get("name")) == n_old:
+					idx = i
+					break
+	if idx == -1:
+		return
+	var inst: Resource = (new_token as Resource).duplicate(true)
+	_init_token_base_value(inst)
+	items[idx] = inst
+	_update_inventory_strip()
+	_refresh_inventory_baseline()
 
 func _on_tokens_added_to_inventory(count: int) -> void:
 	if count <= 0:

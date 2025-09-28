@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/destroyTargetAndGainValueAbility.gd" id="3_gain"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+
+[sub_resource type="Resource" id="A_gain"]
+script = ExtResource("3_gain")
+gain_fraction_numer = 1
+gain_fraction_denom = 1
+id = "hitman_destroy_and_gain_value"
+trigger = 0
+
+[resource]
+script = ExtResource("1_token")
+name = "Hitman"
+rarity = "rare"
+icon = ExtResource("4_icon")
+value = 4
+tags = PackedStringArray("rare", "Villain")
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
+activeDescription = "Destroy a target and gain its value permanently."
+

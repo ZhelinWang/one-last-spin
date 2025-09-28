@@ -128,6 +128,9 @@ const META_ZERO_REPLACED := "__zero_replaced"
 const META_ZERO_REASON := "__zero_reason"
 const ZERO_REPLACEMENT_VALUE := 1
 
+# Next-loot bonus options added by effects (consumed when loot appears)
+var _loot_options_bonus: int = 0
+
 
 func _ready() -> void:
 	_loot_rng.randomize()
@@ -316,6 +319,8 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 			print("[Spin] Slot offset ", off, " -> token=", token_str, " kind=", kind, " base=", base_val)
 
 	baseline_snapshot = _snapshot_baseline_contribs(contribs)
+	# Provide contribs for reactive abilities (e.g., neighbor checks)
+	ctx["__last_contribs"] = contribs
 	# winner active steps (self) deferred here; winner global active (affect others) collected later
 	var deferred_winner_self_steps: Array = []
 
@@ -508,6 +513,14 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 			if debug_spin:
 				print("[Commands] Found ", late.size(), " command(s). Executing...")
 			_execute_ability_commands(late, ctx, contribs, winner)
+
+		# Execute any commands enqueued by reactive abilities during steps (e.g., on_value_changed hooks)
+		var pend = ctx.get("__pending_commands", [])
+		if pend is Array and not (pend as Array).is_empty():
+			if debug_spin:
+				print("[Commands] Executing ", (pend as Array).size(), " pending reactive command(s)...")
+			_execute_ability_commands(pend, ctx, contribs, null)
+			ctx["__pending_commands"] = []
 
 	if enable_game_over:
 		var spr: int = max(spins_per_round, 1)
@@ -1564,7 +1577,14 @@ func _trigger_loot_choice(round_num: int) -> void:
 	# Do not offer loot if a Game Over is active
 	if _game_over_active:
 		return
-	var options: Array = _get_loot_options(max(1, loot_options_count), round_num)
+	# Passive: Treasure Hoard spawns a random Chest each round
+	_apply_treasure_hoard_spawn()
+	var bonus: int = int(_loot_options_bonus)
+	if bonus < 0: bonus = 0
+	var total_opts: int = max(1, loot_options_count + bonus)
+	var options: Array = _get_loot_options(total_opts, round_num)
+	# consume the bonus
+	_loot_options_bonus = 0
 	if options.is_empty():
 		_on_loot_skip_pressed(round_num)
 		return
@@ -3194,6 +3214,23 @@ func _collect_winner_ability_commands(ctx: Dictionary, contribs: Array, winner) 
 	return out
 
 func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, effect_source: Variant = null) -> void:
+	# Share current contribs for abilities that need adjacency info
+	if ctx is Dictionary:
+		ctx["__last_contribs"] = _contribs
+	# Pre-pass: register guards so subsequent destructive ops are blocked within this batch
+	for c0 in cmds:
+		if typeof(c0) != TYPE_DICTIONARY:
+			continue
+		var op0 := String((c0 as Dictionary).get("op", "")).to_lower()
+		if op0 == "register_guard_aura":
+			_register_guard_offset(ctx, int((c0 as Dictionary).get("offset", 0)))
+		elif op0 == "register_destroy_guard":
+			_register_value_guard(ctx,
+				int((c0 as Dictionary).get("offset", 0)),
+				int((c0 as Dictionary).get("min_value_threshold", 0)),
+				bool((c0 as Dictionary).get("triggered_only", true)))
+		elif op0 == "register_ward":
+			_register_ward_offset(ctx, int((c0 as Dictionary).get("offset", 0)))
 	for cmd in cmds:
 		if typeof(cmd) != TYPE_DICTIONARY:
 			continue
@@ -3205,9 +3242,145 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 			_prepare_effect_tracking(cmd_source)
 			_current_effect_source = cmd_source
 		var op := String((cmd as Dictionary).get("op", "")).to_lower()
+		# Handle interactive targeting: mark choose → resolve an offset from UI
+		if _op_needs_offset(op):
+			var need_choose := String((cmd as Dictionary).get("target_kind", "")) == "choose" or bool((cmd as Dictionary).get("choose", false))
+			if need_choose:
+				var off_choice := await _prompt_target_offset(ctx, true)
+				(cmd as Dictionary)["offset"] = int(off_choice)
+				(cmd as Dictionary)["target_offset"] = int(off_choice)
+		# Ward redirection: if an adjacent ward exists, redirect destructive ops to the ward instead
+		if op == "destroy" or op == "destroy_and_gain_fraction" or op == "replace_at_offset":
+			var off_in := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+			var off_out := _resolve_ward_redirect(ctx, _contribs, off_in)
+			(cmd as Dictionary)["offset"] = int(off_out)
+			(cmd as Dictionary)["target_offset"] = int(off_out)
 		match op:
+			"spawn_copy_in_inventory":
+				var to_copy = (cmd as Dictionary).get("token_ref", null)
+				if to_copy != null and (to_copy is Resource or (to_copy as Object).has_method("duplicate")):
+					var arr := _get_inventory_array()
+					var idx_emp := _find_empty_index(arr)
+					var dup := (to_copy as Resource).duplicate(true)
+					_init_token_base_value(dup)
+					if idx_emp >= 0:
+						arr[idx_emp] = dup
+					else:
+						arr.append(dup)
+					_set_inventory_array(arr)
+			"destroy_all_copies_by_name":
+				var nm := String((cmd as Dictionary).get("token_name", ""))
+				if nm.strip_edges() != "":
+					var arr2 := _get_inventory_array()
+					var empty_res3 := _load_empty_token()
+					if empty_res3 is Resource:
+						var erp := (empty_res3 as Resource).resource_path
+						for i in range(arr2.size()):
+							var it = arr2[i]
+							if it != null and (it as Object).has_method("get") and String(it.get("name")) == nm:
+								arr2[i] = (empty_res3 as Resource).duplicate(true)
+						_set_inventory_array(arr2)
+						_resync_contribs_from_board(ctx, _contribs)
+						_refresh_dynamic_passives(ctx, _contribs)
+			"destroy_triggered_tag":
+				var tagd := String((cmd as Dictionary).get("target_tag", ""))
+				for c in _contribs:
+					if c is Dictionary and _token_has_tag((c as Dictionary).get("token"), tagd):
+						var offd := int((c as Dictionary).get("offset", 0))
+						if _guard_blocks(ctx, _contribs, offd, op):
+							continue
+						var empty_res4 := _load_empty_token()
+						if empty_res4 is Resource:
+							_replace_token_at_offset(ctx, offd, (empty_res4 as Resource).resource_path, -1, false)
+				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+			"replace_self_random_by_tag":
+				var tagrs := String((cmd as Dictionary).get("target_tag", ""))
+				var sets := _class_allowed_sets(ctx)
+				var troot := String((cmd as Dictionary).get("tokens_root", loot_scan_root))
+				var choices: Array[String] = []
+				var da = DirAccess.open(troot)
+				if da != null:
+					var files = da.get_files()
+					for f in files:
+						if f.ends_with(".tres"):
+							var p: String = troot.path_join(f)
+							var res = ResourceLoader.load(p)
+							if res != null and (res as Object).has_method("get") and _token_has_tag(res, tagrs):
+								if sets.is_empty():
+									choices.append(p)
+								else:
+									var tags=res.get("tags")
+									var ok=false
+									if tags is Array:
+										for t in tags:
+											if typeof(t)==TYPE_STRING and sets.has(String(t)):
+												ok=true; break
+									if ok:
+										choices.append(p)
+				if not choices.is_empty():
+					var pick := choices[_loot_rng.randi_range(0, choices.size()-1)]
+					# Find self offset
+					var self_c := _find_self_contrib(_contribs, effect_source)
+					var off_self := 0
+					if not self_c.is_empty(): off_self = int(self_c.get("offset", 0))
+					_replace_token_at_offset(ctx, off_self, pick, -1, false)
+					_resync_contribs_from_board(ctx, _contribs)
+					_refresh_dynamic_passives(ctx, _contribs)
+			"promote_token_in_inventory":
+				var pathp := String((cmd as Dictionary).get("token_path", ""))
+				var from_ref: Variant = (cmd as Dictionary).get("from_ref", null)
+				if pathp.strip_edges() == "":
+					break
+				var arr3: Array = _get_inventory_array()
+				var idxp := -1
+				if from_ref != null:
+					for i in range(arr3.size()):
+						if arr3[i] == from_ref:
+							idxp = i; break
+				if idxp == -1 and from_ref != null and (from_ref as Object).has_method("get"):
+					var fn := String(from_ref.get("name"))
+					for i in range(arr3.size()):
+						var it2 = arr3[i]
+						if it2 != null and (it2 as Object).has_method("get") and String(it2.get("name")) == fn:
+							idxp = i; break
+				if idxp >= 0:
+					_replace_token_at_offset(ctx, 0, pathp, -1, false, arr3[idxp])
+					_resync_contribs_from_board(ctx, _contribs)
+					_refresh_dynamic_passives(ctx, _contribs)
+			"spawn_token_in_inventory":
+				var path_s := String((cmd as Dictionary).get("token_path", ""))
+				var count := int((cmd as Dictionary).get("count", 1))
+				if path_s.strip_edges() == "":
+					break
+				var res_s := ResourceLoader.load(path_s)
+				if res_s is Resource:
+					var arr4 := _get_inventory_array()
+					for i in range(max(1, count)):
+						var dup2 := (res_s as Resource).duplicate(true)
+						_init_token_base_value(dup2)
+						var idxe := _find_empty_index(arr4)
+						if idxe >= 0:
+							arr4[idxe] = dup2
+						else:
+							arr4.append(dup2)
+					_set_inventory_array(arr4)
+			"register_guard_aura":
+				var off_g := int((cmd as Dictionary).get("offset", 0))
+				_register_guard_offset(ctx, off_g)
+			"register_destroy_guard":
+				var off_v := int((cmd as Dictionary).get("offset", 0))
+				var thr := int((cmd as Dictionary).get("min_value_threshold", 0))
+				var trg_only := bool((cmd as Dictionary).get("triggered_only", true))
+				_register_value_guard(ctx, off_v, thr, trg_only)
+			"register_ward":
+				var off_w := int((cmd as Dictionary).get("offset", 0))
+				_register_ward_offset(ctx, off_w)
 			"replace_at_offset":
 				var off := int((cmd as Dictionary).get("offset", 0))
+				if _guard_blocks(ctx, _contribs, off, op):
+					if debug_spin: print("[Guard] Blocked replace_at_offset at ", off)
+					continue
 				var token_path := String((cmd as Dictionary).get("token_path", ""))
 				var set_value := int((cmd as Dictionary).get("set_value", -1))
 				var preserve_tags := bool((cmd as Dictionary).get("preserve_tags", false))
@@ -3250,11 +3423,184 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 					_update_totals_label(total_coins)
 			"destroy":
 				var off2 := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+				if _guard_blocks(ctx, _contribs, off2, op):
+					if debug_spin: print("[Guard] Blocked destroy at ", off2)
+					continue
 				var empty_res := _load_empty_token()
 				if empty_res != null and empty_res is Resource:
 					_replace_token_at_offset(ctx, off2, (empty_res as Resource).resource_path, -1, false)
 					_resync_contribs_from_board(ctx, _contribs)
 					_refresh_dynamic_passives(ctx, _contribs)
+			"destroy_and_gain_fraction":
+				var offx := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+				if _guard_blocks(ctx, _contribs, offx, op):
+					if debug_spin: print("[Guard] Blocked destroy_and_gain_fraction at ", offx)
+					continue
+				var numer: int = int((cmd as Dictionary).get("gain_numer", 1))
+				var denom: int = max(1, int((cmd as Dictionary).get("gain_denom", 2)))
+				var target_c: Dictionary = _find_contrib_by_offset(_contribs, offx)
+				var gain_amt := 0
+				if target_c is Dictionary and not (target_c as Dictionary).is_empty():
+					var v := _compute_value(target_c)
+					gain_amt = int(floor(float(v) * float(numer) / float(denom)))
+				# destroy target
+				var empty_res2 := _load_empty_token()
+				if empty_res2 != null and empty_res2 is Resource:
+					_replace_token_at_offset(ctx, offx, (empty_res2 as Resource).resource_path, -1, false)
+				# permanent to self
+				if gain_amt != 0 and effect_source != null:
+					_apply_permanent_add_inventory("self", 0, "", "", gain_amt, false, ctx, false)
+				# optional replace
+				var rpath := String((cmd as Dictionary).get("replace_path", ""))
+				if rpath.strip_edges() != "":
+					_replace_token_at_offset(ctx, offx, rpath, -1, false)
+				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+			"reroll_same_rarity":
+				var offy := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+				var target_c2 := _find_contrib_by_offset(_contribs, offy)
+				if target_c2.is_empty():
+					continue
+				var tgt = target_c2.get("token")
+				if tgt == null or not tgt.has_method("get"):
+					continue
+				var rrar := String(tgt.get("rarity")).to_lower()
+				var troot := String((cmd as Dictionary).get("tokens_root", loot_scan_root))
+				var excludes: Variant = (cmd as Dictionary).get("exclude_names", [])
+				var sets: Array[String] = _class_allowed_sets(ctx)
+				var path_rr := _pick_random_same_rarity_path(troot, rrar, String(tgt.get("name")), excludes, sets)
+				if path_rr.strip_edges() == "":
+					continue
+				_replace_token_at_offset(ctx, offy, path_rr, -1, false)
+				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+			"replace_by_rarity_step":
+				var offz := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+				var target_c3 := _find_contrib_by_offset(_contribs, offz)
+				if target_c3.is_empty():
+					continue
+				var tgt2 = target_c3.get("token")
+				var src_r := String(tgt2.get("rarity")).to_lower()
+				var idx := ["common","uncommon","rare","legendary"].find(src_r)
+				if idx == -1:
+					continue
+				var mode := String((cmd as Dictionary).get("mode", "demote")).to_lower()
+				if mode == "promote":
+					idx = min(idx + 1, 3)
+				else:
+					idx = max(idx - 1, 0)
+				var rtarget: String = ["common","uncommon","rare","legendary"][idx]
+				var troot2 := String((cmd as Dictionary).get("tokens_root", loot_scan_root))
+				var p2 := _pick_random_by_rarity_path(troot2, rtarget)
+				if p2.strip_edges() == "":
+					continue
+				_replace_token_at_offset(ctx, offz, p2, -1, false)
+				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+			"destroy_random_triggered_by_rarity_and_gain":
+				var rar := String((cmd as Dictionary).get("rarity", "")).to_lower()
+				var cands: Array[Dictionary] = []
+				for c in _contribs:
+					if c is Dictionary:
+						var tok = (c as Dictionary).get("token")
+						if tok != null and (tok as Object).has_method("get") and String(tok.get("rarity")).to_lower() == rar:
+							cands.append(c)
+				if cands.is_empty():
+					continue
+				var pickc := cands[_loot_rng.randi_range(0, cands.size()-1)]
+				var offp := int(pickc.get("offset", 0))
+				if _guard_blocks(ctx, _contribs, offp, op):
+					continue
+				var valp := _compute_value(pickc)
+				var empty_res5 := _load_empty_token()
+				if empty_res5 is Resource:
+					_replace_token_at_offset(ctx, offp, (empty_res5 as Resource).resource_path, -1, false)
+				if effect_source != null:
+					var inc := valp if valp > 0 else 1
+					_apply_permanent_add_inventory("self", 0, "", "", inc, false, ctx, false)
+				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+			"mastermind_destroy_all_copies":
+				var offm := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+				var target_cm := _find_contrib_by_offset(_contribs, offm)
+				if target_cm.is_empty():
+					continue
+				var nm2 := _token_name(target_cm.get("token"))
+				var v2 := _compute_value(target_cm)
+				# Destroy all copies by name in inventory
+				var arrm := _get_inventory_array()
+				var empty_resm := _load_empty_token()
+				if empty_resm is Resource:
+					for i in range(arrm.size()):
+						var it = arrm[i]
+						if it != null and (it as Object).has_method("get") and _token_name(it) == nm2:
+							arrm[i] = (empty_resm as Resource).duplicate(true)
+					_set_inventory_array(arrm)
+				# Give all 5 triggered tokens +v2 permanently
+				for cc in _contribs:
+					if cc is Dictionary:
+						var offcc := int((cc as Dictionary).get("offset", 0))
+						_apply_permanent_add_inventory("offset", offcc, "", "", v2, false, ctx, false)
+				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+			"destroy_all_copies_choose":
+				var offc := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+				var target_cc := _find_contrib_by_offset(_contribs, offc)
+				if target_cc.is_empty():
+					continue
+				var nm3 := _token_name(target_cc.get("token"))
+				var arrc := _get_inventory_array()
+				var empty_resc := _load_empty_token()
+				if empty_resc is Resource:
+					for i in range(arrc.size()):
+						var itc = arrc[i]
+						if itc != null and (itc as Object).has_method("get") and _token_name(itc) == nm3:
+							arrc[i] = (empty_resc as Resource).duplicate(true)
+					_set_inventory_array(arrc)
+				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+			"set_perm_to_self_current":
+				var off_t := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+				var self_c := _find_self_contrib(_contribs, effect_source)
+				var target_c4 := _find_contrib_by_offset(_contribs, off_t)
+				if self_c.is_empty() or target_c4.is_empty():
+					continue
+				var self_val := _compute_value(self_c)
+				var tgt_val := _compute_value(target_c4)
+				var delta := self_val - tgt_val
+				if delta != 0:
+					_apply_permanent_add_inventory("offset", off_t, "", "", delta, false, ctx, false)
+					_refresh_all_slot_token_values(ctx)
+				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+			"set_self_perm_to_target_current":
+				var off_t2 := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+				var self_c2 := _find_self_contrib(_contribs, effect_source)
+				var target_c5 := _find_contrib_by_offset(_contribs, off_t2)
+				if self_c2.is_empty() or target_c5.is_empty():
+					continue
+				var self_val2 := _compute_value(self_c2)
+				var tgt_val2 := _compute_value(target_c5)
+				var delta2 := tgt_val2 - self_val2
+				if delta2 != 0:
+					_apply_permanent_add_inventory("self", 0, "", "", delta2, false, ctx, false)
+					_refresh_all_slot_token_values(ctx)
+				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+			"double_target_permanent":
+				var offd2 := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+				var target_c6 := _find_contrib_by_offset(_contribs, offd2)
+				if target_c6.is_empty():
+					continue
+				var valc := _compute_value(target_c6)
+				_apply_permanent_add_inventory("offset", offd2, "", "", valc, false, ctx, false)
+				_refresh_all_slot_token_values(ctx)
+				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+			"restart_round":
+				_restart_current_round()
+			"add_loot_options_bonus":
+				_loot_options_bonus += int((cmd as Dictionary).get("amount", 1))
 			_:
 				if debug_spin:
 					print("[Commands] Unknown op: ", op)
@@ -3672,9 +4018,13 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 
 	# If we have a token to remove, let its abilities react (e.g., on-removed penalties)
 	if target_token != null:
+		# Record destroyer on ctx for on_removed hooks
+		if ctx is Dictionary:
+			ctx["destroyed_by_token"] = _current_effect_source
 		var removed_cmds := _collect_on_removed_commands(ctx, target_token)
 		if removed_cmds is Array and not removed_cmds.is_empty():
 			_execute_ability_commands(removed_cmds, ctx, [], target_token)
+		_notify_any_token_destroyed(ctx, target_token, "replace_at_offset")
 
 	var owner := _resolve_inventory_owner_node()
 	if owner == null:
@@ -3755,6 +4105,208 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	_register_effect_target_current(inst)
 
 	return inst
+
+func _find_contrib_by_offset(contribs: Array, off: int) -> Dictionary:
+	for c in contribs:
+		if c is Dictionary and int((c as Dictionary).get("offset", 999)) == int(off):
+			return c
+	return {}
+
+func _find_self_contrib(contribs: Array, source_token) -> Dictionary:
+	for c in contribs:
+		if c is Dictionary and c.get("token") == source_token:
+			return c
+	return {}
+
+func _op_needs_offset(op: String) -> bool:
+	match op:
+		"replace_at_offset", "destroy", "destroy_and_gain_fraction", "reroll_same_rarity", "replace_by_rarity_step", "set_perm_to_self_current":
+			return true
+		_:
+			return false
+
+func _prompt_target_offset(ctx: Dictionary, exclude_center: bool = true) -> int:
+	if ctx != null and ctx.has("spin_root"):
+		var sr = ctx["spin_root"]
+		if sr != null and (sr as Object).has_method("choose_target_offset"):
+			return await sr.call("choose_target_offset", exclude_center)
+	# Fallback: prefer first neighbor to the right
+	return 1
+
+func _pick_random_same_rarity_path(tokens_root: String, rarity: String, exclude_name: String, excludes: Variant, allowed_sets: Array[String] = []) -> String:
+	var out: Array[String] = []
+	var all_paths: Array[String] = _collect_token_paths_under(tokens_root)
+	for p in all_paths:
+		var res = ResourceLoader.load(p)
+		if res == null or not (res as Object).has_method("get"):
+			continue
+		var nm = String(res.get("name"))
+		if nm == exclude_name:
+			continue
+		if excludes is Array and (excludes as Array).has(nm):
+			continue
+		if String(res.get("rarity")).to_lower() == rarity:
+			if not allowed_sets.is_empty():
+				var tags = res.get("tags") if (res as Object).has_method("get") else []
+				var ok := false
+				if tags is Array:
+					for t in tags:
+						if typeof(t) == TYPE_STRING and allowed_sets.has(String(t)):
+							ok = true
+							break
+				if not ok:
+					continue
+			out.append(p)
+	if out.is_empty():
+		return ""
+	_loot_rng.randomize()
+	return out[_loot_rng.randi_range(0, out.size()-1)]
+
+func _pick_random_by_rarity_path(tokens_root: String, rarity: String) -> String:
+	var out: Array[String] = []
+	var all_paths: Array[String] = _collect_token_paths_under(tokens_root)
+	for p in all_paths:
+		var res = ResourceLoader.load(p)
+		if res == null or not (res as Object).has_method("get"):
+			continue
+		if String(res.get("rarity")).to_lower() == rarity:
+			out.append(p)
+	if out.is_empty():
+		return ""
+	_loot_rng.randomize()
+	return out[_loot_rng.randi_range(0, out.size()-1)]
+
+func _collect_token_paths_under(root: String) -> Array[String]:
+	var paths: Array[String] = []
+	var dir := DirAccess.open(root)
+	if dir == null:
+		return paths
+	dir.list_dir_begin()
+	while true:
+		var name := dir.get_next()
+		if name == "":
+			break
+		if dir.current_is_dir():
+			if name.begins_with("."):
+				continue
+			paths.append_array(_collect_token_paths_under(root.path_join(name)))
+		else:
+			if name.ends_with(".tres") or name.ends_with(".res"):
+				paths.append(root.path_join(name))
+	dir.list_dir_end()
+	return paths
+
+func _class_allowed_sets(ctx: Dictionary) -> Array[String]:
+	if ctx == null:
+		return []
+	var cd = ctx.get("class_data") if ctx.has("class_data") else null
+	if cd != null and (cd as Object).has_method("get"):
+		var sets_prop = cd.get("sets")
+		if sets_prop is Array:
+			var out: Array[String] = []
+			for s in sets_prop:
+				if typeof(s) == TYPE_STRING:
+					out.append(String(s))
+			return out
+	return []
+
+func _apply_treasure_hoard_spawn() -> void:
+	var arr := _get_inventory_array()
+	var hoards := 0
+	for t in arr:
+		if t != null and (t as Object).has_method("get") and String(t.get("name")) == "Treasure Hoard":
+			hoards += 1
+	if hoards <= 0:
+		return
+	var chest_paths: Array[String] = ["res://tokens/TreasureHunters/smallChest.tres", "res://tokens/TreasureHunters/goldenChest.tres"]
+	for i in range(hoards):
+		var p := chest_paths[_loot_rng.randi_range(0, chest_paths.size()-1)]
+		var res := ResourceLoader.load(p)
+		if res is Resource:
+			var dup := (res as Resource).duplicate(true)
+			_init_token_base_value(dup)
+			var inv := _get_inventory_array()
+			var idx := _find_empty_index(inv)
+			if idx >= 0:
+				inv[idx] = dup
+			else:
+				inv.append(dup)
+			_set_inventory_array(inv)
+
+func _register_guard_offset(ctx: Dictionary, off: int) -> void:
+	if ctx == null:
+		return
+	var arr: Array = ctx.get("guarded_offsets", [])
+	if not (arr is Array):
+		arr = []
+	(arr as Array).append(off)
+	ctx["guarded_offsets"] = arr
+
+func _register_value_guard(ctx: Dictionary, source_off: int, min_threshold: int, triggered_only: bool) -> void:
+	if ctx == null:
+		return
+	var arr: Array = ctx.get("value_guards", [])
+	if not (arr is Array):
+		arr = []
+	(arr as Array).append({"source_offset": source_off, "threshold": min_threshold, "triggered_only": bool(triggered_only)})
+	ctx["value_guards"] = arr
+
+func _guard_blocks(ctx: Dictionary, contribs: Array, target_off: int, op: String) -> bool:
+	if ctx == null:
+		return false
+	var g = ctx.get("guarded_offsets", [])
+	if g is Array and (g as Array).has(target_off):
+		return true
+	var vgs = ctx.get("value_guards", [])
+	if vgs is Array:
+		for vg in vgs:
+			if not (vg is Dictionary):
+				continue
+			var thr := int((vg as Dictionary).get("threshold", 0))
+			var trig_only := bool((vg as Dictionary).get("triggered_only", true))
+			if trig_only and abs(target_off) == 0:
+				continue
+			var c := _find_contrib_by_offset(contribs, target_off)
+			if c is Dictionary and not (c as Dictionary).is_empty():
+				var val := _compute_value(c)
+				if val < thr:
+					return true
+	return false
+
+func _notify_any_token_destroyed(ctx: Dictionary, destroyed_token, cause: String = "") -> void:
+	var arr := _get_inventory_array()
+	var all_cmds: Array = []
+	# Provide the destroyer token (if any) via context
+	var killer = _current_effect_source
+	if ctx is Dictionary:
+		ctx["destroyed_by_token"] = killer
+	for t in arr:
+		if t == null or not (t as Object).has_method("get"):
+			continue
+		var abilities = t.get("abilities")
+		if abilities is Array:
+			for ab in abilities:
+				if ab == null: continue
+				if (ab as Object).has_method("on_any_token_destroyed"):
+					var cmds = ab.call("on_any_token_destroyed", ctx, destroyed_token, t)
+					if cmds is Array:
+						for c in cmds:
+							if typeof(c) == TYPE_DICTIONARY:
+								all_cmds.append(c)
+	if not all_cmds.is_empty():
+		_execute_ability_commands(all_cmds, ctx, [], null)
+	# Track opened chests total
+	if destroyed_token != null and (destroyed_token as Object).has_method("get") and _token_has_tag(destroyed_token, "chest"):
+		var k := "chests_opened_total"
+		var val := int(ctx.get(k, 0)) + 1
+		ctx[k] = val
+
+func _restart_current_round() -> void:
+	var spr: int = max(1, spins_per_round)
+	var rounds_completed: int = int(max(spin_index - 1, 0) / spr)
+	spin_index = rounds_completed * spr
+	_update_spin_counters()
+	_update_round_and_deadline_labels()
 
 func _apply_token_to_slot(slot: Control, token: Resource) -> void:
 	if slot == null or token == null:
@@ -4229,3 +4781,24 @@ func _collect_on_removed_commands(ctx: Dictionary, removed_token) -> Array:
 			print("[Executive] Destroyed %d coin(s) on removal" % destroyed)
 
 	return out
+
+func _register_ward_offset(ctx: Dictionary, off: int) -> void:
+	if ctx == null: return
+	var arr: Array = ctx.get("ward_offsets", [])
+	if not (arr is Array): arr = []
+	(arr as Array).append(off)
+	ctx["ward_offsets"] = arr
+
+func _resolve_ward_redirect(ctx: Dictionary, contribs: Array, target_off: int) -> int:
+	if ctx == null: return target_off
+	var wards = ctx.get("ward_offsets", [])
+	if not (wards is Array):
+		return target_off
+	# If any ward is adjacent to the target offset, redirect to that ward (prefer left, then right)
+	var left := target_off - 1
+	var right := target_off + 1
+	if (wards as Array).has(left):
+		return left
+	if (wards as Array).has(right):
+		return right
+	return target_off

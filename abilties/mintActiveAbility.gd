@@ -2,7 +2,7 @@ extends TokenAbility
 class_name MintActiveAbility
 
 ## Replacement token used to fill all empties (both inventory and board) during the effect.
-@export var coin_token_path: String = "res://tokens/coin.tres"
+@export var coin_token_path: String = "res://tokens/Hoarder/coin.tres"
 
 func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) -> Array:
 	if trigger != TokenAbility.Trigger.ACTIVE_DURING_SPIN:

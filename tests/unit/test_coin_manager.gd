@@ -2,9 +2,9 @@ extends GutTest
 
 const CoinManager := preload("res://coinManager.gd")
 const EMPTY_TOKEN_PATH := "res://tokens/empty.tres"
-const COIN_TOKEN_PATH := "res://tokens/coin.tres"
-const COPPER_TOKEN_PATH := "res://tokens/copperCoin.tres"
-const EXECUTIVE_TOKEN_PATH := "res://tokens/executive.tres"
+const COIN_TOKEN_PATH := "res://tokens/Hoarder/coin.tres"
+const COPPER_TOKEN_PATH := "res://tokens/Hoarder/copperCoin.tres"
+const EXECUTIVE_TOKEN_PATH := "res://tokens/Hoarder/executive.tres"
 
 class DummyInventoryOwner:
 	extends Node

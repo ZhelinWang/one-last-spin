@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=4 format=3 uid="uid://c6oyperqnae4o"]
+
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
+
+[resource]
+script = ExtResource("1_token")
+name = "Mimic"
+rarity = "uncommon"
+icon = ExtResource("4_icon")
+value = 3
+tags = PackedStringArray("uncommon", "General")
+abilities = Array[ExtResource("2_abilities")]([])
+passiveDescription = "On add, transform into a random token in inventory."

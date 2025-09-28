@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
+[ext_resource type="Script" path="res://abilties/specs/ConditionSpec.gd" id="Z_cond"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="3_icon"]
+
+[sub_resource type="Resource" id="Cond_adj_chest"]
+script = ExtResource("Z_cond")
+kind = "adjacent_any_tag"
+tag = "chest"
+
+[sub_resource type="Resource" id="Act_perm"]
+script = ExtResource("Z_action")
+op = "permanent_add"
+amount = 1
+target_override_kind = "self"
+
+[sub_resource type="Resource" id="Spec"]
+script = ExtResource("Z_effect")
+id = "shiny_pebble_adjacent_chest"
+conditions = [ SubResource("Cond_adj_chest") ]
+actions = [ SubResource("Act_perm") ]
+
+[resource]
+script = ExtResource("1_token")
+name = "Shiny Pebble"
+rarity = "common"
+icon = ExtResource("3_icon")
+value = 2
+tags = PackedStringArray("common", "Treasure")
+abilities = Array[ExtResource("2_abilities")]([SubResource("Spec")])
+passiveDescription = "+1 permanently if adjacent to a Chest."
+

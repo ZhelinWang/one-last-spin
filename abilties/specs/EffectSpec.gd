@@ -249,11 +249,17 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
                     })
             "destroy":
                 # supported as offset-destroy in current executor
-                out.append({
+                var tkd := String(tgt.get("target_kind", _tk_to_string())).to_lower()
+                var d := {
                     "op": "destroy",
                     "target_offset": int(tgt.get("target_offset", 0)),
                     "source": src
-                })
+                }
+                # Mark chooser intent so executor can prompt for a target
+                if tkd == "choose":
+                    d["target_kind"] = "choose"
+                    d["choose"] = true
+                out.append(d)
             "adjust_run_total":
                 var amt := int(act.amount)
                 if amt != 0:

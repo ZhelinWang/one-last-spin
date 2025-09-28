@@ -7,7 +7,7 @@
 [ext_resource type="Script" uid="uid://bhvcv2dadyt27" path="res://spinRoot.gd" id="4_mcdcf"]
 [ext_resource type="Shader" uid="uid://dkcvyj0bow8iu" path="res://mainBackgroundGradient.gdshader" id="4_yubjs"]
 [ext_resource type="PackedScene" uid="uid://305jesit5qa0" path="res://slotItem.tscn" id="5_sd2ej"]
-[ext_resource type="Resource" uid="uid://ckj5b7jr36la6" path="res://characters/banker.tres" id="6_dnsp1"]
+[ext_resource type="Resource" uid="uid://b7yblyfhd8u1c" path="res://characters/Tycoon.tres" id="6_dnsp1"]
 [ext_resource type="Texture2D" uid="uid://di00f0xax1nek" path="res://itemframe.png" id="7_ilgax"]
 [ext_resource type="PackedScene" uid="uid://bbkoj3b4uu041" path="res://floatingPopup.tscn" id="7_mcdcf"]
 [ext_resource type="Script" uid="uid://dk6yfsqvjbxdt" path="res://spinButton.gd" id="8_yubjs"]

@@ -2,7 +2,7 @@ extends TokenAbility
 class_name ExecutiveReplaceLowestAbility
 
 ## Replacement token for the lowest non-winner slot (usually a Coin).
-@export var coin_token_path: String = "res://tokens/coin.tres"
+@export var coin_token_path: String = "res://tokens/Hoarder/coin.tres"
 
 func _init():
 	trigger = Trigger.ACTIVE_DURING_SPIN
@@ -66,3 +66,5 @@ func _resolve_coin_base_value(ctx: Dictionary) -> int:
 					return max(int(value_prop), 1)
 
 	return base_val
+
+

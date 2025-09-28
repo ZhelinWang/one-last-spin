@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/adjacentWardAbility.gd" id="3_ward"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+
+[sub_resource type="Resource" id="A_ward"]
+script = ExtResource("3_ward")
+id = "ward_adjacent_redirect"
+
+[resource]
+script = ExtResource("1_token")
+name = "Ward"
+rarity = "common"
+icon = ExtResource("4_icon")
+value = 1
+tags = PackedStringArray("common", "General")
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_ward")])
+passiveDescription = "When an adjacent token would be destroyed, destroy this token instead."
+

@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/genericPermanentAddOnActiveAbility.gd" id="3_perm"]
+[ext_resource type="Script" path="res://abilties/onRemovedAdjustRunTotalAbility.gd" id="4_onremoved"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="5_icon"]
+
+[sub_resource type="Resource" id="A_perm"]
+script = ExtResource("3_perm")
+amount = 1
+id = "piggy_active_plus_one_perm"
+trigger = 0
+
+[sub_resource type="Resource" id="A_removed"]
+script = ExtResource("4_onremoved")
+multiplier = 2.0
+id = "piggy_gain_on_destroy"
+trigger = 2
+
+[resource]
+script = ExtResource("1_token")
+name = "Piggy Bank"
+rarity = "uncommon"
+icon = ExtResource("5_icon")
+value = 3
+tags = PackedStringArray("uncommon", "Hoarder")
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_perm"), SubResource("A_removed")])
+activeDescription = "Gain +1 permanently."
+passiveDescription = "When destroyed, gain 2× value."
+

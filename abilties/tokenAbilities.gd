@@ -81,6 +81,11 @@ func on_added_to_inventory(board_tokens: Array, ctx: Dictionary, source_token: R
 func on_removed(board_tokens: Array, ctx: Dictionary, source_token: Resource, reason: String = "") -> void: pass
 func on_not_triggered(ctx: Dictionary, source_token: Resource) -> void: pass
 
+# Called by the executor when ANY token on the board is destroyed/replaced with Empty.
+# Return an array of commands to execute (same structure as build_commands), or [] to ignore.
+func on_any_token_destroyed(ctx: Dictionary, destroyed_token: Resource, source_token: Resource) -> Array:
+	return []
+
 # ---------- helpers ----------
 func is_active_during_spin() -> bool:
 	return trigger == Trigger.ACTIVE_DURING_SPIN

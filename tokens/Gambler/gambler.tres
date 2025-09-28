@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/gamblerGainPerInventoryEmptyAbility.gd" id="3_gain"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+
+[sub_resource type="Resource" id="A_gain"]
+script = ExtResource("3_gain")
+gain_per_empty = 10
+id = "gambler_gain_per_empty"
+trigger = 0
+
+[resource]
+script = ExtResource("1_token")
+name = "Gambler"
+rarity = "legendary"
+icon = ExtResource("4_icon")
+value = 6
+tags = PackedStringArray("legendary", "Gambler")
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
+activeDescription = "This token gains +10 permanently for each Empty in the inventory."
+

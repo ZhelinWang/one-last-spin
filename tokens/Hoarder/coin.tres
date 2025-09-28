@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="1_abilities"]
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="2_token"]
+[ext_resource type="Texture2D" path="res://tokens/tokenAssets/coin/coin.png" id="3_icon"]
+[ext_resource type="Script" path="res://abilties/genericPermanentAddOnActiveAbility.gd" id="4_permadd"]
+
+[sub_resource type="Resource" id="A_perm"]
+script = ExtResource("4_permadd")
+amount = 1
+id = "coin_self_perm_plus1"
+trigger = 0
+
+[resource]
+script = ExtResource("2_token")
+name = "Coin"
+rarity = "common"
+icon = ExtResource("3_icon")
+value = 1
+tags = PackedStringArray("coin", "common", "Hoarder")
+abilities = Array[ExtResource("1_abilities")]([SubResource("A_perm")])
+activeDescription = "Gain +1 permanently."
+passiveDescription = ""

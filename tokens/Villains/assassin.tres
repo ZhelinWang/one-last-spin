@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/assassinPassiveAbility.gd" id="3_assassin"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+
+[sub_resource type="Resource" id="A_assassin"]
+script = ExtResource("3_assassin")
+id = "assassin_random_neighbor_destroy_and_steal"
+
+[resource]
+script = ExtResource("1_token")
+name = "Assassin"
+rarity = "uncommon"
+icon = ExtResource("4_icon")
+value = 3
+tags = PackedStringArray("uncommon", "Villain")
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_assassin")])
+passiveDescription = "Randomly destroys a neighboring token and steals its value."
+

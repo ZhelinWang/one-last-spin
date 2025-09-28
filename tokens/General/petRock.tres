@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_token")
+name = "Pet Rock"
+rarity = "common"
+icon = ExtResource("2_icon")
+value = 4
+tags = PackedStringArray("common", "General")
+passiveDescription = "Just a rock."
+

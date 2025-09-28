@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/spawnTokensByPathAbility.gd" id="3_spawn"]
+[ext_resource type="Script" path="res://abilties/onAnyDestroyedSelfPermAddAbility.gd" id="4_gain"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="5_icon"]
+
+[sub_resource type="Resource" id="A_spawn"]
+script = ExtResource("3_spawn")
+token_path = "res://tokens/TreasureHunters/smallChest.tres"
+count = 1
+id = "pirate_add_small_chest"
+trigger = 0
+
+[sub_resource type="Resource" id="A_gain"]
+script = ExtResource("4_gain")
+amount = 0
+id = "pirate_gain_destroyed_chest_value"
+
+[resource]
+script = ExtResource("1_token")
+name = "Pirate"
+rarity = "rare"
+icon = ExtResource("5_icon")
+value = 5
+tags = PackedStringArray("rare", "Treasure")
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_spawn")])
+activeDescription = "Add a small chest to the inventory."
+passiveDescription = "Gains value from destroyed Chests."
+
+

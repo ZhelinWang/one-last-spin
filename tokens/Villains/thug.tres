@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/thugOnAdjDestroyedGainAbility.gd" id="3_gain"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+
+[sub_resource type="Resource" id="A_gain"]
+script = ExtResource("3_gain")
+amount = 1
+id = "thug_gain_on_adj_destroyed"
+
+[resource]
+script = ExtResource("1_token")
+name = "Thug"
+rarity = "common"
+icon = ExtResource("4_icon")
+value = 1
+tags = PackedStringArray("common", "Villain")
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
+passiveDescription = "+1 permanently when an adjacent token is destroyed."
+

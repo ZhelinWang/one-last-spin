@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/onAnyDestroyedSelfPermAddAbility.gd" id="3_col"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+
+[sub_resource type="Resource" id="A_col"]
+script = ExtResource("3_col")
+amount = 1
+id = "collector_on_destroyed_plus_one"
+
+[resource]
+script = ExtResource("1_token")
+name = "Collector"
+rarity = "uncommon"
+icon = ExtResource("4_icon")
+value = 3
+tags = PackedStringArray("uncommon", "General")
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_col")])
+passiveDescription = "Whenever any token is destroyed, gain +1 permanently."
+

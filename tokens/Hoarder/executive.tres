@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="3_icon"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
+
+[sub_resource type="Resource" id="Exec_Destroy"]
+script = ExtResource("Z_action")
+op = "destroy"
+target_override_kind = "choose"
+
+[sub_resource type="Resource" id="Exec_CoinBuff"]
+script = ExtResource("Z_action")
+op = "permanent_add"
+amount = 3
+target_override_kind = "tag"
+target_tag = "coin"
+
+[sub_resource type="Resource" id="Exec_Spec"]
+script = ExtResource("Z_effect")
+id = "executive_destroy_target_and_buff_coins"
+trigger = 0
+actions = [ SubResource("Exec_Destroy"), SubResource("Exec_CoinBuff") ]
+
+[resource]
+script = ExtResource("1_token")
+name = "Executive"
+rarity = "legendary"
+icon = ExtResource("3_icon")
+value = 7
+tags = PackedStringArray("legendary", "Hoarder", "Human", "executive")
+abilities = Array[ExtResource("2_abilities")]([SubResource("Exec_Spec")])
+activeDescription = "Destroy the target; all Coins gain +3 permanently."
+passiveDescription = "When removed, remove all Coins from inventory."

@@ -29,7 +29,7 @@ class_name GenericChargeAndCashOutReplaceAbility
 
 @export var store_key: String = "charge"
 @export var increment_on_non_winner_trigger: bool = true
-@export var replace_path: String = "res://tokens/coin.tres"
+@export var replace_path: String = "res://tokens/Hoarder/coin.tres"
 
 func build_final_steps(ctx: Dictionary, contribs: Array, source_token: Resource) -> Array:
 	var out: Array = []

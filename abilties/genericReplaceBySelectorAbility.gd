@@ -37,7 +37,7 @@ enum Selector { LOWEST, HIGHEST, RANDOM_NEIGHBOR }
 @export var selector: Selector = Selector.LOWEST
 
 ## Replacement token resource path (used when op == "replace").
-@export var replace_with_path: String = "res://tokens/coin.tres"
+@export var replace_with_path: String = "res://tokens/Hoarder/coin.tres"
 
 ## If true, seed the new token's value with the selected token's current value; otherwise use replacement default.
 @export var preserve_value_from_selected: bool = true

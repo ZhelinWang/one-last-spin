@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/stealPermanentAbility.gd" id="3_steal"]
+[ext_resource type="Script" path="res://abilties/destroySelfIfNoEmptyInInventory.gd" id="4_cond"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="5_icon"]
+
+[sub_resource type="Resource" id="A_steal2"]
+script = ExtResource("3_steal")
+amount = 2
+id = "con_artist_steal_two"
+trigger = 0
+
+[sub_resource type="Resource" id="A_cond"]
+script = ExtResource("4_cond")
+id = "con_artist_destroy_if_no_empty"
+
+[resource]
+script = ExtResource("1_token")
+name = "Con Artist"
+rarity = "uncommon"
+icon = ExtResource("5_icon")
+value = 3
+tags = PackedStringArray("uncommon", "Gambler", "Human")
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_steal2"), SubResource("A_cond")])
+activeDescription = "Steal +2 permanently from the target."
+passiveDescription = "Destroy self if no Empty is in inventory."
+

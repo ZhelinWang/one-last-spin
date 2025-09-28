@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/genericDuplicateOnAddAbility.gd" id="3_dup"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+
+[sub_resource type="Resource" id="A_dup"]
+script = ExtResource("3_dup")
+total_copies = 4
+id = "copper_onadd_make_4"
+
+[resource]
+script = ExtResource("1_token")
+name = "Copper Coin"
+rarity = "common"
+icon = ExtResource("4_icon")
+value = 1
+tags = PackedStringArray("coin", "common", "Hoarder")
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_dup")])
+passiveDescription = "On add: add 3 copies."
+

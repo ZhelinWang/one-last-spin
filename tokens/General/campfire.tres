@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
+[ext_resource type="Script" path="res://abilties/specs/ConditionSpec.gd" id="Z_cond"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="3_icon"]
+
+[sub_resource type="Resource" id="Camp_Cond"]
+script = ExtResource("Z_cond")
+kind = "adjacent_all_tag"
+tag = "common"
+
+[sub_resource type="Resource" id="Camp_Action"]
+script = ExtResource("Z_action")
+op = "permanent_add"
+amount = 2
+target_override_kind = "self"
+
+[sub_resource type="Resource" id="Camp_Spec"]
+script = ExtResource("Z_effect")
+id = "campfire_adjacent_common_self_perm2"
+trigger = 0
+conditions = [ SubResource("Camp_Cond") ]
+actions = [ SubResource("Camp_Action") ]
+
+[resource]
+script = ExtResource("1_token")
+name = "Campfire"
+rarity = "common"
+icon = ExtResource("3_icon")
+value = 2
+tags = PackedStringArray("common", "General")
+abilities = Array[ExtResource("2_abilities")]([SubResource("Camp_Spec")])
+passiveDescription = "If both adjacent tokens are Common, gain +2 permanently."
+
