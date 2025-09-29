@@ -93,23 +93,36 @@ func is_active_during_spin() -> bool:
 func matches_target(ctx: Dictionary, contrib: Dictionary, source_token: Resource) -> bool:
 	if winner_only and int(contrib.get("offset", 99)) != 0:
 		return false
-	var off := int(contrib.get("offset", 99))
+	var off: int = int(contrib.get("offset", 99))
 	var token = contrib.get("token")
-	match target_kind:
-		TargetKind.SELF: return token == source_token
-		TargetKind.MIDDLE: return off == 0
-		TargetKind.OFFSET: return off == target_offset
-		TargetKind.TAG: return _token_has_tag(token, target_tag)
-		TargetKind.NAME: return _token_name(token) == target_name
-		TargetKind.NEIGHBORS: return abs(off) == 1
-		TargetKind.LEFT: return off == -1
-		TargetKind.RIGHT: return off == 1
-		TargetKind.EDGES: return abs(off) == 2
-		TargetKind.ACTIVE: return String(contrib.get("kind", "")).to_lower() == "active"
-		TargetKind.PASSIVE: return String(contrib.get("kind", "")).to_lower() == "passive"
-		TargetKind.OTHERS: return token != source_token
-		TargetKind.ANY: return true
-	return false
+	var result := false
+	if target_kind == TargetKind.SELF:
+		result = token == source_token
+	elif target_kind == TargetKind.MIDDLE:
+		result = off == 0
+	elif target_kind == TargetKind.OFFSET:
+		result = off == target_offset
+	elif target_kind == TargetKind.TAG:
+		result = _token_has_tag(token, target_tag)
+	elif target_kind == TargetKind.NAME:
+		result = _token_name(token) == target_name
+	elif target_kind == TargetKind.NEIGHBORS:
+		result = abs(off) == 1
+	elif target_kind == TargetKind.LEFT:
+		result = off == -1
+	elif target_kind == TargetKind.RIGHT:
+		result = off == 1
+	elif target_kind == TargetKind.EDGES:
+		result = abs(off) == 2
+	elif target_kind == TargetKind.ACTIVE:
+		result = String(contrib.get("kind", "")).to_lower() == "active"
+	elif target_kind == TargetKind.PASSIVE:
+		result = String(contrib.get("kind", "")).to_lower() == "passive"
+	elif target_kind == TargetKind.OTHERS:
+		result = token != source_token
+	elif target_kind == TargetKind.ANY:
+		result = true
+	return result
 
 func _tk_to_string() -> String:
 	match target_kind:

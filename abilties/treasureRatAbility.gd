@@ -7,10 +7,20 @@ class_name TreasureRatAbility
 
 func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) -> Array:
     var out: Array = []
-    # Active: target to Worn Map
-    out.append({"op":"replace_at_offset","offset": 0, "token_path": String(worn_map_path), "set_value": -1, "preserve_tags": false, "target_kind":"choose"})
-    # Passive: 25% spawn a Chest if adjacent to Empty
     var self_c := _find_self_contrib(contribs, source_token)
+
+    # Active: only when this token is the winner
+    if trigger == TokenAbility.Trigger.ACTIVE_DURING_SPIN and not self_c.is_empty() and int(self_c.get("offset", 99)) == 0:
+        out.append({
+            "op": "replace_at_offset",
+            "offset": 0,
+            "token_path": String(worn_map_path),
+            "set_value": -1,
+            "preserve_tags": false,
+            "target_kind": "choose"
+        })
+
+    # Passive: 25% spawn a Chest if adjacent to Empty
     if self_c.is_empty():
         return out
     var has_empty_adj := false

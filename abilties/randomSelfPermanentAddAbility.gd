@@ -4,6 +4,10 @@ class_name RandomSelfPermanentAddAbility
 @export var min_amount: int = -1
 @export var max_amount: int = 1
 
+func _init():
+	winner_only = true
+	trigger = Trigger.ACTIVE_DURING_SPIN
+
 func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) -> Array:
 	if trigger != TokenAbility.Trigger.ACTIVE_DURING_SPIN:
 		return []

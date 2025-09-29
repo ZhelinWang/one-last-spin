@@ -9,6 +9,10 @@ class_name ReplaceTargetByRarityAbility
 
 const ORDER := ["common", "uncommon", "rare", "legendary"]
 
+func _init():
+	winner_only = true
+	trigger = Trigger.ACTIVE_DURING_SPIN
+
 func _rarity_index(r: String) -> int:
 	var rr := r.strip_edges().to_lower()
 	for i in range(ORDER.size()):

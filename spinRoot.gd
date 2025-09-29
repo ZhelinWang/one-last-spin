@@ -110,6 +110,8 @@ func _ready() -> void:
 			coin_mgr.connect("loot_choice_selected", Callable(self, "_on_loot_choice_selected"))
 		if coin_mgr.has_signal("loot_choice_replaced"):
 			coin_mgr.connect("loot_choice_replaced", Callable(self, "_on_loot_choice_replaced"))
+		if coin_mgr.has_signal("loot_choice_needed"):
+			coin_mgr.connect("loot_choice_needed", Callable(self, "_on_loot_choice_needed"))
 		if coin_mgr.has_signal("game_reset"):
 			coin_mgr.connect("game_reset", Callable(self, "_on_game_reset"))
 	else:
@@ -195,6 +197,10 @@ func _on_spin_button_pressed() -> void:
 	if _spinning:
 		_try_speedup(5.0)
 		return
+	if coin_mgr and coin_mgr.has_method("can_begin_spin"):
+		var can_spin = coin_mgr.call("can_begin_spin")
+		if not bool(can_spin):
+			return
 	# Increment spin counter immediately on press
 	if coin_mgr and coin_mgr.has_method("begin_spin"):
 		coin_mgr.call("begin_spin")
@@ -203,12 +209,22 @@ func _on_spin_button_pressed() -> void:
 func _apply_spin_button_state() -> void:
 	if not is_instance_valid(spin_button):
 		return
+	var lock_spin := false
+	if coin_mgr and coin_mgr.has_method("can_begin_spin"):
+		lock_spin = not bool(coin_mgr.call("can_begin_spin"))
 	if _spinning:
 		spin_button.text = "Speed up"
 		spin_button.tooltip_text = "Click to speed up the reel"
+		spin_button.disabled = false
 	else:
-		spin_button.text = "Spin"
-		spin_button.tooltip_text = ""
+		if lock_spin:
+			spin_button.text = "Select Target"
+			spin_button.tooltip_text = "Pick a target for the active ability"
+			spin_button.disabled = true
+		else:
+			spin_button.text = "Spin"
+			spin_button.tooltip_text = ""
+			spin_button.disabled = false
 
 func _finish_spin() -> void:
 	# Keep _spinning true until totals are applied (or fallback finishes)
@@ -801,12 +817,17 @@ func _on_loot_choice_selected(round_num: int, token: TokenLootData) -> void:
 	_apply_on_added_abilities(added)
 	_update_inventory_strip()
 	_refresh_inventory_baseline()
+	_apply_spin_button_state()
 
 func _on_loot_choice_replaced(round_num: int, token: TokenLootData, index: int) -> void:
 	# When CoinManager performs replacement directly into an inventory array,
 	# just refresh our UI from current items.
 	_update_inventory_strip()
 	_refresh_inventory_baseline()
+	_apply_spin_button_state()
+
+func _on_loot_choice_needed(_round_num: int) -> void:
+	_apply_spin_button_state()
 
 func _copies_to_add_for_token(token: TokenLootData) -> int:
 	var copies := 1
@@ -902,6 +923,14 @@ func choose_target_offset(exclude_center: bool = true) -> int:
 		btn.mouse_filter = Control.MOUSE_FILTER_STOP
 		btn.modulate = Color(1, 1, 1, 0.001)
 		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var slot_token = slot.get_meta("token_data") if slot.has_meta("token_data") else null
+		if slot_token != null:
+			btn.set_meta("token_data", slot_token)
+			if btn.get_node_or_null("TooltipSpawner") == null:
+				var pick_tip := TooltipSpawner.new()
+				pick_tip.name = "TooltipSpawner"
+				pick_tip.set_meta("token_data", slot_token)
+				btn.add_child(pick_tip)
 		if btn.is_connected("pressed", Callable(self, "_on_target_pick_pressed")):
 			btn.pressed.disconnect(Callable(self, "_on_target_pick_pressed"))
 		btn.pressed.connect(_on_target_pick_pressed.bind(off))

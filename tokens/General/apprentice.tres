@@ -1,26 +1,20 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://bno2hq5t7as17"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/replaceTargetByRarityAbility.gd" id="3_replace"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://55cin1u3636g" path="res://abilties/replaceTargetByRarityAbility.gd" id="3_replace"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_replace"]
 script = ExtResource("3_replace")
-mode = "demote"
 id = "apprentice_demote_target"
-trigger = 0
-target_kind = 2 # OFFSET
-target_offset = 1
+target_kind = 2
 
 [resource]
 script = ExtResource("1_token")
 name = "Apprentice"
-rarity = "common"
 icon = ExtResource("4_icon")
 value = 2
 tags = PackedStringArray("common", "Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_replace")])
 activeDescription = "Active (target): Demote target into a random lower-rarity token."
-passiveDescription = ""
-

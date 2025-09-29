@@ -62,3 +62,7 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 		"exclude_names": exclude_names,
 	})
 	return out
+
+func _init():
+	winner_only = true
+	trigger = Trigger.ACTIVE_DURING_SPIN

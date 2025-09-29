@@ -103,6 +103,9 @@ var _loot_options_hbox: HBoxContainer
 var _loot_skip_btn: Button
 var _loot_rng := RandomNumberGenerator.new()
 var _loot_last_round: int = 0
+var _loot_selection_forced: bool = false
+var _loot_selection_pending: bool = false
+var _target_selection_pending: bool = false
 # Removed FX overlay vars (reverted fly-to-total animation)
 
 # Run state guards
@@ -219,6 +222,8 @@ func reset_run() -> void:
 
 # ---------- Spin sequence ----------
 func begin_spin() -> void:
+	if _loot_selection_pending or _loot_selection_forced or _target_selection_pending:
+		return
 	# Increment the run spin index and refresh UI immediately on button press
 	spin_index += 1
 	_update_spin_counters(false)
@@ -226,6 +231,20 @@ func begin_spin() -> void:
 	# Per-spin highlight scope: clear any recorded effect targets/highlights from prior spins
 	_effect_targets.clear()
 	_kill_active_highlight()
+
+func can_begin_spin() -> bool:
+	return not (_loot_selection_pending or _loot_selection_forced or _target_selection_pending)
+
+func _notify_spin_lock_state(ctx: Dictionary = {}) -> void:
+	var sr = null
+	if ctx != null and ctx.has("spin_root"):
+		sr = ctx["spin_root"]
+	if sr == null:
+		var scene := get_tree().current_scene
+		if scene != null:
+			sr = scene.find_child("spinRoot", true, false)
+	if sr != null and sr is Object and (sr as Object).has_method("_apply_spin_button_state"):
+		sr.call_deferred("_apply_spin_button_state")
 
 func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 
@@ -1573,25 +1592,39 @@ func _adjust_active_effect_label_font(rtl: RichTextLabel) -> void:
 		rtl.set_meta("__font_reduced", false)
 
 # ---------- Loot overlay + picking ----------
-func _trigger_loot_choice(round_num: int) -> void:
+func _trigger_loot_choice(round_num: int, forced: bool = false, ctx: Dictionary = {}) -> bool:
 	# Do not offer loot if a Game Over is active
 	if _game_over_active:
-		return
+		return false
+	_loot_selection_forced = forced
+	if forced:
+		_loot_selection_pending = true
+		_notify_spin_lock_state(ctx)
 	# Passive: Treasure Hoard spawns a random Chest each round
 	_apply_treasure_hoard_spawn()
 	var bonus: int = int(_loot_options_bonus)
-	if bonus < 0: bonus = 0
+	if bonus < 0:
+		bonus = 0
 	var total_opts: int = max(1, loot_options_count + bonus)
 	var options: Array = _get_loot_options(total_opts, round_num)
 	# consume the bonus
 	_loot_options_bonus = 0
 	if options.is_empty():
-		_on_loot_skip_pressed(round_num)
-		return
+		var token: Resource = _load_empty_token()
+		_emit_loot_selected(round_num, token)
+		_loot_selection_pending = false
+		_loot_selection_forced = false
+		_update_loot_skip_state()
+		_notify_spin_lock_state(ctx)
+		return false
+	_loot_selection_pending = true
+	_update_loot_skip_state()
+	_notify_spin_lock_state(ctx)
 	_build_loot_overlay_if_needed()
 	var gen := _loot_gen
 	_show_loot_overlay(round_num, options, gen)
 	emit_signal("loot_choice_needed", round_num)
+	return true
 
 func _build_loot_overlay_if_needed() -> void:
 	if _loot_layer != null and is_instance_valid(_loot_layer):
@@ -1781,6 +1814,7 @@ func _show_loot_overlay(round_num: int, options: Array, expected_gen: int = -1) 
 		if _loot_skip_btn.is_connected("pressed", Callable(self, "_on_loot_skip_pressed")):
 			_loot_skip_btn.pressed.disconnect(Callable(self, "_on_loot_skip_pressed"))
 		_loot_skip_btn.pressed.connect(_on_loot_skip_pressed.bind(round_num))
+		_update_loot_skip_state()
 
 	var center_cont := _loot_block.get_node_or_null("CenterContainer") as Container
 	var column_cont := _loot_block.get_node_or_null("CenterContainer/VBoxContainer") as Container
@@ -1812,16 +1846,28 @@ func _show_loot_overlay(round_num: int, options: Array, expected_gen: int = -1) 
 func _hide_loot_overlay() -> void:
 	if _loot_layer != null and is_instance_valid(_loot_layer):
 		_loot_layer.visible = false
+	_loot_selection_pending = false
+	_loot_selection_forced = false
+	_update_loot_skip_state()
+	_notify_spin_lock_state()
 
+func _update_loot_skip_state() -> void:
+	if _loot_skip_btn != null and is_instance_valid(_loot_skip_btn):
+		_loot_skip_btn.visible = not _loot_selection_forced
+		_loot_skip_btn.disabled = _loot_selection_forced
 func _on_loot_pressed_node(node: Button) -> void:
 	var token: Resource = node.get_meta("token_data") as Resource
 	_emit_loot_selected(_loot_last_round, token)
 
 func _on_loot_skip_pressed(round_num: int) -> void:
+	if _loot_selection_forced:
+		return
 	var token: Resource = _load_empty_token()
 	_emit_loot_selected(round_num, token)
 
 func _emit_loot_selected(round_num: int, token: Resource) -> void:
+	_loot_selection_pending = false
+	_loot_selection_forced = false
 	_hide_loot_overlay()
 
 	var tok: Resource = token
@@ -3246,7 +3292,11 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 		if _op_needs_offset(op):
 			var need_choose := String((cmd as Dictionary).get("target_kind", "")) == "choose" or bool((cmd as Dictionary).get("choose", false))
 			if need_choose:
+				_target_selection_pending = true
+				_notify_spin_lock_state(ctx)
 				var off_choice := await _prompt_target_offset(ctx, true)
+				_target_selection_pending = false
+				_notify_spin_lock_state(ctx)
 				(cmd as Dictionary)["offset"] = int(off_choice)
 				(cmd as Dictionary)["target_offset"] = int(off_choice)
 		# Ward redirection: if an adjacent ward exists, redirect destructive ops to the ward instead
@@ -3256,6 +3306,15 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 			(cmd as Dictionary)["offset"] = int(off_out)
 			(cmd as Dictionary)["target_offset"] = int(off_out)
 		match op:
+			"trigger_loot_selection":
+				var spr = max(spins_per_round, 1)
+				var round_num := int(spin_index / spr)
+				var started := _trigger_loot_choice(round_num, true, ctx)
+				if started:
+					while _loot_selection_pending:
+						await get_tree().process_frame
+				else:
+					_notify_spin_lock_state(ctx)
 			"spawn_copy_in_inventory":
 				var to_copy = (cmd as Dictionary).get("token_ref", null)
 				if to_copy != null and (to_copy is Resource or (to_copy as Object).has_method("duplicate")):
