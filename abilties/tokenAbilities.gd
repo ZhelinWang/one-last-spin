@@ -142,10 +142,10 @@ func _tk_to_string() -> String:
 	return "any"
 
 func _mk_add(amount: int, desc: String, src: String) -> Dictionary:
-	return {"kind":"add","amount":amount,"factor":1.0,"desc":desc,"source":src}
+	return {"kind":"add","amount":amount,"factor":1.0,"desc":desc,"source":src,"_temporary":true}
 
 func _mk_mult(factor: float, desc: String, src: String) -> Dictionary:
-	return {"kind":"mult","amount":0,"factor":max(factor,0.0),"desc":desc,"source":src}
+	return {"kind":"mult","amount":0,"factor":max(factor,0.0),"desc":desc,"source":src,"_temporary":true}
 
 # Compatibility aliases for abilities that call *_step or make_global_step
 func _mk_add_step(amount: int, desc: String, src: String) -> Dictionary:
@@ -158,7 +158,8 @@ func mk_global_step(kind: String, amount: int, factor: float, desc: String, src:
 	return {
 		"kind": kind, "amount": amount, "factor": factor, "desc": desc, "source": src,
 		"target_kind": _tk_to_string(), "target_offset": target_offset,
-		"target_tag": target_tag, "target_name": target_name
+		"target_tag": target_tag, "target_name": target_name,
+		"_temporary": true
 	}
 
 func make_global_step(kind: String, amount: int, factor: float, desc: String, src: String) -> Dictionary:

@@ -28,19 +28,20 @@ func on_added_to_inventory(board_tokens: Array, ctx: Dictionary, source_token: R
 	var pick = candidates[rng.randi_range(0, candidates.size() - 1)]
 	if pick == null:
 		return
-	var clone: Resource = (pick as Resource).duplicate(true)
-	if clone == null:
-		return
-	board_tokens.append(clone)
 	var sr = ctx.get("spin_root") if ctx.has("spin_root") else null
 	if sr == null or not is_instance_valid(sr):
 		return
-	if (sr as Object).has_method("_init_token_base_value"):
-		sr.call("_init_token_base_value", clone)
-	if (sr as Object).has_method("_on_tokens_added_to_inventory"):
-		sr.call_deferred("_on_tokens_added_to_inventory", 1)
+	var base_copy: Resource = (pick as Resource).duplicate(true)
+	if base_copy == null:
+		return
+	var added_variant = sr.call("_insert_token_replacing_empties", base_copy, 1)
+	var added_tokens: Array = []
+	if typeof(added_variant) == TYPE_ARRAY:
+		added_tokens = added_variant
+	else:
+		added_tokens = [base_copy]
 	if (sr as Object).has_method("_apply_on_added_abilities"):
-		sr.call_deferred("_apply_on_added_abilities", [clone])
+		sr.call_deferred("_apply_on_added_abilities", added_tokens)
 	if (sr as Object).has_method("_update_inventory_strip"):
 		sr.call_deferred("_update_inventory_strip")
 	if (sr as Object).has_method("_refresh_inventory_baseline"):

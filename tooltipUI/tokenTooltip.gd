@@ -3,6 +3,8 @@ class_name TokenTooltipView
 
 @export var pixel_font: FontFile   # Optional: assign a pixel/bitmap font in Inspector
 @export var base_only: bool = false
+@export var temp_gain_color: Color = Color8(80, 220, 80)
+@export var temp_loss_color: Color = Color8(220, 80, 80)
 
 const ACTIVE_TITLE_COLOR := Color8(246, 44, 37)    # #f62c25
 const PASSIVE_TITLE_COLOR := Color8(66, 182, 255)  # #42b6ff
@@ -132,19 +134,35 @@ func set_data(data: TokenLootData) -> void:
 			elif data.has_meta("base_value"):
 				base_val = int(data.get_meta("base_value"))
 
+	var neutral := Color(0.92, 0.92, 0.96)
+	var temp_delta: float = 0.0
+	var temp_color := neutral
+	var has_temp := false
+	if data != null and data is Object and (data as Object).has_method("has_meta"):
+		if data.has_meta("__temp_spin_delta"):
+			temp_delta = float(data.get_meta("__temp_spin_delta"))
+			if abs(temp_delta) > 0.001:
+				has_temp = true
+		if data.has_meta("__temp_spin_color"):
+			var col = data.get_meta("__temp_spin_color")
+			if col is Color:
+				temp_color = col
 	if base_only:
 		_value_label.text = "Value: %d" % base_val
-		_value_label.add_theme_color_override("font_color", Color(0.92, 0.92, 0.96))
+		_value_label.add_theme_color_override("font_color", neutral)
 	else:
-		_value_label.text = "Value: %d" % curr_val
-		# Color-code permanent deltas: green when increased, red when decreased; default neutral
-		var neutral := Color(0.92, 0.92, 0.96)
-		if curr_val > base_val:
-			_value_label.add_theme_color_override("font_color", Color8(60, 200, 60))
-		elif curr_val < base_val:
-			_value_label.add_theme_color_override("font_color", Color8(220, 60, 60))
+		if has_temp:
+			var temp_str := "%+d" % int(round(temp_delta))
+			_value_label.text = "Value: %d (%s)" % [curr_val, temp_str]
+			_value_label.add_theme_color_override("font_color", temp_color)
 		else:
-			_value_label.add_theme_color_override("font_color", neutral)
+			_value_label.text = "Value: %d" % curr_val
+			if curr_val > base_val:
+				_value_label.add_theme_color_override("font_color", temp_gain_color)
+			elif curr_val < base_val:
+				_value_label.add_theme_color_override("font_color", temp_loss_color)
+			else:
+				_value_label.add_theme_color_override("font_color", neutral)
 
 	# Rarity via color only (no rarity text)
 	var rare_col := data.get_color()

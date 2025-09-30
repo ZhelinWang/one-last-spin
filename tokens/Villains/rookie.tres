@@ -1,22 +1,18 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://cb2mtkd2tot0h"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/rookieAdjacentHigherGainAbility.gd" id="3_gain"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dyawsp08md1ts" path="res://abilties/rookieAdjacentHigherGainAbility.gd" id="3_gain"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_gain"]
 script = ExtResource("3_gain")
-amount = 1
 id = "rookie_gain_if_adjacent_higher"
 
 [resource]
 script = ExtResource("1_token")
 name = "Rookie"
-rarity = "common"
 icon = ExtResource("4_icon")
-value = 1
 tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
-passiveDescription = "If adjacent token has higher value, gain +1 permanently."
-
+passiveDescription = "If an adjacent token has higher value, gain +1 permanently."

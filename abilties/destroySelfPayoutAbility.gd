@@ -19,6 +19,8 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 func build_on_removed_commands(ctx: Dictionary, removed_token: Resource, _source_token: Resource) -> Array:
 	if removed_token == null:
 		return []
+	if ctx is Dictionary and bool(ctx.get("__skip_permanent_commands", false)):
+		return []
 	var val := 0
 	if (removed_token as Object).has_method("get"):
 		var raw = removed_token.get("value")

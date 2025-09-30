@@ -1,15 +1,14 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://csn8iib7af3sd"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/stealPermanentAbility.gd" id="3_steal"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dwak3r30fea4t" path="res://abilties/stealPermanentAbility.gd" id="3_steal"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_steal4"]
 script = ExtResource("3_steal")
 amount = 4
 id = "extortionist_steal_four"
-trigger = 0
 
 [resource]
 script = ExtResource("1_token")
@@ -20,4 +19,3 @@ value = 3
 tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_steal4")])
 activeDescription = "Steal +4 permanently from the target."
-

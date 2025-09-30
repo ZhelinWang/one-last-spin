@@ -82,6 +82,8 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 @export var highlight_flash_in_sec: float = 0.8
 @export var highlight_flash_out_sec: float = 0.8
 @export var highlight_flash_pause_sec: float = 1.5
+@export var temporary_gain_color: Color = Color8(80, 220, 80)
+@export var temporary_loss_color: Color = Color8(220, 80, 80)
 
 var total_active: int = 0
 var total_passive: int = 0
@@ -130,6 +132,11 @@ var _next_highlight_uid: int = 1
 const META_ZERO_REPLACED := "__zero_replaced"
 const META_ZERO_REASON := "__zero_reason"
 const ZERO_REPLACEMENT_VALUE := 1
+const TEMP_META_DELTA := "__temp_spin_delta"
+const TEMP_META_COLOR := "__temp_spin_color"
+
+func _temporary_neutral_color() -> Color:
+	return Color(0.92, 0.92, 0.96)
 
 # Next-loot bonus options added by effects (consumed when loot appears)
 var _loot_options_bonus: int = 0
@@ -224,6 +231,7 @@ func reset_run() -> void:
 func begin_spin() -> void:
 	if _loot_selection_pending or _loot_selection_forced or _target_selection_pending:
 		return
+	_clear_temp_value_meta_all()
 	# Increment the run spin index and refresh UI immediately on button press
 	spin_index += 1
 	_update_spin_counters(false)
@@ -231,6 +239,25 @@ func begin_spin() -> void:
 	# Per-spin highlight scope: clear any recorded effect targets/highlights from prior spins
 	_effect_targets.clear()
 	_kill_active_highlight()
+
+func _clear_temp_value_meta_all() -> void:
+	var arr := _get_inventory_array()
+	if arr is Array:
+		for token in arr:
+			_reset_temp_meta(token)
+
+func _reset_temp_meta(token) -> void:
+	_set_token_temp_meta(token, 0.0)
+
+func _update_token_temp_meta_from_contrib(token, contrib: Dictionary, is_temp: bool) -> void:
+	if token == null or contrib == null:
+		return
+	if not is_temp:
+		_reset_temp_meta(token)
+		return
+	var base_val := int(contrib.get("base", 0))
+	var current_val := _compute_value(contrib)
+	_set_token_temp_meta(token, float(current_val - base_val))
 
 func can_begin_spin() -> bool:
 	return not (_loot_selection_pending or _loot_selection_forced or _target_selection_pending)
@@ -245,6 +272,21 @@ func _notify_spin_lock_state(ctx: Dictionary = {}) -> void:
 			sr = scene.find_child("spinRoot", true, false)
 	if sr != null and sr is Object and (sr as Object).has_method("_apply_spin_button_state"):
 		sr.call_deferred("_apply_spin_button_state")
+
+func _temporary_neutral_color() -> Color:
+	return Color(0.92, 0.92, 0.96)
+
+func _set_token_temp_meta(token, delta: float) -> void:
+	if token == null or not (token as Object).has_method("set_meta"):
+		return
+	var color := _temporary_neutral_color()
+	if delta > 0.001:
+		color = temporary_gain_color
+	elif delta < -0.001:
+		color = temporary_loss_color
+	if (token as Object).has_method("set_meta"):
+		token.set_meta(TEMP_META_DELTA, delta)
+		token.set_meta(TEMP_META_COLOR, color)
 
 func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 
@@ -597,7 +639,7 @@ func _apply_steps_now(i: int, c: Dictionary, steps: Array, ctx: Dictionary, sour
 				si.call_deferred("set_value", new_val)
 
 		# Popup + shake
-		_play_counting_popup(ctx, c, prev_val, new_val, false)
+		_play_counting_popup(ctx, c, prev_val, new_val, false, stepn)
 
 		if shake_mag > 0.0:
 			if not _is_contrib_zero_replaced(c):
@@ -765,7 +807,7 @@ func _apply_global_step_parallel(step: Dictionary, contribs: Array, indices: Arr
 		var c: Dictionary = contribs[idx]
 		if _is_contrib_zero_replaced(c):
 			continue
-		_play_counting_popup(ctx, c, prev_vals[k], _compute_value(c), false)
+		_play_counting_popup(ctx, c, prev_vals[k], _compute_value(c), false, {})
 		var shake_mag := float(shake_by_index.get(idx, 0.0))
 		if shake_mag > 0.0:
 			_shake_slot_for_contrib(ctx, c)
@@ -943,7 +985,7 @@ func _global_step_matches(step: Dictionary, contrib: Dictionary, source_token) -
 			return true
 
 # ---------- Counting popup ----------
-func _play_counting_popup(ctx: Dictionary, contrib: Dictionary, from_val: int, to_val: int, is_base: bool) -> void:
+func _play_counting_popup(ctx: Dictionary, contrib: Dictionary, from_val: int, to_val: int, is_base: bool, step_info: Dictionary = {}) -> void:
 	var env := _ensure_popup(ctx, contrib)
 	if env.is_empty():
 		return
@@ -985,21 +1027,31 @@ func _play_counting_popup(ctx: Dictionary, contrib: Dictionary, from_val: int, t
 
 	var ct := get_tree().create_tween()
 	popup.set_meta("count_tween", ct)
-	var call := Callable(self, "_set_counting_text").bind(env["label"])
+	var color := _temporary_neutral_color()
+	if not is_base and step_info is Dictionary and _is_step_temporary(step_info):
+		var diff := to_val - from_val
+		if diff > 0:
+			color = temporary_gain_color
+		elif diff < 0:
+			color = temporary_loss_color
+	var call := Callable(self, "_set_counting_text").bind(env["label"], color, float(from_val))
 	ct.tween_method(call, float(from_val), float(to_val), count_dur).set_trans(Tween.TRANS_LINEAR)
 
-func _set_counting_text(v: float, target: Node) -> void:
+func _set_counting_text(v: float, target: Node, color: Color, origin: float) -> void:
 	if target == null:
 		return
-	var t := "+%d%s" % [int(round(v)), _gold_bbcode()]
+	var diff := int(round(v - origin))
+	var sign := diff >= 0 ? "+" : ""
+	var t := "%s%d%s" % [sign, diff, _gold_bbcode()]
 	if target is Label:
-		(target as Label).text = t
+		var lbl := target as Label
+		lbl.add_theme_color_override("font_color", color)
+		lbl.text = t
 	elif target is RichTextLabel:
 		var rtl := target as RichTextLabel
-		if rtl.bbcode_enabled:
-			rtl.bbcode_text = t
-		else:
-			rtl.text = t
+		var color_code := color.to_html(false)
+		rtl.bbcode_enabled = true
+		rtl.bbcode_text = "[color=%s]%s[/color]" % [color_code, t]
 
 func _ensure_popup(ctx: Dictionary, contrib: Dictionary) -> Dictionary:
 	var slot := _slot_from_ctx(ctx, int(contrib.offset))
@@ -1389,6 +1441,7 @@ func _apply_step(c: Dictionary, step: Dictionary) -> void:
 	if kind == "final_add":
 		logged["final_applied"] = final_applied
 	(c.steps as Array).append(logged)
+	_update_token_temp_meta_from_contrib(c.get("token"), c, _is_step_temporary(step))
 
 func _compute_value(c: Dictionary) -> int:
 	var base: int = int(c.base)
@@ -2775,7 +2828,7 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 					continue
 				var pv: int = _compute_value(c2)
 				var nv: int = pv + self_amt
-				_play_counting_popup(ctx, c2, pv, nv, false)
+				_play_counting_popup(ctx, c2, pv, nv, false, {})
 				# Update inline slot value if available
 				var slot2 := _slot_from_ctx(ctx, int(c2.get("offset", 0)))
 				if slot2 != null:
@@ -2877,7 +2930,7 @@ func _apply_global_steps_broadcast(global_steps: Array, contribs: Array, ctx: Di
 		var c: Dictionary = contribs[idx]
 		if _is_contrib_zero_replaced(c):
 			continue
-		_play_counting_popup(ctx, c, int(prev_vals[idx]), _compute_value(c), false)
+		_play_counting_popup(ctx, c, int(prev_vals[idx]), _compute_value(c), false, {})
 		var shake_mag := float(shake_by_index.get(idx, 0.0))
 		if shake_mag > 0.0:
 			_shake_slot_for_contrib(ctx, c)
@@ -3134,6 +3187,8 @@ func _normalize_step(d: Dictionary) -> Dictionary:
 		out["_stage"] = String(d["_stage"])
 	if d.has("min_value"):
 		out["min_value"] = int(d["min_value"])
+	if d.has("_temporary"):
+		out["_temporary"] = bool(d["_temporary"])
 	return out
 
 # Normalize a "global" step (winner final-phase). Defaults target_kind to "any" if missing.
@@ -3151,6 +3206,14 @@ func _normalize_global_step(d: Dictionary) -> Dictionary:
 	if String(s.get("target_kind", "")).strip_edges() == "":
 		s["target_kind"] = "any"
 	return s
+
+func _is_step_temporary(step: Dictionary) -> bool:
+	if step == null:
+		return false
+	if step.has("_temporary"):
+		return bool(step.get("_temporary", false))
+	var kind := String(step.get("kind", ""))
+	return kind == "add" or kind == "mult"
 
 # Get abilities array from a token/resource if present
 func _get_abilities(obj) -> Array:
@@ -3698,6 +3761,7 @@ func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 			contrib["delta"] = 0
 			contrib["mult"] = 1.0
 			contrib["steps"] = []
+			_reset_temp_meta(token)
 
 		if token != null and (token as Object).has_method("get"):
 			var val = token.get("value")
@@ -3739,7 +3803,7 @@ func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 			contrib["steps"] = steps_arr
 			if ctx != null:
 				var from_val := 0 if token_changed else prev_total
-				_play_counting_popup(ctx, contrib, from_val, new_total, token_changed)
+				_play_counting_popup(ctx, contrib, from_val, new_total, token_changed, step_log)
 			_invoke_on_value_changed(ctx, null, contrib, prev_total, new_total, step_log)
 			if true:
 				# Emit signals so listeners (e.g., tooltip highlighter) can refresh mid-spin
@@ -3887,6 +3951,7 @@ func _update_log_effect(contrib: Dictionary, log_info: Dictionary, step_data: Di
 	else:
 		return false
 	log_info["log"] = log
+	_update_token_temp_meta_from_contrib(contrib.get("token"), contrib, kind == "add" or kind == "mult")
 	return changed
 
 func _remove_log_effect(contrib: Dictionary, log: Dictionary) -> bool:
@@ -3898,6 +3963,7 @@ func _remove_log_effect(contrib: Dictionary, log: Dictionary) -> bool:
 		if abs(factor) < 0.00001:
 			return false
 		contrib["mult"] = float(contrib.get("mult", 1.0)) / factor
+		_update_token_temp_meta_from_contrib(contrib.get("token"), contrib, true)
 		return true
 	elif kind == "add" or kind == "value_sync":
 		var amount := int(log.get("add_applied", 0))
@@ -3906,16 +3972,19 @@ func _remove_log_effect(contrib: Dictionary, log: Dictionary) -> bool:
 		# For value_sync, we only log; do not invert base changes here.
 		if kind == "add":
 			contrib["delta"] = int(contrib.get("delta", 0)) - amount
+		_update_token_temp_meta_from_contrib(contrib.get("token"), contrib, kind == "add")
 		return true
 	elif kind == "final_add":
 		var before_state = log.get("before", {})
 		if before_state is Dictionary and before_state.has("val"):
 			_set_contrib_final_value(contrib, int(before_state.get("val", _compute_value(contrib))))
+			_update_token_temp_meta_from_contrib(contrib.get("token"), contrib, false)
 			return true
 		var final_applied := int(log.get("final_applied", 0))
 		if final_applied != 0:
 			var target: int = max(_compute_value(contrib) - final_applied, 0)
 			_set_contrib_final_value(contrib, target)
+			_update_token_temp_meta_from_contrib(contrib.get("token"), contrib, false)
 			return true
 		return false
 	return false
@@ -4136,6 +4205,7 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	var inst: Resource = (rep as Resource).duplicate(true)
 	_init_token_base_value(inst)
 	_ensure_token_uid(inst)
+	_reset_temp_meta(inst)
 	# Optional: set incoming value and preserve tags
 	if inst.has_method("set") and set_value >= 0:
 		var clamped: int = max(1, int(set_value))
