@@ -273,9 +273,6 @@ func _notify_spin_lock_state(ctx: Dictionary = {}) -> void:
 	if sr != null and sr is Object and (sr as Object).has_method("_apply_spin_button_state"):
 		sr.call_deferred("_apply_spin_button_state")
 
-func _temporary_neutral_color() -> Color:
-	return Color(0.92, 0.92, 0.96)
-
 func _set_token_temp_meta(token, delta: float) -> void:
 	if token == null or not (token as Object).has_method("set_meta"):
 		return
@@ -1041,7 +1038,7 @@ func _set_counting_text(v: float, target: Node, color: Color, origin: float) -> 
 	if target == null:
 		return
 	var diff := int(round(v - origin))
-	var sign := diff >= 0 ? "+" : ""
+	var sign := "+" if diff >= 0 else ""
 	var t := "%s%d%s" % [sign, diff, _gold_bbcode()]
 	if target is Label:
 		var lbl := target as Label

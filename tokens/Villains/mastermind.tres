@@ -1,10 +1,10 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://73q5e1oqgwgf"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/mastermindActiveAbility.gd" id="3_active"]
-[ext_resource type="Script" path="res://abilties/mastermindOnRemovedPromoteKillerAbility.gd" id="4_removed"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="5_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://d14o83aj6q0x2" path="res://abilties/mastermindActiveAbility.gd" id="3_active"]
+[ext_resource type="Script" uid="uid://3lmcx0b2tph3" path="res://abilties/mastermindOnRemovedPromoteKillerAbility.gd" id="4_removed"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
 [sub_resource type="Resource" id="A_m_active"]
 script = ExtResource("3_active")
@@ -23,6 +23,5 @@ icon = ExtResource("5_icon")
 value = 6
 tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_m_active"), SubResource("A_m_removed")])
-activeDescription = "Destroy all copies of target; all triggered tokens gain its value permanently."
+activeDescription = "Destroy all copies of target token, then buff all triggered tokens gain its value permanently."
 passiveDescription = "If destroyed by another token, that token promotes to a Mastermind."
-
