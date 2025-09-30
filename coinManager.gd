@@ -1076,6 +1076,8 @@ func _slot_from_ctx(ctx: Dictionary, offset: int) -> Control:
 
 # ---------- Ante / Game Over ----------
 func _handle_end_of_round(round_num: int) -> void:
+	while _target_selection_pending:
+		await get_tree().process_frame
 	var requirement: int = _get_requirement_for_round(round_num)
 	var paid: bool = false
 	if total_coins >= requirement:

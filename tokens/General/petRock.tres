@@ -10,4 +10,4 @@ name = "Pet Rock"
 icon = ExtResource("2_icon")
 value = 4
 tags = PackedStringArray("General")
-passiveDescription = "Just a rock."
+passiveDescription = "Likes being pet."

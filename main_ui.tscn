@@ -1,4 +1,4 @@
-[gd_scene load_steps=42 format=3 uid="uid://c5rvk15uv8cxf"]
+[gd_scene load_steps=47 format=3 uid="uid://c5rvk15uv8cxf"]
 
 [ext_resource type="Script" uid="uid://cyvguba1sinbr" path="res://main.gd" id="1_im5q1"]
 [ext_resource type="Shader" uid="uid://c1th2tmqhx4vk" path="res://shaders/swirl.gdshader" id="2_8yam0"]
@@ -8,6 +8,7 @@
 [ext_resource type="Shader" uid="uid://dkcvyj0bow8iu" path="res://mainBackgroundGradient.gdshader" id="4_yubjs"]
 [ext_resource type="PackedScene" uid="uid://305jesit5qa0" path="res://slotItem.tscn" id="5_sd2ej"]
 [ext_resource type="Resource" uid="uid://b7yblyfhd8u1c" path="res://characters/Tycoon.tres" id="6_dnsp1"]
+[ext_resource type="Shader" uid="uid://bjucio58erjia" path="res://textPixel.gdshader" id="6_v54cu"]
 [ext_resource type="Texture2D" uid="uid://di00f0xax1nek" path="res://itemframe.png" id="7_ilgax"]
 [ext_resource type="PackedScene" uid="uid://bbkoj3b4uu041" path="res://floatingPopup.tscn" id="7_mcdcf"]
 [ext_resource type="Script" uid="uid://dk6yfsqvjbxdt" path="res://spinButton.gd" id="8_yubjs"]
@@ -94,14 +95,53 @@ corner_radius_bottom_right = 20
 corner_radius_bottom_left = 20
 corner_detail = 1
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_30a0k"]
+shader = ExtResource("6_v54cu")
+shader_parameter/alpha_threshold = 0.5
+shader_parameter/outline_radius = 2.0
+shader_parameter/use_diagonals = true
+shader_parameter/outline_color = Color(0, 0, 0, 1)
+shader_parameter/fill_color = Color(1, 1, 1, 1)
+shader_parameter/fill_mix = 0.0
+shader_parameter/shadow_enabled = true
+shader_parameter/shadow_offset_px = Vector2(2, 2)
+shader_parameter/shadow_alpha = 1.0
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1v8me"]
 bg_color = Color(0, 0, 0, 1)
 corner_detail = 1
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_a664g"]
+shader = ExtResource("6_v54cu")
+shader_parameter/alpha_threshold = 0.5
+shader_parameter/outline_radius = 2.0
+shader_parameter/use_diagonals = true
+shader_parameter/outline_color = Color(0, 0, 0, 1)
+shader_parameter/fill_color = Color(1, 1, 1, 1)
+shader_parameter/fill_mix = 0.0
+shader_parameter/shadow_enabled = true
+shader_parameter/shadow_offset_px = Vector2(2, 2)
+shader_parameter/shadow_alpha = 1.0
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_r8oge"]
-bg_color = Color(1, 1, 1, 0)
+bg_color = Color(0, 0, 0, 0.29411766)
+border_width_top = 8
+border_width_right = 8
+border_width_bottom = 8
 border_color = Color(0, 0, 0, 1)
 corner_detail = 1
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ysqyn"]
+shader = ExtResource("6_v54cu")
+shader_parameter/alpha_threshold = 0.5
+shader_parameter/outline_radius = 2.0
+shader_parameter/use_diagonals = true
+shader_parameter/outline_color = Color(0, 0, 0, 1)
+shader_parameter/fill_color = Color(1, 1, 1, 1)
+shader_parameter/fill_mix = 0.0
+shader_parameter/shadow_enabled = true
+shader_parameter/shadow_offset_px = Vector2(2, 2)
+shader_parameter/shadow_alpha = 1.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dnsp1"]
 bg_color = Color(0, 0, 0, 1)
@@ -109,6 +149,18 @@ border_width_left = 12
 border_width_right = 12
 border_width_bottom = 10
 border_color = Color(0, 0, 0, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_s1jjd"]
+shader = ExtResource("6_v54cu")
+shader_parameter/alpha_threshold = 0.5
+shader_parameter/outline_radius = 2.0
+shader_parameter/use_diagonals = true
+shader_parameter/outline_color = Color(0, 0, 0, 1)
+shader_parameter/fill_color = Color(1, 1, 1, 1)
+shader_parameter/fill_mix = 0.0
+shader_parameter/shadow_enabled = true
+shader_parameter/shadow_offset_px = Vector2(2, 2)
+shader_parameter/shadow_alpha = 1.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dnsp1"]
 shader = ExtResource("10_ilgax")
@@ -280,22 +332,6 @@ size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_vxg6n")
 
-[node name="valueLabel" type="RichTextLabel" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer/Panel"]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = 5.0
-offset_bottom = 25.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_font_sizes/normal_font_size = 20
-bbcode_enabled = true
-text = "[font_size=20][outline_size=32]0[/outline_size][/font_size][font_size=20][color=gold][outline_size=32]G[/outline_size][/color][/font_size]"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="deadlineDisplay" type="Panel" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer"]
 material = SubResource("ShaderMaterial_yubjs")
 custom_minimum_size = Vector2(600, 150)
@@ -325,6 +361,7 @@ vertical_alignment = 1
 
 [node name="deadlineLabel" type="RichTextLabel" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer/deadlineDisplay"]
 unique_name_in_owner = true
+material = SubResource("ShaderMaterial_30a0k")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -348,6 +385,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_1v8me")
 
 [node name="classLabel" type="RichTextLabel" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer/characterDisplay"]
 unique_name_in_owner = true
+material = SubResource("ShaderMaterial_a664g")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -356,15 +394,38 @@ offset_top = 5.0
 offset_bottom = 25.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_font_sizes/normal_font_size = 20
+theme_override_font_sizes/normal_font_size = 24
 text = "TYCOON"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="playMarginContainer" type="MarginContainer" parent="mainContainer"]
 layout_mode = 2
-size_flags_horizontal = 4
 size_flags_vertical = 3
+
+[node name="valuePanelBackground" type="Panel" parent="mainContainer/playMarginContainer"]
+custom_minimum_size = Vector2(200, 100)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_r8oge")
+
+[node name="valueLabel" type="RichTextLabel" parent="mainContainer/playMarginContainer/valuePanelBackground"]
+unique_name_in_owner = true
+material = SubResource("ShaderMaterial_ysqyn")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 5.0
+offset_bottom = 5.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/normal_font_size = 20
+bbcode_enabled = true
+text = "[font_size=20][outline_size=32]0[/outline_size][/font_size][font_size=20][color=gold][outline_size=32]G[/outline_size][/color][/font_size]"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="VBoxContainer" type="VBoxContainer" parent="mainContainer/playMarginContainer"]
 layout_mode = 2
@@ -374,20 +435,14 @@ size_flags_vertical = 0
 layout_mode = 2
 alignment = 1
 
-[node name="valuePanelBackground" type="Panel" parent="mainContainer/playMarginContainer/VBoxContainer/HBoxContainer"]
-visible = false
-custom_minimum_size = Vector2(125, 100)
-layout_mode = 2
-size_flags_vertical = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_r8oge")
-
 [node name="VBoxContainer" type="VBoxContainer" parent="mainContainer/playMarginContainer/VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(1400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="MarginContainer" type="MarginContainer" parent="mainContainer/playMarginContainer/VBoxContainer/HBoxContainer/VBoxContainer"]
+custom_minimum_size = Vector2(1200, 0)
 layout_mode = 2
+size_flags_horizontal = 4
 
 [node name="ColorRect" type="Panel" parent="mainContainer/playMarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/MarginContainer"]
 visible = false
@@ -400,7 +455,8 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_dnsp1")
 
 [node name="activeEffect" type="RichTextLabel" parent="mainContainer/playMarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/MarginContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(1800, 150)
+material = SubResource("ShaderMaterial_s1jjd")
+custom_minimum_size = Vector2(1400, 150)
 layout_mode = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/line_separation = 30

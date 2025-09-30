@@ -1,34 +1,47 @@
 extends TokenAbility
 class_name MimicTransformOnAddAbility
 
-## On add: Transform this token into a random token currently in inventory.
+## On add: Create a copy of a random token currently in inventory.
 @export var exclude_self: bool = true
 @export var require_different_name: bool = true
 
 func on_added_to_inventory(board_tokens: Array, ctx: Dictionary, source_token: Resource) -> void:
-    if board_tokens == null or not (board_tokens is Array):
-        return
-    var candidates: Array = []
-    for t in board_tokens:
-        if t == null or not (t as Object).has_method("get"):
-            continue
-        if exclude_self and t == source_token:
-            continue
-        if require_different_name:
-            var n1 := String(source_token.get("name")) if source_token.has_method("get") else ""
-            var n2 := String(t.get("name"))
-            if n1 == n2:
-                continue
-        candidates.append(t)
-    if candidates.is_empty():
-        return
-    var rng: RandomNumberGenerator = ctx.get("rng") if ctx.has("rng") else RandomNumberGenerator.new()
-    if not ctx.has("rng"):
-        rng.randomize()
-    var pick = candidates[rng.randi_range(0, candidates.size()-1)]
-    if pick == null:
-        return
-    var sr = ctx.get("spin_root") if ctx.has("spin_root") else null
-    if sr != null and (sr as Object).has_method("replace_token_in_inventory"):
-        sr.call("replace_token_in_inventory", source_token, pick)
-
+	if board_tokens == null or not (board_tokens is Array):
+		return
+	var candidates: Array = []
+	for t in board_tokens:
+		if t == null or not (t as Object).has_method("get"):
+			continue
+		if exclude_self and t == source_token:
+			continue
+		if require_different_name:
+			var n1 := String(source_token.get("name")) if source_token.has_method("get") else ""
+			var n2 := String(t.get("name"))
+			if n1 == n2:
+				continue
+		candidates.append(t)
+	if candidates.is_empty():
+		return
+	var rng: RandomNumberGenerator = ctx.get("rng") if ctx.has("rng") else RandomNumberGenerator.new()
+	if not ctx.has("rng"):
+		rng.randomize()
+	var pick = candidates[rng.randi_range(0, candidates.size() - 1)]
+	if pick == null:
+		return
+	var clone: Resource = (pick as Resource).duplicate(true)
+	if clone == null:
+		return
+	board_tokens.append(clone)
+	var sr = ctx.get("spin_root") if ctx.has("spin_root") else null
+	if sr == null or not is_instance_valid(sr):
+		return
+	if (sr as Object).has_method("_init_token_base_value"):
+		sr.call("_init_token_base_value", clone)
+	if (sr as Object).has_method("_on_tokens_added_to_inventory"):
+		sr.call_deferred("_on_tokens_added_to_inventory", 1)
+	if (sr as Object).has_method("_apply_on_added_abilities"):
+		sr.call_deferred("_apply_on_added_abilities", [clone])
+	if (sr as Object).has_method("_update_inventory_strip"):
+		sr.call_deferred("_update_inventory_strip")
+	if (sr as Object).has_method("_refresh_inventory_baseline"):
+		sr.call_deferred("_refresh_inventory_baseline")

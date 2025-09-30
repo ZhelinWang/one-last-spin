@@ -1,13 +1,12 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://dui2624p6xnrh"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/onAnyDestroyedSelfPermAddAbility.gd" id="3_col"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://cxu25af5vgt45" path="res://abilties/onAnyDestroyedSelfPermAddAbility.gd" id="3_col"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_col"]
 script = ExtResource("3_col")
-amount = 1
 id = "collector_on_destroyed_plus_one"
 
 [resource]
@@ -19,4 +18,3 @@ value = 3
 tags = PackedStringArray("General")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_col")])
 passiveDescription = "Whenever any token is destroyed, gain +1 permanently."
-

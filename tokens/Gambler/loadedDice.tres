@@ -23,4 +23,4 @@ icon = ExtResource("5_icon")
 tags = PackedStringArray("Gambler")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_rand"), SubResource("A_loss")])
 activeDescription = "+1–3 permanently to self."
-passiveDescription = "If this loses value, destroy it."
+passiveDescription = "When this token loses value, destroy it instead."

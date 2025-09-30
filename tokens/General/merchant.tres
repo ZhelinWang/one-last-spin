@@ -7,6 +7,7 @@
 
 [sub_resource type="Resource" id="A_bonus"]
 script = ExtResource("3_bonus")
+amount = 0
 id = "merchant_bonus_loot_option"
 
 [resource]
@@ -16,4 +17,4 @@ rarity = "rare"
 icon = ExtResource("4_icon")
 tags = PackedStringArray("General")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_bonus")])
-activeDescription = "Destroy a selected token and trigger a token selection."
+activeDescription = "Destroy target token and trigger a token selection."

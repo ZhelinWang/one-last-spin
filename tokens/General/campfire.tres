@@ -1,16 +1,11 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=10 format=3 uid="uid://cniwqoryr38rd"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
-[ext_resource type="Script" path="res://abilties/specs/ConditionSpec.gd" id="Z_cond"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="3_icon"]
-
-[sub_resource type="Resource" id="Camp_Cond"]
-script = ExtResource("Z_cond")
-kind = "adjacent_all_tag"
-tag = "common"
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="3_icon"]
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="Z_cond"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
 
 [sub_resource type="Resource" id="Camp_Action"]
 script = ExtResource("Z_action")
@@ -18,20 +13,22 @@ op = "permanent_add"
 amount = 2
 target_override_kind = "self"
 
+[sub_resource type="Resource" id="Camp_Cond"]
+script = ExtResource("Z_cond")
+kind = "adjacent_all_tag"
+tag = "common"
+
 [sub_resource type="Resource" id="Camp_Spec"]
 script = ExtResource("Z_effect")
+conditions = Array[ExtResource("Z_cond")]([SubResource("Camp_Cond")])
+actions = Array[ExtResource("Z_action")]([SubResource("Camp_Action")])
 id = "campfire_adjacent_common_self_perm2"
-trigger = 0
-conditions = [ SubResource("Camp_Cond") ]
-actions = [ SubResource("Camp_Action") ]
 
 [resource]
 script = ExtResource("1_token")
 name = "Campfire"
-rarity = "common"
 icon = ExtResource("3_icon")
 value = 2
 tags = PackedStringArray("General")
 abilities = Array[ExtResource("2_abilities")]([SubResource("Camp_Spec")])
-passiveDescription = "If both adjacent tokens are Common, gain +2 permanently."
-
+passiveDescription = "If both adjacent tokens are Common, this token gains +2 permanently."

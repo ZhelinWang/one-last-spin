@@ -1,16 +1,15 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://cnmc4d5marrw5"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/stealPermanentAbility.gd" id="3_steal"]
-[ext_resource type="Script" path="res://abilties/destroySelfIfNoEmptyInInventory.gd" id="4_cond"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="5_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dwak3r30fea4t" path="res://abilties/stealPermanentAbility.gd" id="3_steal"]
+[ext_resource type="Script" uid="uid://c0d8d6aebgi4c" path="res://abilties/destroySelfIfNoEmptyInInventory.gd" id="4_cond"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
 [sub_resource type="Resource" id="A_steal2"]
 script = ExtResource("3_steal")
 amount = 2
 id = "con_artist_steal_two"
-trigger = 0
 
 [sub_resource type="Resource" id="A_cond"]
 script = ExtResource("4_cond")
@@ -24,6 +23,5 @@ icon = ExtResource("5_icon")
 value = 3
 tags = PackedStringArray("Gambler", "Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_steal2"), SubResource("A_cond")])
-activeDescription = "Steal +2 permanently from the target."
-passiveDescription = "Destroy self if no Empty is in inventory."
-
+activeDescription = "Steal +2 from the target."
+passiveDescription = "Destroy this token if there are no Empty tokens in inventory."

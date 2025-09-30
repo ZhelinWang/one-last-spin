@@ -17,4 +17,4 @@ icon = ExtResource("4_icon")
 value = 2
 tags = PackedStringArray("Gambler", "Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_illus")])
-activeDescription = "Empty tokens gain +2 permanently; then destroy Illusionist."
+activeDescription = "Give all Empty tokens +2 permanently, then destroy this token."
