@@ -17,7 +17,7 @@ name = "Lockpick"
 rarity = "common"
 icon = ExtResource("4_icon")
 value = 2
-tags = PackedStringArray("common", "Treasure")
+tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_destroy")])
 activeDescription = "Open all triggered Chests."
 

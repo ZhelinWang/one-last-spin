@@ -18,7 +18,7 @@ name = "Lucky Coin"
 rarity = "common"
 icon = ExtResource("4_icon")
 value = 2
-tags = PackedStringArray("common", "Gambler")
+tags = PackedStringArray("Gambler")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_rand")])
 activeDescription = "Randomly ±1 permanently to the self."
 

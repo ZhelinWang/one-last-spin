@@ -24,7 +24,7 @@ name = "Compass"
 rarity = "common"
 icon = ExtResource("3_icon")
 value = 1
-tags = PackedStringArray("common", "Treasure")
+tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("2_abilities")]([SubResource("Spec")])
 activeDescription = "Target gains +1 permanently."
 

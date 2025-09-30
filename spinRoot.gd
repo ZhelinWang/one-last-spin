@@ -50,6 +50,7 @@ var _last_spin_baseline: Array = []
 var _preview_slot_cache: Dictionary = {}
 var _preview_popups: Array[Node] = []
 var _preview_visible := false
+var _base_preview_locked := false
 var _inventory_before_spin: Array = []
 var _inventory_preview_active := false
 var _slot_baseline_tokens: Dictionary = {}
@@ -348,6 +349,8 @@ func show_base_preview() -> void:
 		emit_signal("eye_hover_started")
 
 func hide_base_preview() -> void:
+	if _base_preview_locked:
+		return
 	var was_active := _preview_visible
 	_preview_visible = false
 	_restore_slots_from_preview()
@@ -356,6 +359,15 @@ func hide_base_preview() -> void:
 		_set_inventory_preview(false)
 	if was_active:
 		emit_signal("eye_hover_ended")
+
+func set_base_preview_lock(lock: bool) -> void:
+	if lock == _base_preview_locked:
+		return
+	_base_preview_locked = lock
+	if _base_preview_locked:
+		show_base_preview()
+	else:
+		hide_base_preview()
 
 func _apply_baseline_to_slots() -> void:
 	_restore_slots_from_preview()

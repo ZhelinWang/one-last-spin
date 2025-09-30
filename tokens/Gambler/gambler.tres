@@ -1,15 +1,13 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://cb5ylhqe4i402"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/gamblerGainPerInventoryEmptyAbility.gd" id="3_gain"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dst1gnrw3s6f5" path="res://abilties/gamblerGainPerInventoryEmptyAbility.gd" id="3_gain"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_gain"]
 script = ExtResource("3_gain")
-gain_per_empty = 10
 id = "gambler_gain_per_empty"
-trigger = 0
 
 [resource]
 script = ExtResource("1_token")
@@ -17,7 +15,6 @@ name = "Gambler"
 rarity = "legendary"
 icon = ExtResource("4_icon")
 value = 6
-tags = PackedStringArray("legendary", "Gambler")
+tags = PackedStringArray("Gambler")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
 activeDescription = "This token gains +10 permanently for each Empty in the inventory."
-

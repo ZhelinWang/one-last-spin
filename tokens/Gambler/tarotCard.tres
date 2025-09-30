@@ -1,15 +1,13 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://d4bouoot1b7ys"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/permanentAddAllTriggeredAbility.gd" id="3_all"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://b3mbk4yvlxb5l" path="res://abilties/permanentAddAllTriggeredAbility.gd" id="3_all"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_all"]
 script = ExtResource("3_all")
-amount = 1
 id = "tarot_all_triggered_plus_1"
-trigger = 0
 
 [resource]
 script = ExtResource("1_token")
@@ -17,7 +15,6 @@ name = "Tarot Card"
 rarity = "rare"
 icon = ExtResource("4_icon")
 value = 4
-tags = PackedStringArray("rare", "Gambler")
+tags = PackedStringArray("Gambler")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_all")])
 activeDescription = "Give all triggered tokens +1 permanently."
-

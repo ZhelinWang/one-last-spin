@@ -16,7 +16,7 @@ name = "Collector"
 rarity = "uncommon"
 icon = ExtResource("4_icon")
 value = 3
-tags = PackedStringArray("uncommon", "General")
+tags = PackedStringArray("General")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_col")])
 passiveDescription = "Whenever any token is destroyed, gain +1 permanently."
 

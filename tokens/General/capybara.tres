@@ -1,10 +1,10 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://bdhxi63ytrtut"]
 
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="1_abilities"]
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="2_token"]
-[ext_resource type="Texture2D" path="res://tokens/tokenAssets/capybara.png" id="3_icon"]
-[ext_resource type="Script" path="res://abilties/genericGuardAuraAbility.gd" id="4_guard"]
-[ext_resource type="Script" path="res://abilties/genericMutliplyAbility.gd" id="5_mult"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_abilities"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="2_token"]
+[ext_resource type="Texture2D" uid="uid://r3augab0ouu2" path="res://tokens/tokenAssets/capybara.png" id="3_icon"]
+[ext_resource type="Script" uid="uid://chu88qar7xpk8" path="res://abilties/genericGuardAuraAbility.gd" id="4_guard"]
+[ext_resource type="Script" uid="uid://0hidxch6kiaf" path="res://abilties/genericMutliplyAbility.gd" id="5_mult"]
 
 [sub_resource type="Resource" id="A_guard"]
 script = ExtResource("4_guard")
@@ -12,19 +12,14 @@ id = "capybara_cannot_be_destroyed"
 
 [sub_resource type="Resource" id="A_mult"]
 script = ExtResource("5_mult")
-factor = 2.0
 id = "capybara_double_self"
-trigger = 0
-target_kind = 0 # SELF
-winner_only = true
 
 [resource]
 script = ExtResource("2_token")
 name = "Capybara"
 rarity = "rare"
 icon = ExtResource("3_icon")
-value = 1
-tags = PackedStringArray("rare", "General")
+tags = PackedStringArray("General")
 abilities = Array[ExtResource("1_abilities")]([SubResource("A_guard"), SubResource("A_mult")])
 activeDescription = "Double this token's value."
 passiveDescription = "Cannot be destroyed."

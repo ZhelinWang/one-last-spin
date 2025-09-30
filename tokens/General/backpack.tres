@@ -16,7 +16,7 @@ name = "Backpack"
 rarity = "common"
 icon = ExtResource("4_icon")
 value = 2
-tags = PackedStringArray("common", "General")
+tags = PackedStringArray("General")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_onadd")])
 passiveDescription = "On add: Add 3 Empties to inventory."
 

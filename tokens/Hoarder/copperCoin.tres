@@ -16,7 +16,7 @@ name = "Copper Coin"
 rarity = "common"
 icon = ExtResource("4_icon")
 value = 1
-tags = PackedStringArray("coin", "common", "Hoarder")
+tags = PackedStringArray("coin", "Hoarder")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_dup")])
 passiveDescription = "On add: add 3 copies."
 

@@ -32,7 +32,7 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 # Game over / ante system (customizable)
 @export var enable_game_over := true
 @export var spins_per_round: int = 3
-@export var ante_schedule: PackedInt32Array = [25, 45, 65, 95, 125, 170, 220, 300, 390, 500, 620, 777, 950, 1100, 1300, 1500, 1700, 1900, 2200, 2500]
+@export var ante_schedule: PackedInt32Array = [20, 45, 65, 95, 125, 170, 220, 300, 390, 500, 620, 777, 950, 1100, 1300, 1500, 1700, 1900, 2200, 2500]
 @export var ante_increment_after_schedule: int = 20
 @export var deduct_on_pay := true
 
@@ -60,7 +60,7 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 @export var skip_button_text: String = "SKIP AND ADD AN EMPTY TOKEN"
 # Assign your slotItem scene here (extends Button, property `data: TokenLootData`)
 @export var token_icon_scene: PackedScene
-# Scale factor for tiles/icons (3x requested)
+
 @export var loot_tile_scale: float = 3.0
 
 # Inventory wiring for replacement

@@ -16,7 +16,7 @@ name = "Crime Boss"
 rarity = "rare"
 icon = ExtResource("4_icon")
 value = 4
-tags = PackedStringArray("rare", "Villain")
+tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain3")])
 passiveDescription = "+3 permanently whenever any token is destroyed."
 

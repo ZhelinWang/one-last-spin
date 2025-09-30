@@ -17,7 +17,7 @@ name = "Worn Map"
 rarity = "common"
 icon = ExtResource("4_icon")
 value = 1
-tags = PackedStringArray("common", "Treasure")
+tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_chest")])
 activeDescription = "Promote self into a random Chest."
 

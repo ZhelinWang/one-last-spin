@@ -13,6 +13,6 @@ id = "ward_adjacent_redirect"
 script = ExtResource("1_token")
 name = "Ward"
 icon = ExtResource("4_icon")
-tags = PackedStringArray("common", "General")
+tags = PackedStringArray("General")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_ward")])
 passiveDescription = "When an adjacent token would be destroyed, destroy this token instead."

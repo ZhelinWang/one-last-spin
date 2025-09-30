@@ -17,7 +17,7 @@ name = "Finance Bro"
 rarity = "uncommon"
 icon = ExtResource("4_icon")
 value = 3
-tags = PackedStringArray("uncommon", "Hoarder", "Human")
+tags = PackedStringArray("Hoarder", "Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_fin")])
 passiveDescription = "Gains +1 per spin if adjacent to a Coin or Human."
 

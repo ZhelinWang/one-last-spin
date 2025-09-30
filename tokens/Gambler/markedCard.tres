@@ -15,7 +15,7 @@ name = "Marked Card"
 rarity = "common"
 icon = ExtResource("4_icon")
 value = 1
-tags = PackedStringArray("common", "Gambler")
+tags = PackedStringArray("Gambler")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_pair")])
 passiveDescription = "If adjacent to another Marked Card, both double permanently."
 

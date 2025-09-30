@@ -17,7 +17,7 @@ name = "Coffee Cup"
 rarity = "common"
 icon = ExtResource("4_icon")
 value = 2
-tags = PackedStringArray("common", "Hoarder")
+tags = PackedStringArray("Hoarder")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_adj")])
 passiveDescription = "Adjacent Human tokens get +1."
 

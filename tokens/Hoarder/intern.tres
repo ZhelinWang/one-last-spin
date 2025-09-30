@@ -17,7 +17,7 @@ name = "Intern"
 rarity = "uncommon"
 icon = ExtResource("4_icon")
 value = 3
-tags = PackedStringArray("uncommon", "Hoarder", "Human")
+tags = PackedStringArray("Hoarder", "Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_replace")])
 activeDescription = "Promote self into a random Human."
 

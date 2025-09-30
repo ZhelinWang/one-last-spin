@@ -16,7 +16,7 @@ name = "Thug"
 rarity = "common"
 icon = ExtResource("4_icon")
 value = 1
-tags = PackedStringArray("common", "Villain")
+tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
 passiveDescription = "+1 permanently when an adjacent token is destroyed."
 

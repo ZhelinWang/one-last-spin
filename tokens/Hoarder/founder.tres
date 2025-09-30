@@ -16,7 +16,7 @@ name = "Founder"
 rarity = "rare"
 icon = ExtResource("4_icon")
 value = 3
-tags = PackedStringArray("rare", "Hoarder")
+tags = PackedStringArray("Hoarder")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_double")])
 passiveDescription = "Whenever this token changes value, double the change."
 

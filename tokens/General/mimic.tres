@@ -10,6 +10,5 @@ name = "Mimic"
 rarity = "uncommon"
 icon = ExtResource("4_icon")
 value = 3
-tags = PackedStringArray("uncommon", "General")
-abilities = Array[ExtResource("2_abilities")]([])
+tags = PackedStringArray("General")
 passiveDescription = "On add, transform into a random token in inventory."

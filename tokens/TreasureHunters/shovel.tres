@@ -16,7 +16,7 @@ name = "Shovel"
 rarity = "rare"
 icon = ExtResource("4_icon")
 value = 4
-tags = PackedStringArray("rare", "Treasure")
+tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_shovel")])
 activeDescription = "Destroy all copies of target token."
 

@@ -292,7 +292,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/normal_font_size = 20
 bbcode_enabled = true
-text = "0[font_size=20][color=gold][outline_size=32]G[/outline_size][/color][/font_size]"
+text = "[font_size=20][outline_size=32]0[/outline_size][/font_size][font_size=20][color=gold][outline_size=32]G[/outline_size][/color][/font_size]"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -357,7 +357,7 @@ offset_bottom = 25.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/normal_font_size = 20
-text = "BANKER "
+text = "TYCOON"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -404,8 +404,8 @@ custom_minimum_size = Vector2(1800, 150)
 layout_mode = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/line_separation = 30
-theme_override_constants/outline_size = 44
-theme_override_font_sizes/normal_font_size = 40
+theme_override_constants/outline_size = 34
+theme_override_font_sizes/normal_font_size = 32
 bbcode_enabled = true
 text = "PLACEHOLDER ACTIVE EFFECT TITLE"
 scroll_active = false

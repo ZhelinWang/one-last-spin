@@ -17,7 +17,7 @@ name = "Counterfeiter"
 rarity = "rare"
 icon = ExtResource("4_icon")
 value = 4
-tags = PackedStringArray("rare", "Hoarder")
+tags = PackedStringArray("Hoarder")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_spawn")])
 activeDescription = "Spawn 2 random Coins."
 

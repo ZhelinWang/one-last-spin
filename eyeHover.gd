@@ -1,6 +1,7 @@
 extends TextureRect
 
 @onready var spin_root: Node = _resolve_spin_root()
+var _preview_locked: bool = false
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -41,3 +42,17 @@ func _on_hover_entered() -> void:
 func _on_hover_exited() -> void:
 	if spin_root != null and spin_root.has_method("hide_base_preview"):
 		spin_root.call("hide_base_preview")
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		_toggle_preview_lock()
+		accept_event()
+
+func _toggle_preview_lock() -> void:
+	_preview_locked = not _preview_locked
+	if spin_root == null or !is_instance_valid(spin_root):
+		spin_root = _resolve_spin_root()
+	if spin_root == null:
+		return
+	if spin_root.has_method("set_base_preview_lock"):
+		spin_root.call("set_base_preview_lock", _preview_locked)

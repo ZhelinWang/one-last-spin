@@ -14,10 +14,17 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 	var self_c := _find_self_contrib(contribs, source_token)
 	if self_c.is_empty():
 		return []
-	var v := _contrib_value(self_c)
-	var payout := int(floor(float(max(0, v)) * float(max(0, numer)) / float(max(1, denom))))
-	var out: Array = []
-	if payout > 0:
-		out.append({"op":"adjust_run_total", "amount": payout})
-	out.append({"op":"destroy", "target_offset": int(self_c.get("offset", 0))})
-	return out
+	return [{"op":"destroy", "target_offset": int(self_c.get("offset", 0))}]
+
+func build_on_removed_commands(ctx: Dictionary, removed_token: Resource, _source_token: Resource) -> Array:
+	if removed_token == null:
+		return []
+	var val := 0
+	if (removed_token as Object).has_method("get"):
+		var raw = removed_token.get("value")
+		if raw != null:
+			val = max(0, int(raw))
+	var payout := int(floor(float(val) * float(max(0, numer)) / float(max(1, denom))))
+	if payout <= 0:
+		return []
+	return [{"op":"adjust_run_total", "amount": payout}]

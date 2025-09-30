@@ -30,7 +30,7 @@ name = "Shiny Pebble"
 rarity = "common"
 icon = ExtResource("3_icon")
 value = 2
-tags = PackedStringArray("common", "Treasure")
+tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("2_abilities")]([SubResource("Spec")])
 passiveDescription = "+1 permanently if adjacent to a Chest."
 

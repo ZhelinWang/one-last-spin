@@ -31,7 +31,7 @@ name = "Campfire"
 rarity = "common"
 icon = ExtResource("3_icon")
 value = 2
-tags = PackedStringArray("common", "General")
+tags = PackedStringArray("General")
 abilities = Array[ExtResource("2_abilities")]([SubResource("Camp_Spec")])
 passiveDescription = "If both adjacent tokens are Common, gain +2 permanently."
 

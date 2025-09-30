@@ -15,7 +15,7 @@ name = "Assassin"
 rarity = "uncommon"
 icon = ExtResource("4_icon")
 value = 3
-tags = PackedStringArray("uncommon", "Villain")
+tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_assassin")])
 passiveDescription = "Randomly destroys a neighboring token and steals its value."
 

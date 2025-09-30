@@ -16,7 +16,7 @@ name = "Spy"
 rarity = "uncommon"
 icon = ExtResource("4_icon")
 value = 2
-tags = PackedStringArray("uncommon", "Villain")
+tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_spy")])
 activeDescription = "Copy target’s value permanently, then destroy the target."
 

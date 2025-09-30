@@ -16,7 +16,7 @@ name = "Rookie"
 rarity = "common"
 icon = ExtResource("4_icon")
 value = 1
-tags = PackedStringArray("common", "Villain")
+tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
 passiveDescription = "If adjacent token has higher value, gain +1 permanently."
 

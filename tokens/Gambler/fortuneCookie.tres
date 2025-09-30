@@ -16,7 +16,7 @@ name = "Fortune Cookie"
 rarity = "rare"
 icon = ExtResource("4_icon")
 value = 5
-tags = PackedStringArray("rare", "Gambler")
+tags = PackedStringArray("Gambler")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_cookie")])
 passiveDescription = "50% chance to add +1–10 to a random triggered token this spin."
 

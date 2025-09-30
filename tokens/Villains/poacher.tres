@@ -15,7 +15,7 @@ name = "Poacher"
 rarity = "legendary"
 icon = ExtResource("4_icon")
 value = 6
-tags = PackedStringArray("legendary", "Villain")
+tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_copy")])
 passiveDescription = "Whenever a token is destroyed, add a copy of it to the inventory."
 
