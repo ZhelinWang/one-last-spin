@@ -372,7 +372,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/normal_font_size = 20
 bbcode_enabled = true
-text = "25[font_size=20][color=gold][outline_size=32]G[/outline_size][/color][/font_size] DUE NEXT ROUND"
+text = "20[font_size=20][color=gold][outline_size=32]G[/outline_size][/color][/font_size] DUE NEXT ROUND"
 horizontal_alignment = 1
 vertical_alignment = 1
 

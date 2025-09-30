@@ -32,7 +32,28 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 # Game over / ante system (customizable)
 @export var enable_game_over := true
 @export var spins_per_round: int = 3
-@export var ante_schedule: PackedInt32Array = [20, 45, 65, 95, 125, 170, 220, 300, 390, 500, 620, 777, 950, 1100, 1300, 1500, 1700, 1900, 2200, 2500]
+@export var ante_schedule: PackedInt32Array = [
+	20,   # R1
+	25,   # R2
+	35,   # R3
+	50,   # R4
+	75,   # R5  (boss spike)
+	85,   # R6
+	100,  # R7
+	150,  # R8
+	175,  # R9
+	300,  # R10 (boss spike)
+	350,  # R11
+	420,  # R12
+	550,  # R13
+	750,  # R14
+	1000, # R15 (boss spike)
+	1250, # R16
+	1700, # R17
+	2200, # R18
+	3000, # R19
+	4000  # R20 (boss spike)
+]
 @export var ante_increment_after_schedule: int = 20
 @export var deduct_on_pay := true
 
@@ -3641,27 +3662,31 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 					_apply_permanent_add_inventory("self", 0, "", "", inc, false, ctx, false)
 				_resync_contribs_from_board(ctx, _contribs)
 				_refresh_dynamic_passives(ctx, _contribs)
-			"mastermind_destroy_all_copies":
+			"mastermind_destroy_target_and_buff":
 				var offm := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
 				var target_cm := _find_contrib_by_offset(_contribs, offm)
 				if target_cm.is_empty():
 					continue
-				var nm2 := _token_name(target_cm.get("token"))
-				var v2 := _compute_value(target_cm)
-				# Destroy all copies by name in inventory
-				var arrm := _get_inventory_array()
-				var empty_resm := _load_empty_token()
-				if empty_resm is Resource:
-					for i in range(arrm.size()):
-						var it = arrm[i]
-						if it != null and (it as Object).has_method("get") and _token_name(it) == nm2:
-							arrm[i] = (empty_resm as Resource).duplicate(true)
-					_set_inventory_array(arrm)
-				# Give all 5 triggered tokens +v2 permanently
+				var target_token = target_cm.get("token")
+				if target_token == null:
+					continue
+				var destroyed_value := _compute_value(target_cm)
+				var empty_pathm := String(empty_token_path).strip_edges()
+				if empty_pathm == "":
+					var empty_resm := _load_empty_token()
+					if empty_resm is Resource:
+						empty_pathm = String((empty_resm as Resource).resource_path)
+				if empty_pathm == "":
+					continue
+				_replace_token_at_offset(ctx, offm, empty_pathm, -1, false, target_token)
+				var offsets_to_buff: Array[int] = []
 				for cc in _contribs:
 					if cc is Dictionary:
 						var offcc := int((cc as Dictionary).get("offset", 0))
-						_apply_permanent_add_inventory("offset", offcc, "", "", v2, false, ctx, false)
+						if offcc != offm:
+							offsets_to_buff.append(offcc)
+				for offcc in offsets_to_buff:
+					_apply_permanent_add_inventory("offset", offcc, "", "", destroyed_value, false, ctx, false)
 				_resync_contribs_from_board(ctx, _contribs)
 				_refresh_dynamic_passives(ctx, _contribs)
 			"destroy_all_copies_choose":
