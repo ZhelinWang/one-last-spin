@@ -150,6 +150,7 @@ var _current_effect_source: Object = null
 var _active_effect_highlight: Dictionary = {}
 var _highlight_tweens: Array = []
 var _next_highlight_uid: int = 1
+var _value_label_defer_depth: int = 0
 const META_ZERO_REPLACED := "__zero_replaced"
 const META_ZERO_REASON := "__zero_reason"
 const ZERO_REPLACEMENT_VALUE := 1
@@ -319,6 +320,7 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 
 	# Provide inventory tokens for abilities that depend on board/inventory counts.
 	ctx["board_tokens"] = _get_inventory_array()
+	_value_label_defer_depth += 1
 
 	# Ensure a function-scope result is always available
 	var result: Dictionary = {}
@@ -527,48 +529,7 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 			print("[Final-Active] Applying deferred winner self steps: ", deferred_winner_self_steps.size())
 		await _apply_steps_now(winner_idx, cw, deferred_winner_self_steps, ctx, winner)
 
-	# Re-finalize after global active so totals include all effects
-	for k in range(contribs.size()):
-		var ck: Dictionary = contribs[k]
-		ck.meta["final"] = _finalize_contrib(ck)
-		if debug_spin:
-			print("[Spin] Final offset=", ck.offset, " => ", ck.meta["final"])
-
-	# Compute totals ONCE per spin
-	var active_total: int = 0
-	var passive_total: int = 0
-	for c in contribs:
-		var fin: int = 0
-		if (c.meta as Dictionary).has("final"):
-			fin = int((c.meta as Dictionary).get("final"))
-		if c.kind == "active":
-			active_total += fin
-		else:
-			passive_total += fin
-
-	total_active += active_total
-	total_passive += passive_total
-	var spin_total: int = active_total + passive_total
-	total_coins += spin_total
-
-	# Reverted: directly update totals without extra overlay animations
-	_update_totals_label(total_coins)
-	_update_spin_counters(false)
-
-	# Build result dictionary without multi-line literal
-	result = {}
-	result["active_total"] = active_total
-	result["passive_total"] = passive_total
-	result["spin_total"] = spin_total
-	result["run_total"] = total_coins
-	result["contributions"] = contribs
-	result["baseline"] = baseline_snapshot
-	result["context"] = ctx
-	if debug_spin:
-		print("[Totals] active=", active_total, " passive=", passive_total, " spin_total=", result["spin_total"], " run_total=", total_coins)
-	emit_signal("spin_totals_ready", result)
-
-	# After computing totals, execute any winner ability commands
+	# Execute winner ability commands after spin steps but before final totals
 	# These mutate inventory for future spins (e.g., replace lowest with Coin)
 	var _cmds := _collect_winner_ability_commands(ctx, contribs, winner)
 	if _cmds is Array and not _cmds.is_empty():
@@ -591,15 +552,57 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 		if not late.is_empty():
 			if debug_spin:
 				print("[Commands] Found ", late.size(), " command(s). Executing...")
-			_execute_ability_commands(late, ctx, contribs, winner)
+			await _execute_ability_commands(late, ctx, contribs, winner)
 
 		# Execute any commands enqueued by reactive abilities during steps (e.g., on_value_changed hooks)
 		var pend = ctx.get("__pending_commands", [])
 		if pend is Array and not (pend as Array).is_empty():
 			if debug_spin:
 				print("[Commands] Executing ", (pend as Array).size(), " pending reactive command(s)...")
-			_execute_ability_commands(pend, ctx, contribs, null)
+			await _execute_ability_commands(pend, ctx, contribs, null)
 			ctx["__pending_commands"] = []
+
+	# Finalize contributions and totals after all commands resolve
+	for k in range(contribs.size()):
+		var ck: Dictionary = contribs[k]
+		ck.meta["final"] = _finalize_contrib(ck)
+		if debug_spin:
+			print("[Spin] Final offset=", ck.offset, " => ", ck.meta["final"])
+
+	var active_total: int = 0
+	var passive_total: int = 0
+	for c in contribs:
+		var fin: int = 0
+		if (c.meta as Dictionary).has("final"):
+			fin = int((c.meta as Dictionary).get("final"))
+		if c.kind == "active":
+			active_total += fin
+		else:
+			passive_total += fin
+
+	total_active += active_total
+	total_passive += passive_total
+	var spin_total: int = active_total + passive_total
+	total_coins += spin_total
+
+	if _value_label_defer_depth > 0:
+		_value_label_defer_depth -= 1
+	_update_totals_label(total_coins, true)
+	_update_spin_counters(false)
+
+	# Build result dictionary without multi-line literal
+	result = {}
+	result["active_total"] = active_total
+	result["passive_total"] = passive_total
+	result["spin_total"] = spin_total
+	result["run_total"] = total_coins
+	result["contributions"] = contribs
+	result["baseline"] = baseline_snapshot
+	result["context"] = ctx
+	if debug_spin:
+		print("[Totals] active=", active_total, " passive=", passive_total, " spin_total=", result["spin_total"], " run_total=", total_coins)
+	emit_signal("spin_totals_ready", result)
+
 
 	if enable_game_over:
 		var spr: int = max(spins_per_round, 1)
@@ -1191,7 +1194,9 @@ func _set_value_label_gold(total: int) -> void:
 	else:
 		_set_node_text(lbl, s)
 
-func _update_totals_label(total: int) -> void:
+func _update_totals_label(total: int, force: bool = false) -> void:
+	if _value_label_defer_depth > 0 and not force:
+		return
 	var lbl := _resolve_value_label()
 	if lbl == null:
 		return
@@ -3717,8 +3722,41 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				if delta != 0:
 					_apply_permanent_add_inventory("offset", off_t, "", "", delta, false, ctx, false)
 					_refresh_all_slot_token_values(ctx)
-				_resync_contribs_from_board(ctx, _contribs)
-				_refresh_dynamic_passives(ctx, _contribs)
+					var had_force_offsets := false
+					var prev_force_offsets = null
+					if ctx is Dictionary:
+						had_force_offsets = ctx.has("__force_value_sync_offsets")
+						if had_force_offsets:
+							prev_force_offsets = ctx["__force_value_sync_offsets"]
+						var force_list: Array = []
+						force_list.append(off_t)
+						ctx["__force_value_sync_offsets"] = force_list
+					_resync_contribs_from_board(ctx, _contribs)
+					if ctx is Dictionary:
+						if had_force_offsets:
+							ctx["__force_value_sync_offsets"] = prev_force_offsets
+						else:
+							ctx.erase("__force_value_sync_offsets")
+					_refresh_dynamic_passives(ctx, _contribs)
+					var updated_target := _find_contrib_by_offset(_contribs, off_t)
+					if updated_target is Dictionary:
+						var sync_token = updated_target.get("token")
+						var final_val := _compute_value(updated_target)
+						if sync_token != null and (sync_token as Object).has_method("get"):
+							var tv = sync_token.get("value")
+							if tv != null:
+								final_val = int(tv)
+						updated_target["base"] = final_val
+						updated_target["delta"] = 0
+						updated_target["mult"] = 1.0
+						if updated_target.has("meta") and typeof(updated_target["meta"]) == TYPE_DICTIONARY:
+							var meta_sync: Dictionary = updated_target["meta"]
+							meta_sync["final"] = final_val
+							updated_target["meta"] = meta_sync
+				else:
+					_resync_contribs_from_board(ctx, _contribs)
+					_refresh_dynamic_passives(ctx, _contribs)
+
 			"set_self_perm_to_target_current":
 				var off_t2 := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
 				var self_c2 := _find_self_contrib(_contribs, effect_source)
@@ -3760,6 +3798,7 @@ func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
 		var contrib: Dictionary = entry
+		var offset_val := int(contrib.get("offset", 999))
 		var prev_base := int(contrib.get("base", 0))
 		var prev_delta := int(contrib.get("delta", 0))
 		var prev_mult := float(contrib.get("mult", 1.0))
@@ -3767,8 +3806,7 @@ func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 
 		var slot: Control = null
 		if ctx != null:
-			var off := int(contrib.get("offset", 999))
-			slot = _slot_from_ctx(ctx, off)
+			slot = _slot_from_ctx(ctx, offset_val)
 		var slot_token = null
 		if slot != null and slot.has_meta("token_data"):
 			slot_token = slot.get_meta("token_data")
@@ -3799,6 +3837,11 @@ func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 			contrib["meta"] = meta
 
 		var new_total := _compute_value(contrib)
+		var show_full_sync := false
+		if ctx != null:
+			var force_variant = ctx.get("__force_value_sync_offsets", null)
+			if force_variant is Array:
+				show_full_sync = (force_variant as Array).has(offset_val)
 		if token_changed or new_total != prev_total:
 			var steps_arr: Array = []
 			if contrib.has("steps") and typeof(contrib["steps"]) == TYPE_ARRAY:
@@ -3824,7 +3867,9 @@ func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 			steps_arr.append(step_log)
 			contrib["steps"] = steps_arr
 			if ctx != null:
-				var from_val := 0 if token_changed else prev_total
+				var from_val := prev_total
+				if token_changed or show_full_sync:
+					from_val = 0
 				_play_counting_popup(ctx, contrib, from_val, new_total, token_changed, step_log)
 			_invoke_on_value_changed(ctx, null, contrib, prev_total, new_total, step_log)
 			if true:
