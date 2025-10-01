@@ -3574,6 +3574,18 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				var diz := bool((cmd as Dictionary).get("destroy_if_zero", false))
 				var propagate_same_key := bool((cmd as Dictionary).get("propagate_same_key", false))
 				_apply_permanent_add_inventory(tk, toff, ttag, tname, amt2, diz, ctx, propagate_same_key)
+				if tk == "name":
+					var name_norm := String(tname).strip_edges().to_lower()
+					if name_norm != "":
+						for contrib in _contribs:
+							if not (contrib is Dictionary):
+								continue
+							var contrib_token = (contrib as Dictionary).get("token")
+							if contrib_token == null or not (contrib_token as Object).has_method("get"):
+								continue
+							if _normalize_token_name(_token_name(contrib_token)) != name_norm:
+								continue
+							_init_token_base_value(contrib_token)
 				_resync_contribs_from_board(ctx, _contribs)
 				_refresh_dynamic_passives(ctx, _contribs)
 				# After adjusting permanent offsets/inventory, re-initialize board slot token values

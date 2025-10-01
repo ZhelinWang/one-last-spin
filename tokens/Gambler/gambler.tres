@@ -8,6 +8,7 @@
 [sub_resource type="Resource" id="A_gain"]
 script = ExtResource("3_gain")
 id = "gambler_gain_per_empty"
+winner_only = true
 
 [resource]
 script = ExtResource("1_token")
