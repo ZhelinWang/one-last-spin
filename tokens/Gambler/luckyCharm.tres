@@ -15,4 +15,4 @@ name = "Lucky Charm"
 icon = ExtResource("4_icon")
 tags = PackedStringArray("Gambler")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_adj")])
-passiveDescription = "Gain +1 permanently when adjacent to an Empty."
+passiveDescription = "Gain +1 permanently when adjacent to an Empty token."

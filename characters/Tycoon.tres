@@ -2,13 +2,13 @@
 
 [ext_resource type="Script" uid="uid://ltn4148sc7sb" path="res://characters/characterData.gd" id="1_25yjl"]
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="2_8emln"]
-[ext_resource type="Resource" path="res://tokens/General/torch.tres" id="3_dpve4"]
-[ext_resource type="Resource" path="res://tokens/General/ward.tres" id="4_s2jjg"]
-[ext_resource type="Resource" path="res://tokens/General/petRock.tres" id="5_s2jjg"]
-[ext_resource type="Resource" path="res://tokens/General/merchant.tres" id="6_g5480"]
-[ext_resource type="Resource" path="res://tokens/General/apprentice.tres" id="7_q250p"]
+[ext_resource type="Resource" uid="uid://b2p3gqyjkynn7" path="res://tokens/Neutral/torch.tres" id="3_dpve4"]
+[ext_resource type="Resource" uid="uid://cubnrb28doq36" path="res://tokens/Neutral/ward.tres" id="4_s2jjg"]
+[ext_resource type="Resource" uid="uid://dsyi2kb5c07lc" path="res://tokens/Neutral/petRock.tres" id="5_s2jjg"]
+[ext_resource type="Resource" uid="uid://k15bscarf25g" path="res://tokens/Neutral/merchant.tres" id="6_g5480"]
+[ext_resource type="Resource" uid="uid://bno2hq5t7as17" path="res://tokens/Neutral/apprentice.tres" id="7_q250p"]
 [ext_resource type="Resource" uid="uid://bj8jtgxsh2pe2" path="res://tokens/empty.tres" id="8_btyae"]
-[ext_resource type="Resource" path="res://tokens/General/wanderer.tres" id="8_xf3nv"]
+[ext_resource type="Resource" uid="uid://esod1bfgab0g" path="res://tokens/Neutral/wanderer.tres" id="8_xf3nv"]
 
 [resource]
 script = ExtResource("1_25yjl")

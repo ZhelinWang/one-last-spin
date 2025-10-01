@@ -1,19 +1,15 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://digrc05na5bl"]
 
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="1_abilities"]
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="2_token"]
-[ext_resource type="Texture2D" path="res://tokens/tokenAssets/bank/bank.png" id="3_icon"]
-[ext_resource type="Script" path="res://abilties/destroyTargetAndGainValueAbility.gd" id="4_destroy_gain"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_abilities"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="2_token"]
+[ext_resource type="Texture2D" uid="uid://cp3iuwm7kpsmh" path="res://tokens/tokenAssets/bank/bank.png" id="3_icon"]
+[ext_resource type="Script" uid="uid://cin8ykabr654p" path="res://abilties/destroyTargetAndGainValueAbility.gd" id="4_destroy_gain"]
 
 [sub_resource type="Resource" id="A_bank"]
 script = ExtResource("4_destroy_gain")
-gain_fraction_numer = 1
-gain_fraction_denom = 2
 also_replace_with_path = "res://tokens/Hoarder/coin.tres"
 id = "bank_destroy_gain_half_replace_coin"
-trigger = 0
-target_kind = 2 # OFFSET
-target_offset = 1
+target_kind = 2
 
 [resource]
 script = ExtResource("2_token")
@@ -24,5 +20,3 @@ value = 6
 tags = PackedStringArray("Hoarder")
 abilities = Array[ExtResource("1_abilities")]([SubResource("A_bank")])
 activeDescription = "Destroy a token and gain half its value permanently. Add a random coin in its place."
-passiveDescription = ""
-

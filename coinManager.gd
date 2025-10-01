@@ -1055,8 +1055,30 @@ func _play_counting_popup(ctx: Dictionary, contrib: Dictionary, from_val: int, t
 			color = temporary_gain_color
 		elif diff < 0:
 			color = temporary_loss_color
+	_apply_popup_glow(popup, color)
 	var call := Callable(self, "_set_counting_text").bind(env["label"], color, float(from_val))
 	ct.tween_method(call, float(from_val), float(to_val), count_dur).set_trans(Tween.TRANS_LINEAR)
+
+
+func _apply_popup_glow(popup: Control, color: Color) -> void:
+	if popup == null:
+		return
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0)
+	var glow_alpha = clamp(color.a + 0.35, 0.0, 1.0)
+	style.shadow_color = Color(color.r, color.g, color.b, glow_alpha)
+	style.shadow_size = 12
+	style.shadow_offset = Vector2.ZERO
+	style.corner_radius_top_left = 10
+	style.corner_radius_top_right = 10
+	style.corner_radius_bottom_left = 10
+	style.corner_radius_bottom_right = 10
+	if popup.has_theme_stylebox_override("panel"):
+		popup.remove_theme_stylebox_override("panel")
+	if popup.has_theme_stylebox_override("normal"):
+		popup.remove_theme_stylebox_override("normal")
+	popup.add_theme_stylebox_override("panel", style)
+	popup.add_theme_stylebox_override("normal", style)
 
 func _set_counting_text(v: float, target: Node, color: Color, origin: float) -> void:
 	if target == null:
@@ -1064,15 +1086,18 @@ func _set_counting_text(v: float, target: Node, color: Color, origin: float) -> 
 	var diff := int(round(v - origin))
 	var sign := "+" if diff >= 0 else ""
 	var t := "%s%d%s" % [sign, diff, _gold_bbcode()]
-	if target is Label:
+	if target is RichTextLabel:
+		var rtl := target as RichTextLabel
+		rtl.bbcode_enabled = true
+		var color_code: String = color.to_html(false)
+		rtl.bbcode_text = "[color=%s]%s[/color]" % [color_code, t]
+	elif target is Label:
 		var lbl := target as Label
 		lbl.add_theme_color_override("font_color", color)
-		lbl.text = t
-	elif target is RichTextLabel:
-		var rtl := target as RichTextLabel
-		var color_code := color.to_html(false)
-		rtl.bbcode_enabled = true
-		rtl.bbcode_text = "[color=%s]%s[/color]" % [color_code, t]
+		lbl.text = t.replace(_gold_bbcode(), "G")
+	else:
+		if target.has_method("set"):
+			target.set("text", t.replace(_gold_bbcode(), "G"))
 
 func _ensure_popup(ctx: Dictionary, contrib: Dictionary) -> Dictionary:
 	var slot := _slot_from_ctx(ctx, int(contrib.offset))
@@ -1090,8 +1115,9 @@ func _ensure_popup(ctx: Dictionary, contrib: Dictionary) -> Dictionary:
 		else:
 			popup = Control.new()
 			popup.custom_minimum_size = Vector2(120, 48)
-			var lbl := Label.new()
+			var lbl := RichTextLabel.new()
 			lbl.name = "valueLabel"
+			lbl.bbcode_enabled = true
 			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -3648,23 +3674,44 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				var rar := String((cmd as Dictionary).get("rarity", "")).to_lower()
 				var cands: Array[Dictionary] = []
 				for c in _contribs:
-					if c is Dictionary:
-						var tok = (c as Dictionary).get("token")
-						if tok != null and (tok as Object).has_method("get") and String(tok.get("rarity")).to_lower() == rar:
-							cands.append(c)
+					if not (c is Dictionary):
+						continue
+					var tok = (c as Dictionary).get("token")
+					if tok == null or not (tok as Object).has_method("get"):
+						continue
+					if effect_source != null and tok == effect_source:
+						continue
+					if String(tok.get("rarity")).to_lower() != rar:
+						continue
+					var meta_val = (c as Dictionary).get("meta")
+					var final_val := 0
+					if meta_val is Dictionary and (meta_val as Dictionary).has("final"):
+						final_val = int((meta_val as Dictionary).get("final", 0))
+					else:
+						final_val = _compute_value(c)
+					if final_val <= 0:
+						continue
+					cands.append({"contrib": c, "final": final_val, "token": tok})
 				if cands.is_empty():
 					continue
-				var pickc := cands[_loot_rng.randi_range(0, cands.size()-1)]
-				var offp := int(pickc.get("offset", 0))
+				var pick := cands[_loot_rng.randi_range(0, cands.size()-1)]
+				var pickc = pick.get("contrib", {})
+				if not (pickc is Dictionary) or (pickc as Dictionary).is_empty():
+					continue
+				var offp := int((pickc as Dictionary).get("offset", 0))
 				if _guard_blocks(ctx, _contribs, offp, op):
 					continue
-				var valp := _compute_value(pickc)
+				var gain_amount := int(pick.get("final", _compute_value(pickc)))
+				if gain_amount <= 0:
+					continue
 				var empty_res5 := _load_empty_token()
 				if empty_res5 is Resource:
-					_replace_token_at_offset(ctx, offp, (empty_res5 as Resource).resource_path, -1, false)
+					var destroyed_token = pick.get("token", null)
+					if destroyed_token == null:
+						destroyed_token = (pickc as Dictionary).get("token")
+					_replace_token_at_offset(ctx, offp, (empty_res5 as Resource).resource_path, -1, false, destroyed_token)
 				if effect_source != null:
-					var inc := valp if valp > 0 else 1
-					_apply_permanent_add_inventory("self", 0, "", "", inc, false, ctx, false)
+					_apply_permanent_add_inventory("self", 0, "", "", gain_amount, false, ctx, false)
 				_resync_contribs_from_board(ctx, _contribs)
 				_refresh_dynamic_passives(ctx, _contribs)
 			"mastermind_destroy_target_and_buff":

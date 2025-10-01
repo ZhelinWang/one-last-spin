@@ -1,21 +1,18 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://cq7v6d4qvqtjq"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/genericPermanentAddOnActiveAbility.gd" id="3_permadd"]
-[ext_resource type="Script" path="res://abilties/genericPreventDecreasesFilterAbility.gd" id="4_nodec"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="5_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dhprujurry1vf" path="res://abilties/genericPermanentAddOnActiveAbility.gd" id="3_permadd"]
+[ext_resource type="Script" uid="uid://cysa73lricajr" path="res://abilties/genericPreventDecreasesFilterAbility.gd" id="4_nodec"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
 [sub_resource type="Resource" id="A_permadd"]
 script = ExtResource("3_permadd")
 amount = 3
 id = "goldbar_self_perm_plus3"
-trigger = 0
 
 [sub_resource type="Resource" id="A_nodec"]
 script = ExtResource("4_nodec")
-block_negative_add = true
-block_mult_below_one = true
 id = "goldbar_cannot_decrease"
 
 [resource]
@@ -26,6 +23,5 @@ icon = ExtResource("5_icon")
 value = 6
 tags = PackedStringArray("Hoarder")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_permadd"), SubResource("A_nodec")])
-activeDescription = "Buff self by +3 permanently."
+activeDescription = "Gain +3 permanently."
 passiveDescription = "This token's value cannot decrease."
-

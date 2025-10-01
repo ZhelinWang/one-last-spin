@@ -1,16 +1,16 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=10 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=11 format=3 uid="uid://dy7tfdt0gbx2g"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/setSelfPermToTargetCurrentAbility.gd" id="3_set"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dm3urr28d54oh" path="res://abilties/setSelfPermToTargetCurrentAbility.gd" id="3_set"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="4_letji"]
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
 
 [sub_resource type="Resource" id="A_set"]
 script = ExtResource("3_set")
 id = "trickster_copy_target_value"
-trigger = 0
 
 [sub_resource type="Resource" id="A_lose"]
 script = ExtResource("Z_action")
@@ -20,9 +20,9 @@ target_override_kind = "self"
 
 [sub_resource type="Resource" id="Spec_lose"]
 script = ExtResource("Z_effect")
-id = "trickster_lose_one_per_spin"
-actions = [ SubResource("A_lose") ]
+actions = Array[ExtResource("Z_action")]([SubResource("A_lose")])
 once_per_spin = true
+id = "trickster_lose_one_per_spin"
 
 [resource]
 script = ExtResource("1_token")
@@ -32,6 +32,5 @@ icon = ExtResource("4_icon")
 value = 3
 tags = PackedStringArray("Gambler", "Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_set"), SubResource("Spec_lose")])
-activeDescription = "Copy target’s value permanently."
-passiveDescription = "Lose 1 permanently each spin."
-
+activeDescription = "Copy a target’s value permanently."
+passiveDescription = "Lose 1 value permanently when triggered."

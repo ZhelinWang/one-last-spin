@@ -1,9 +1,9 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://ljl2m8hi1uvw"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/markedCardsPairDoubleAbility.gd" id="3_pair"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://pnb0s437ic3r" path="res://abilties/markedCardsPairDoubleAbility.gd" id="3_pair"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_pair"]
 script = ExtResource("3_pair")
@@ -12,10 +12,7 @@ id = "marked_card_pair_double"
 [resource]
 script = ExtResource("1_token")
 name = "Marked Card"
-rarity = "common"
 icon = ExtResource("4_icon")
-value = 1
 tags = PackedStringArray("Gambler")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_pair")])
-passiveDescription = "If adjacent to another Marked Card, both double permanently."
-
+passiveDescription = "If adjacent to another Marked Card, double this token's value."

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://dr3hnarurxa71"]
+
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_h04ac"]
+[ext_resource type="Script" uid="uid://d31fxo41a1ge3" path="res://abilties/destroyRandomTriggeredByRarityAndGainAbility.gd" id="2_25rvq"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="3_5n4hs"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="4_foe3q"]
+
+[sub_resource type="Resource" id="A_act"]
+script = ExtResource("2_25rvq")
+id = "fence_destroy_random_common_gain"
+
+[resource]
+script = ExtResource("4_foe3q")
+name = "Fence"
+icon = ExtResource("3_5n4hs")
+tags = PackedStringArray("Villain")
+abilities = Array[ExtResource("1_h04ac")]([SubResource("A_act")])
+activeDescription = "Destroy a random triggered Common and gain its value permanently."

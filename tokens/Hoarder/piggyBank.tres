@@ -1,16 +1,14 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://b6fqaexle8b5c"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/genericPermanentAddOnActiveAbility.gd" id="3_perm"]
-[ext_resource type="Script" path="res://abilties/onRemovedAdjustRunTotalAbility.gd" id="4_onremoved"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="5_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dhprujurry1vf" path="res://abilties/genericPermanentAddOnActiveAbility.gd" id="3_perm"]
+[ext_resource type="Script" uid="uid://dpfq5yav48oqm" path="res://abilties/onRemovedAdjustRunTotalAbility.gd" id="4_onremoved"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
 [sub_resource type="Resource" id="A_perm"]
 script = ExtResource("3_perm")
-amount = 1
 id = "piggy_active_plus_one_perm"
-trigger = 0
 
 [sub_resource type="Resource" id="A_removed"]
 script = ExtResource("4_onremoved")
@@ -27,5 +25,4 @@ value = 3
 tags = PackedStringArray("Hoarder")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_perm"), SubResource("A_removed")])
 activeDescription = "Gain +1 permanently."
-passiveDescription = "When destroyed, gain 2× value."
-
+passiveDescription = "When destroyed, gain 2× this token's value."

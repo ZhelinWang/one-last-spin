@@ -5,7 +5,10 @@
 [node name="floatingPopup" type="Control"]
 custom_minimum_size = Vector2(140, 85)
 layout_mode = 3
-anchors_preset = 0
+anchor_right = 0.07300001
+anchor_bottom = 0.079
+offset_right = -140.16002
+offset_bottom = -85.32001
 mouse_filter = 2
 script = ExtResource("1_p6jw2")
 

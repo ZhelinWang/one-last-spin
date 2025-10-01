@@ -9,7 +9,7 @@ signal eye_hover_ended
 @export var slots_hbox: HBoxContainer
 @export var slot_item_scene: PackedScene
 @export var class_data: CharacterClassData
-@export var artifact_xp_schedule: Array[int] = [4, 4, 4, 4, 5]
+@export var artifact_xp_schedule: Array[int] = [5, 5, 5, 5, 5]
 
 @onready var main_ui := get_tree().get_root().get_node("mainUI") as Control
 
@@ -17,9 +17,9 @@ signal eye_hover_ended
 @export var floating_label_scene: PackedScene
 
 # Spin behavior
-@export_range(1, 2, 1) var min_laps := 2
-@export_range(2, 3, 1) var max_laps := 3
-@export var spin_duration_sec := 6
+@export_range(1, 3) var min_laps := 3
+@export_range(2, 4) var max_laps := 4
+@export var spin_duration_sec := 5
 @export var trans := Tween.TRANS_CUBIC
 @export var easing := Tween.EASE_OUT
 @export_range(0.0, 1.5, 0.01) var overshoot_slot_fraction := 0.65

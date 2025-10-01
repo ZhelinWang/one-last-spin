@@ -1,23 +1,20 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://b6q6iatipjar"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/onRemovedAdjustRunTotalAbility.gd" id="3_onremoved"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dpfq5yav48oqm" path="res://abilties/onRemovedAdjustRunTotalAbility.gd" id="3_onremoved"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_onremoved"]
 script = ExtResource("3_onremoved")
-multiplier = 1.5
 id = "tipjar_gain_on_destroy"
-trigger = 2 # ON_REMOVED
+trigger = 2
 
 [resource]
 script = ExtResource("1_token")
 name = "Tip Jar"
-rarity = "common"
 icon = ExtResource("4_icon")
 value = 2
 tags = PackedStringArray("Hoarder")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_onremoved")])
-passiveDescription = "When destroyed, gain 1.5× its value."
-
+passiveDescription = "When destroyed, gain 1.5x this token's value."

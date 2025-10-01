@@ -1,15 +1,14 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://bdg1k5qad1elg"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/replaceSelfRandomByTagAbility.gd" id="3_replace"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://cd744nga76fif" path="res://abilties/replaceSelfRandomByTagAbility.gd" id="3_replace"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_replace"]
 script = ExtResource("3_replace")
-target_tag = "human"
 id = "intern_promote_self_to_random_human"
-trigger = 0
+target_tag = "human"
 
 [resource]
 script = ExtResource("1_token")
@@ -19,5 +18,4 @@ icon = ExtResource("4_icon")
 value = 3
 tags = PackedStringArray("Hoarder", "Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_replace")])
-activeDescription = "Promote self into a random Human."
-
+activeDescription = "Transform this token into a random Human token."

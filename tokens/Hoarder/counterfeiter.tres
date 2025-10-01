@@ -1,15 +1,13 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://chnb1u7ghc5j2"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/spawnCoinsAbility.gd" id="3_spawn"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dhdx56yp4iqq7" path="res://abilties/spawnCoinsAbility.gd" id="3_spawn"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_spawn"]
 script = ExtResource("3_spawn")
-count = 2
 id = "counterfeiter_spawn_two_coins"
-trigger = 0
 
 [resource]
 script = ExtResource("1_token")
@@ -20,4 +18,3 @@ value = 4
 tags = PackedStringArray("Hoarder")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_spawn")])
 activeDescription = "Spawn 2 random Coins."
-
