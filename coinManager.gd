@@ -114,7 +114,18 @@ var spin_index: int = 0
 var _artifacts: Array[ArtifactData] = []
 var _totals_owner: Node = null # %valueLabel, %roundLabel, %deadlineLabel
 
+const ROUND_PAY_BASE_RATE: float = 3.0
+const ROUND_PAY_MAX_RATE: float = 500.0
+const ROUND_PAY_ACCEL_PER_SEC: float = 1.35
+const ROUND_PAY_MIN_FRAME: float = 1.0 / 240.0
+
 # Game Over overlay
+var _round_pay_layer: CanvasLayer
+var _round_pay_block: Control
+var _round_pay_round_label: Label
+var _round_pay_status_label: Label
+var _round_pay_player_value_label: RichTextLabel
+var _round_pay_required_value_label: RichTextLabel
 var _go_layer: CanvasLayer
 var _go_block: Control
 var _go_btn: Button
@@ -1178,19 +1189,34 @@ func _handle_end_of_round(round_num: int) -> void:
 	while _target_selection_pending:
 		await get_tree().process_frame
 	var requirement: int = _get_requirement_for_round(round_num)
-	var paid: bool = false
-	if total_coins >= requirement:
-		paid = true
-		if deduct_on_pay:
-			total_coins -= requirement
-			_update_totals_label(total_coins)
-			emit_signal("round_ended", round_num, requirement, true)
-			_update_spin_counters()
+	var starting_coins: int = total_coins
+	var can_pay := starting_coins >= requirement
+	var spin_root := _resolve_spin_root()
+	var spin_btn_state := true
+	if spin_root != null and spin_root.has_method('_is_spin_button_enabled'):
+		spin_btn_state = bool(spin_root.call('_is_spin_button_enabled'))
+	if spin_root != null and spin_root.has_method('_set_spin_button_enabled'):
+		spin_root.call('_set_spin_button_enabled', false)
+	await _pause(2.0)
+	var coins_after := await _play_round_pay_animation(round_num, starting_coins, requirement, can_pay, deduct_on_pay)
+
+	if deduct_on_pay:
+		total_coins = coins_after
+		_update_totals_label(total_coins, true)
+	if can_pay:
+		emit_signal("round_ended", round_num, requirement, true)
+		_update_spin_counters()
 		_trigger_loot_choice(round_num)
 	else:
 		emit_signal("round_ended", round_num, requirement, false)
 		_trigger_game_over(round_num, requirement)
 		_update_spin_counters()
+
+	if spin_root != null and spin_root.has_method('_set_spin_button_enabled'):
+		spin_root.call('_set_spin_button_enabled', spin_btn_state)
+	if spin_root != null and spin_root.has_method('_apply_spin_button_state'):
+		spin_root.call_deferred('_apply_spin_button_state')
+	_notify_spin_lock_state()
 
 func _get_requirement_for_round(round_num: int) -> int:
 	if round_num <= 0:
@@ -1294,6 +1320,164 @@ func _update_spin_counters(force_zero: bool = false) -> void:
 				(ci as CanvasItem).modulate = Color(0, 0, 0, 1)
 			else:
 				(ci as CanvasItem).modulate = Color(1, 1, 1, 1)
+
+# ---------- Round Pay Overlay ----------
+func _build_round_pay_overlay_if_needed() -> void:
+	if _round_pay_layer != null and is_instance_valid(_round_pay_layer):
+		return
+	_round_pay_layer = CanvasLayer.new()
+	_round_pay_layer.layer = 90
+	var root := Control.new()
+	root.name = "RoundPayOverlay"
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_round_pay_layer.add_child(root)
+	_round_pay_block = root
+	var dim := ColorRect.new()
+	dim.color = overlay_bg
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(center)
+	var vb := VBoxContainer.new()
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_theme_constant_override("separation", 24)
+	center.add_child(vb)
+	_round_pay_round_label = Label.new()
+	_round_pay_round_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_round_pay_round_label.add_theme_font_size_override("font_size", 36)
+	vb.add_child(_round_pay_round_label)
+	_round_pay_status_label = Label.new()
+	_round_pay_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_round_pay_status_label.add_theme_font_size_override("font_size", 24)
+	vb.add_child(_round_pay_status_label)
+	var values := HBoxContainer.new()
+	values.alignment = BoxContainer.ALIGNMENT_CENTER
+	values.add_theme_constant_override("separation", 48)
+	vb.add_child(values)
+	var player_box := VBoxContainer.new()
+	player_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	var player_title := Label.new()
+	player_title.text = "YOUR GOLD"
+	player_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	player_title.add_theme_font_size_override("font_size", 20)
+	player_box.add_child(player_title)
+	_round_pay_player_value_label = RichTextLabel.new()
+	_round_pay_player_value_label.bbcode_enabled = true
+	_round_pay_player_value_label.scroll_active = false
+	_round_pay_player_value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_round_pay_player_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_round_pay_player_value_label.add_theme_font_size_override("normal_font_size", 48)
+	_round_pay_player_value_label.fit_content = true
+	player_box.add_child(_round_pay_player_value_label)
+	values.add_child(player_box)
+	var req_box := VBoxContainer.new()
+	req_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	var req_title := Label.new()
+	req_title.text = "REQUIRED"
+	req_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	req_title.add_theme_font_size_override("font_size", 20)
+	req_box.add_child(req_title)
+	_round_pay_required_value_label = RichTextLabel.new()
+	_round_pay_required_value_label.bbcode_enabled = true
+	_round_pay_required_value_label.scroll_active = false
+	_round_pay_required_value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_round_pay_required_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_round_pay_required_value_label.add_theme_font_size_override("normal_font_size", 48)
+	_round_pay_required_value_label.fit_content = true
+	req_box.add_child(_round_pay_required_value_label)
+	values.add_child(req_box)
+	var attach_to := get_tree().current_scene
+	if attach_to == null:
+		add_child(_round_pay_layer)
+	else:
+		attach_to.add_child(_round_pay_layer)
+	_round_pay_layer.visible = false
+
+func _hide_round_pay_overlay() -> void:
+	if _round_pay_layer != null and is_instance_valid(_round_pay_layer):
+		_round_pay_layer.visible = false
+
+func _update_round_pay_labels(player_value: int, requirement_value: int) -> void:
+	if _round_pay_player_value_label != null and is_instance_valid(_round_pay_player_value_label):
+		_round_pay_player_value_label.bbcode_text = "%d%s" % [player_value, _gold_bbcode()]
+	if _round_pay_required_value_label != null and is_instance_valid(_round_pay_required_value_label):
+		_round_pay_required_value_label.bbcode_text = "%d%s" % [requirement_value, _gold_bbcode()]
+
+func _shake_canvas_item(ci: CanvasItem) -> void:
+	if ci == null or not is_instance_valid(ci):
+		return
+	var orig_scale: Vector2 = ci.scale
+	if orig_scale == Vector2.ZERO:
+		orig_scale = Vector2.ONE
+	if ci is Control:
+		var ctrl := ci as Control
+		if ctrl.pivot_offset == Vector2.ZERO:
+			ctrl.pivot_offset = ctrl.size * 0.5
+	var tween := get_tree().create_tween()
+	tween.tween_property(ci, "scale", orig_scale * 1.12, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(ci, "scale", orig_scale, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+func _play_round_pay_animation(round_num: int, start_coins: int, requirement: int, can_pay: bool, apply_deduction: bool) -> int:
+	_build_round_pay_overlay_if_needed()
+	if _round_pay_layer != null and is_instance_valid(_round_pay_layer):
+		_round_pay_layer.visible = true
+	if _round_pay_round_label != null and is_instance_valid(_round_pay_round_label):
+		var title_txt := "ROUND %d" % max(round_num, 1)
+		_set_node_text(_round_pay_round_label, title_txt)
+	if _round_pay_status_label != null and is_instance_valid(_round_pay_status_label):
+		var status_txt := "%dG DUE" % requirement
+		_set_node_text(_round_pay_status_label, status_txt)
+	_update_round_pay_labels(start_coins, requirement)
+	await get_tree().process_frame
+	var coins_left: int = start_coins
+	var requirement_left: int = requirement
+	var rate_per_sec: float = ROUND_PAY_BASE_RATE
+	var carry: float = 0.0
+	var prev_time_usec: int = Time.get_ticks_usec()
+	while coins_left > 0 and requirement_left > 0:
+		await get_tree().process_frame
+		var now_usec: int = Time.get_ticks_usec()
+		var dt: float = float(now_usec - prev_time_usec) / 1_000_000.0
+		if dt < ROUND_PAY_MIN_FRAME:
+			dt = ROUND_PAY_MIN_FRAME
+		prev_time_usec = now_usec
+		rate_per_sec = min(ROUND_PAY_MAX_RATE, rate_per_sec * pow(ROUND_PAY_ACCEL_PER_SEC, dt))
+		carry += rate_per_sec * dt
+		var available: int = int(floor(carry))
+		if available <= 0:
+			continue
+		var to_remove: int = min(available, coins_left)
+		to_remove = min(to_remove, requirement_left)
+		if to_remove <= 0:
+			continue
+		carry -= float(to_remove)
+		coins_left -= to_remove
+		requirement_left -= to_remove
+		_update_round_pay_labels(coins_left, requirement_left)
+	_update_round_pay_labels(coins_left, requirement_left)
+	var status_txt_final: String = ""
+	var winning_item: CanvasItem = null
+	if requirement_left <= 0 and can_pay:
+		status_txt_final = "ROUND COMPLETE"
+		winning_item = _round_pay_player_value_label
+	else:
+		var shortfall: int = max(requirement_left, 0)
+		status_txt_final = "...%dG" % shortfall
+		winning_item = _round_pay_required_value_label
+	if _round_pay_status_label != null and is_instance_valid(_round_pay_status_label):
+		_set_node_text(_round_pay_status_label, status_txt_final)
+	if winning_item != null:
+		_shake_canvas_item(winning_item)
+	await _pause(2)
+	_hide_round_pay_overlay()
+	if not apply_deduction:
+		return start_coins
+	return coins_left
 
 # ---------- Game Over Overlay ----------
 func _trigger_game_over(round_num: int, requirement: int) -> void:
@@ -2799,6 +2983,19 @@ func _owner_node() -> Node:
 	if target == null:
 		target = get_tree().current_scene
 	return target
+
+func _resolve_spin_root() -> Node:
+	var scene := get_tree().current_scene
+	if scene != null:
+		var sr = scene.find_child("spinRoot", true, false)
+		if sr != null:
+			return sr
+	var root := get_tree().get_root()
+	if root != null:
+		var node := root.get_node_or_null("spinRoot")
+		if node != null:
+			return node
+	return null
 
 func _resolve_ui_node(start: Node, unique_name: String, plain_name: String) -> Node:
 	if start == null:

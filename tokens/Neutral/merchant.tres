@@ -17,4 +17,4 @@ rarity = "rare"
 icon = ExtResource("4_icon")
 tags = PackedStringArray("General")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_bonus")])
-activeDescription = "Destroy target token and trigger a token selection."
+activeDescription = "Destroy a target token and trigger a token selection."

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://ws04dmhdbrvi"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3 uid="uid://ws04dmhdbrvi"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
@@ -7,8 +7,17 @@
 
 [sub_resource type="Resource" id="A_cookie"]
 script = ExtResource("3_cookie")
+chance = 0.25
 max_amount = 8
 id = "fortune_cookie_random_add"
+
+[sub_resource type="Resource" id="Resource_oxtjk"]
+script = ExtResource("3_cookie")
+chance = 1.0
+max_amount = 8
+id = "fortune_cookie_random_add_active"
+winner_only = true
+metadata/_custom_type_script = "uid://m7nunemtatyl"
 
 [resource]
 script = ExtResource("1_token")
@@ -17,5 +26,6 @@ rarity = "rare"
 icon = ExtResource("4_icon")
 value = 5
 tags = PackedStringArray("Gambler")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_cookie")])
-passiveDescription = "50% chance to add +1–8 to a random triggered token this spin."
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_cookie"), SubResource("Resource_oxtjk")])
+activeDescription = "Buff a random triggered token by +(1–8)."
+passiveDescription = "25% chance to add +(1–8) to a random triggered token this spin."

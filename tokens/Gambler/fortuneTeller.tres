@@ -17,4 +17,5 @@ icon = ExtResource("4_icon")
 value = 2
 tags = PackedStringArray("Gambler", "Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
+activeDescription = "Gain an extra token choice in the next token selection."
 passiveDescription = "Gain +1 permanently per adjacent Empty token."
