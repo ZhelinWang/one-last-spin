@@ -37,20 +37,9 @@ func build_steps(ctx: Dictionary, contrib: Dictionary, source_token: Resource) -
 		neighbors = ctx.get("neighbors")
 	var winner = ctx.get("winner") if ctx.has("winner") else null
 
-	func token_at_offset(o: int):
-		if o == 0:
-			return winner
-		var norder := [-2, -1, 1, 2]
-		var idx := norder.find(o)
-		if idx == -1:
-			return null
-		if neighbors is Array and idx < (neighbors as Array).size():
-			return (neighbors as Array)[idx]
-		return null
-
 	var has_coin_adjacent := false
 	for ao in adj_offsets:
-		var tok = token_at_offset(ao)
+		var tok = _token_at_offset(ao, winner, neighbors)
 		if tok != null and (_is_coin(tok) or _token_has_tag(tok, "coin")):
 			has_coin_adjacent = true
 			break
@@ -58,3 +47,14 @@ func build_steps(ctx: Dictionary, contrib: Dictionary, source_token: Resource) -
 	if has_coin_adjacent and amount != 0:
 		return [_mk_add(amount, "Adjacency coin buff", "ability:%s" % id)]
 	return []
+
+func _token_at_offset(o: int, winner, neighbors):
+	if o == 0:
+		return winner
+	var norder := [-2, -1, 1, 2]
+	var idx := norder.find(o)
+	if idx == -1:
+		return null
+	if neighbors is Array and idx < (neighbors as Array).size():
+		return (neighbors as Array)[idx]
+	return null

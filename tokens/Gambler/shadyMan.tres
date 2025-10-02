@@ -8,10 +8,16 @@
 
 [sub_resource type="Resource" id="A_destroy"]
 script = ExtResource("3_destroy")
+rarity = "any"
+gain_to_self = false
+id = "shady_man_destroy_random"
 
 [sub_resource type="Resource" id="A_mult"]
 script = ExtResource("4_mult")
 target_kind = 11
+winner_only = true
+id = "shady_man_double_others"
+desc_template = "x%s buff from %s"
 
 [resource]
 script = ExtResource("1_token")

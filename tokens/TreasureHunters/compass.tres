@@ -1,10 +1,11 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3 uid="uid://b5lrq7lg5v7hd"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="3_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="3_chobg"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="3_icon"]
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
 
 [sub_resource type="Resource" id="A_plus1"]
 script = ExtResource("Z_action")
@@ -14,17 +15,13 @@ target_override_kind = "choose"
 
 [sub_resource type="Resource" id="Spec"]
 script = ExtResource("Z_effect")
+actions = Array[ExtResource("Z_action")]([SubResource("A_plus1")])
 id = "compass_target_plus_one"
-actions = [ SubResource("A_plus1") ]
-trigger = 0
 
 [resource]
 script = ExtResource("1_token")
 name = "Compass"
-rarity = "common"
 icon = ExtResource("3_icon")
-value = 1
 tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("2_abilities")]([SubResource("Spec")])
-activeDescription = "Target gains +1 permanently."
-
+activeDescription = "Buff a targeted token by +1 permanently."

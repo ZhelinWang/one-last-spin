@@ -10,6 +10,7 @@
 
 # Import cache dir (Godot 3 style) — still created by some tools
 .import/
+*md
 
 # Exported builds and artefacts (adjust as you wish)
 *.exe

@@ -167,6 +167,7 @@ const META_ZERO_REASON := "__zero_reason"
 const ZERO_REPLACEMENT_VALUE := 1
 const TEMP_META_DELTA := "__temp_spin_delta"
 const TEMP_META_COLOR := "__temp_spin_color"
+const POPUP_META_TOTAL := "__popup_running_total"
 
 func _temporary_neutral_color() -> Color:
 	return Color(0.92, 0.92, 0.96)
@@ -506,6 +507,8 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 		var __board_cmds := _collect_winner_ability_commands(ctx, contribs, winner)
 		var board_visual_cmds: Array = []
 		var post_shake_cmds: Array = []
+		var had_perm_cmd := false
+		var had_spawn_cmd := false
 		for cmd in __board_cmds:
 			if typeof(cmd) != TYPE_DICTIONARY:
 				continue
@@ -517,7 +520,10 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 				ctx["__ran_replace_all_empties"] = true
 			elif op == "permanent_add":
 				post_shake_cmds.append(cmd)
-
+				had_perm_cmd = true
+			elif op == "spawn_token_in_inventory":
+				post_shake_cmds.append(cmd)
+				had_spawn_cmd = true
 		# Do not scale self-target permanent_add here; visuals will display per-matching token separately
 		# Stash board visual commands in ctx for the broadcast phase to run right after the active label shake
 		var need_board_phase := not board_visual_cmds.is_empty() or not post_shake_cmds.is_empty()
@@ -526,7 +532,10 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 			ctx["__ran_replace_board_tag"] = true
 		if not post_shake_cmds.is_empty():
 			ctx["__post_shake_cmds"] = post_shake_cmds
-			ctx["__ran_permanent_add"] = true
+			if had_perm_cmd:
+				ctx["__ran_permanent_add"] = true
+			if had_spawn_cmd:
+				ctx["__ran_spawn_inventory"] = true
 		# Run the post-shake phase if there are any winner global steps OR any post-shake/board-visual commands
 		if need_board_phase or not global_active_steps.is_empty():
 			await _apply_global_steps_broadcast(global_active_steps, contribs, ctx, winner)
@@ -548,6 +557,7 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 		var skip_empties := bool(ctx.get("__ran_replace_all_empties", false))
 		var skip_perm := bool(ctx.get("__ran_permanent_add", false))
 		var skip_board := bool(ctx.get("__ran_replace_board_tag", false))
+		var skip_spawn := bool(ctx.get("__ran_spawn_inventory", false))
 		var late: Array = []
 		for cmd in _cmds:
 			if typeof(cmd) != TYPE_DICTIONARY:
@@ -557,8 +567,10 @@ func play_spin(winner, neighbors: Array, extra_ctx := {}) -> Dictionary:
 				continue
 			if skip_perm and op == "permanent_add":
 				continue
-			if skip_board and (op == "replace_board_tag" or op == "replace_board_empties"):
-				continue
+				if skip_board and (op == "replace_board_tag" or op == "replace_board_empties"):
+					continue
+				if skip_spawn and op == "spawn_token_in_inventory":
+					continue
 			late.append(cmd)
 		if not late.is_empty():
 			if debug_spin:
@@ -1017,15 +1029,23 @@ func _global_step_matches(step: Dictionary, contrib: Dictionary, source_token) -
 			return true
 
 # ---------- Counting popup ----------
-func _play_counting_popup(ctx: Dictionary, contrib: Dictionary, from_val: int, to_val: int, is_base: bool, step_info: Dictionary = {}) -> void:
+func _play_counting_popup(ctx: Dictionary, contrib: Dictionary, from_val: int, to_val: int, is_base: bool, step_info: Dictionary = {}, prev_actual_val: Variant = null) -> void:
 	var env := _ensure_popup(ctx, contrib)
 	if env.is_empty():
 		return
 	var popup := env["popup"] as Control
 	var slot := env["slot"] as Control
-
-	var delta: int = int(abs(to_val - from_val))
-	var count_dur: float = clamp(0.06 + float(delta) * 0.015, 0.12, 0.30)
+	var prev_display_total := 0.0
+	if popup.has_meta(POPUP_META_TOTAL):
+		prev_display_total = float(popup.get_meta(POPUP_META_TOTAL, 0.0))
+	else:
+		popup.set_meta(POPUP_META_TOTAL, 0.0)
+	var actual_prev := float(from_val)
+	if prev_actual_val != null:
+		actual_prev = float(prev_actual_val)
+	if is_base:
+		prev_display_total = 0.0
+		popup.set_meta(POPUP_META_TOTAL, prev_display_total)
 
 	var base_mod := slot.modulate
 	var fx := get_tree().create_tween()
@@ -1057,18 +1077,23 @@ func _play_counting_popup(ctx: Dictionary, contrib: Dictionary, from_val: int, t
 		shake.tween_property(shake_target, "position", orig_pos + offv, 0.03).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	shake.tween_property(shake_target, "position", orig_pos, 0.04).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
+	var actual_change := float(to_val) - actual_prev
+	var new_display_total := prev_display_total + actual_change
+	var delta_display = abs(new_display_total - prev_display_total)
+	var count_dur: float = clamp(0.06 + delta_display * 0.015, 0.12, 0.30)
+
 	var ct := get_tree().create_tween()
 	popup.set_meta("count_tween", ct)
 	var color := _temporary_neutral_color()
 	if not is_base and step_info is Dictionary and _is_step_temporary(step_info):
-		var diff := to_val - from_val
-		if diff > 0:
+		if actual_change > 0.0:
 			color = temporary_gain_color
-		elif diff < 0:
+		elif actual_change < 0.0:
 			color = temporary_loss_color
 	_apply_popup_glow(popup, color)
-	var call := Callable(self, "_set_counting_text").bind(env["label"], color, float(from_val))
-	ct.tween_method(call, float(from_val), float(to_val), count_dur).set_trans(Tween.TRANS_LINEAR)
+	popup.set_meta(POPUP_META_TOTAL, new_display_total)
+	var call := Callable(self, "_set_counting_text").bind(env["label"], color)
+	ct.tween_method(call, prev_display_total, new_display_total, count_dur).set_trans(Tween.TRANS_LINEAR)
 
 
 func _apply_popup_glow(popup: Control, color: Color) -> void:
@@ -1091,10 +1116,10 @@ func _apply_popup_glow(popup: Control, color: Color) -> void:
 	popup.add_theme_stylebox_override("panel", style)
 	popup.add_theme_stylebox_override("normal", style)
 
-func _set_counting_text(v: float, target: Node, color: Color, origin: float) -> void:
+func _set_counting_text(v: float, target: Node, color: Color) -> void:
 	if target == null:
 		return
-	var diff := int(round(v - origin))
+	var diff := int(round(v))
 	var sign := "+" if diff >= 0 else ""
 	var t := "%s%d%s" % [sign, diff, _gold_bbcode()]
 	if target is RichTextLabel:
@@ -1144,6 +1169,8 @@ func _ensure_popup(ctx: Dictionary, contrib: Dictionary) -> Dictionary:
 	ctrl.pivot_offset = ctrl.size * 0.5
 	ctrl.call_deferred("set_position", Vector2(slot.size.x - ctrl.size.x, 15))
 	ctrl.call_deferred("set", "pivot_offset", ctrl.size * 0.5)
+	if not popup.has_meta(POPUP_META_TOTAL):
+		popup.set_meta(POPUP_META_TOTAL, 0.0)
 
 	# Robust label acquisition/fallback
 	var label := popup.get_node_or_null("labelMarginContainer/labelContainer/popupValueLabel")
@@ -3726,15 +3753,27 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				var res_s := ResourceLoader.load(path_s)
 				if res_s is Resource:
 					var arr4 := _get_inventory_array()
-					for i in range(max(1, count)):
+					var spawned: Array = []
+					var to_spawn = max(1, count)
+					for i in range(to_spawn):
 						var dup2 := (res_s as Resource).duplicate(true)
 						_init_token_base_value(dup2)
+						_ensure_token_uid(dup2)
 						var idxe := _find_empty_index(arr4)
 						if idxe >= 0:
 							arr4[idxe] = dup2
 						else:
 							arr4.append(dup2)
+						spawned.append(dup2)
 					_set_inventory_array(arr4)
+					for new_tok in spawned:
+						_register_effect_target_current(new_tok)
+					var owner_now := _resolve_inventory_owner_node()
+					if owner_now != null and owner_now.has_method("_update_inventory_strip"):
+						owner_now.call_deferred("_update_inventory_strip")
+					if ctx is Dictionary:
+						ctx["board_tokens"] = _get_inventory_array()
+						_refresh_dynamic_passives(ctx, _contribs)
 			"register_guard_aura":
 				var off_g := int((cmd as Dictionary).get("offset", 0))
 				_register_guard_offset(ctx, off_g)
@@ -3880,7 +3919,9 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				_resync_contribs_from_board(ctx, _contribs)
 				_refresh_dynamic_passives(ctx, _contribs)
 			"destroy_random_triggered_by_rarity_and_gain":
-				var rar := String((cmd as Dictionary).get("rarity", "")).to_lower()
+				var rar := String((cmd as Dictionary).get("rarity", "")).strip_edges().to_lower()
+				var match_any := bool((cmd as Dictionary).get("match_any_rarity", rar == ""))
+				var gain_self := bool((cmd as Dictionary).get("gain_to_self", true))
 				var cands: Array[Dictionary] = []
 				for c in _contribs:
 					if not (c is Dictionary):
@@ -3890,7 +3931,8 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 						continue
 					if effect_source != null and tok == effect_source:
 						continue
-					if String(tok.get("rarity")).to_lower() != rar:
+					var tok_rarity := String(tok.get("rarity")).strip_edges().to_lower()
+					if not match_any and tok_rarity != rar:
 						continue
 					var meta_val = (c as Dictionary).get("meta")
 					var final_val := 0
@@ -3898,7 +3940,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 						final_val = int((meta_val as Dictionary).get("final", 0))
 					else:
 						final_val = _compute_value(c)
-					if final_val <= 0:
+					if gain_self and final_val <= 0:
 						continue
 					cands.append({"contrib": c, "final": final_val, "token": tok})
 				if cands.is_empty():
@@ -3911,7 +3953,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				if _guard_blocks(ctx, _contribs, offp, op):
 					continue
 				var gain_amount := int(pick.get("final", _compute_value(pickc)))
-				if gain_amount <= 0:
+				if gain_self and gain_amount <= 0:
 					continue
 				var empty_res5 := _load_empty_token()
 				if empty_res5 is Resource:
@@ -3919,7 +3961,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 					if destroyed_token == null:
 						destroyed_token = (pickc as Dictionary).get("token")
 					_replace_token_at_offset(ctx, offp, (empty_res5 as Resource).resource_path, -1, false, destroyed_token)
-				if effect_source != null:
+				if gain_self and effect_source != null:
 					_apply_permanent_add_inventory("self", 0, "", "", gain_amount, false, ctx, false)
 				_resync_contribs_from_board(ctx, _contribs)
 				_refresh_dynamic_passives(ctx, _contribs)
@@ -4126,7 +4168,10 @@ func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 				var from_val := prev_total
 				if token_changed or show_full_sync:
 					from_val = 0
-				_play_counting_popup(ctx, contrib, from_val, new_total, token_changed, step_log)
+				var prev_override: Variant = null
+				if not token_changed and from_val != prev_total:
+					prev_override = prev_total
+				_play_counting_popup(ctx, contrib, from_val, new_total, token_changed, step_log, prev_override)
 			_invoke_on_value_changed(ctx, null, contrib, prev_total, new_total, step_log)
 			if true:
 				# Emit signals so listeners (e.g., tooltip highlighter) can refresh mid-spin
