@@ -1,36 +1,42 @@
 [gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
-[ext_resource type="Script" path="res://abilties/specs/ConditionSpec.gd" id="Z_cond"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="3_icon"]
+[ext_resource type="Script" path="res://abilties/shinyPebbleEmptyBonusAbility.gd" id="2_active"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="4_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="5_action"]
+[ext_resource type="Script" path="res://abilties/specs/ConditionSpec.gd" id="6_cond"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="7_icon"]
+
+[sub_resource type="Resource" id="Active"]
+script = ExtResource("2_active")
+bonus_increment = 0.01
+id = "shiny_pebble_bonus_increase"
 
 [sub_resource type="Resource" id="Cond_adj_chest"]
-script = ExtResource("Z_cond")
+script = ExtResource("6_cond")
 kind = "adjacent_any_tag"
 tag = "chest"
 
 [sub_resource type="Resource" id="Act_perm"]
-script = ExtResource("Z_action")
+script = ExtResource("5_action")
 op = "permanent_add"
 amount = 1
 target_override_kind = "self"
 
-[sub_resource type="Resource" id="Spec"]
-script = ExtResource("Z_effect")
-id = "shiny_pebble_adjacent_chest"
+[sub_resource type="Resource" id="Spec_passive"]
+script = ExtResource("4_effect")
 conditions = [ SubResource("Cond_adj_chest") ]
 actions = [ SubResource("Act_perm") ]
+id = "shiny_pebble_adjacent_chest"
 
 [resource]
 script = ExtResource("1_token")
 name = "Shiny Pebble"
 rarity = "common"
-icon = ExtResource("3_icon")
+icon = ExtResource("7_icon")
 value = 2
 tags = PackedStringArray("Treasure")
-abilities = Array[ExtResource("2_abilities")]([SubResource("Spec")])
+abilities = Array[ExtResource("3_abilities")]([SubResource("Active"), SubResource("Spec_passive")])
+activeDescription = "Increase Empty rarity bonus by 1%."
 passiveDescription = "+1 permanently if adjacent to a Chest."
-

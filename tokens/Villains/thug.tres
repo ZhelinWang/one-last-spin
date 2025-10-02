@@ -1,22 +1,37 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/thugOnAdjDestroyedGainAbility.gd" id="3_gain"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="3_action"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="4_effect"]
+[ext_resource type="Script" path="res://abilties/thugOnAdjDestroyedGainAbility.gd" id="5_passive"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="6_icon"]
 
-[sub_resource type="Resource" id="A_gain"]
-script = ExtResource("3_gain")
-amount = 1
+[sub_resource type="Resource" id="Action_Add"]
+script = ExtResource("3_action")
+op = "add"
+amount = 2
+
+desc_template = "+%d Thug"
+target_override_kind = "self"
+
+[sub_resource type="Resource" id="Effect_Add"]
+script = ExtResource("4_effect")
+actions = [ SubResource("Action_Add") ]
+id = "thug_active_add"
+winner_only = true
+
+[sub_resource type="Resource" id="Passive"]
+script = ExtResource("5_passive")
 id = "thug_gain_on_adj_destroyed"
 
 [resource]
 script = ExtResource("1_token")
 name = "Thug"
 rarity = "common"
-icon = ExtResource("4_icon")
+icon = ExtResource("6_icon")
 value = 1
 tags = PackedStringArray("Villain")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
+abilities = Array[ExtResource("2_abilities")]([SubResource("Effect_Add"), SubResource("Passive")])
+activeDescription = "Gain +2 this spin."
 passiveDescription = "+1 permanently when an adjacent token is destroyed."
-

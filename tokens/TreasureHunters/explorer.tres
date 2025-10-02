@@ -1,21 +1,36 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/explorerOpenedChestsAbility.gd" id="3_explorer"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" path="res://abilties/explorerOpenedChestsAbility.gd" id="3_passive"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="4_action"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="5_effect"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="6_icon"]
 
-[sub_resource type="Resource" id="A_explorer"]
-script = ExtResource("3_explorer")
+[sub_resource type="Resource" id="Action_Chest"]
+script = ExtResource("4_action")
+op = "permanent_add"
+amount = 1
+target_override_kind = "tag"
+target_tag = "chest"
+
+[sub_resource type="Resource" id="Effect_Chest"]
+script = ExtResource("5_effect")
+actions = Array[ExtResource("4_action")]([SubResource("Action_Chest")])
+id = "explorer_buff_chests"
+winner_only = true
+
+[sub_resource type="Resource" id="Passive"]
+script = ExtResource("3_passive")
 id = "explorer_gain_for_opened_chests"
 
 [resource]
 script = ExtResource("1_token")
 name = "Explorer"
 rarity = "uncommon"
-icon = ExtResource("4_icon")
+icon = ExtResource("6_icon")
 value = 3
 tags = PackedStringArray("Treasure", "Human")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_explorer")])
+abilities = Array[ExtResource("2_abilities")]([SubResource("Effect_Chest"), SubResource("Passive")])
+activeDescription = "Give all Chest tokens +1 permanently."
 passiveDescription = "+1 permanently for each Chest opened this game."
-

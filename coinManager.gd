@@ -174,6 +174,7 @@ func _temporary_neutral_color() -> Color:
 
 # Next-loot bonus options added by effects (consumed when loot appears)
 var _loot_options_bonus: int = 0
+var _next_loot_guarantees: Dictionary = {}
 
 
 func _ready() -> void:
@@ -2253,26 +2254,96 @@ func _copies_to_add_for_token(token: Resource) -> int:
 # ---------- Loot pool / picking ----------
 func _get_loot_options(count: int, round_num: int) -> Array:
 	var pool: Array = _scan_token_assets(loot_scan_root)
-
 	print("[Loot] Scanned pool from ", loot_scan_root, " (", pool.size(), " items):")
 	for t in pool:
 		if t != null and t.has_method("get"):
 			print("  * ", String(t.get("name")), " | rarity=", t.get("rarity"), " | value=", t.get("value"), " | weight=", t.get("weight"))
-
 	if pool.is_empty():
 		return []
-
 	var sched: LootRaritySchedule = _active_rarity_schedule()
+	var options: Array = []
 	if sched == null:
-	# No schedule: legacy fallback (global weighting, not rarity-aware)
-		return _pick_weighted_unique(pool, count, _loot_rng)
+		options = _pick_weighted_unique(pool, count, _loot_rng)
+	else:
+		var base_weights: Dictionary = sched.get_rarity_weights(round_num)
+		var adjusted: Dictionary = _apply_rarity_modifiers(base_weights, round_num, _loot_rng)
+		options = _pick_with_rarity_schedule(pool, count, _loot_rng, round_num, sched, adjusted)
+	if not _next_loot_guarantees.is_empty():
+		options = _apply_loot_guarantees(options, pool, _loot_rng)
+		_next_loot_guarantees.clear()
+	return options
 
-	# Base schedule → apply runtime rarity modifiers (e.g., Empties, artifacts via manager) → pick
-	var base_weights: Dictionary = sched.get_rarity_weights(round_num)
-	var adjusted: Dictionary = _apply_rarity_modifiers(base_weights, round_num, _loot_rng)
+func _apply_loot_guarantees(options: Array, pool: Array, rng: RandomNumberGenerator) -> Array:
+	if options.is_empty():
+		return options
+	var targets: Dictionary = {}
+	for k in _next_loot_guarantees.keys():
+		var key := String(k).to_lower()
+		var cnt := int(max(1, _next_loot_guarantees[k]))
+		var prev := int(targets.get(key, 0))
+		if cnt > prev:
+			targets[key] = cnt
+	if targets.is_empty():
+		return options
+	var current: Dictionary = {}
+	for opt in options:
+		if opt != null and (opt as Object).has_method("get"):
+			var rar := String(opt.get("rarity")).to_lower()
+			current[rar] = int(current.get(rar, 0)) + 1
+	var pool_by_rarity: Dictionary = {}
+	for tok in pool:
+		if tok != null and (tok as Object).has_method("get"):
+			var rar2 := String(tok.get("rarity")).to_lower()
+			if targets.has(rar2):
+				var arr: Array = pool_by_rarity.get(rar2, [])
+				arr.append(tok)
+				pool_by_rarity[rar2] = arr
+	for rarity in targets.keys():
+		var target_count := int(targets[rarity])
+		var have := int(current.get(rarity, 0))
+		var missing := max(0, target_count - have)
+		if missing <= 0:
+			continue
+		var candidates: Array = pool_by_rarity.get(rarity, [])
+		if candidates.is_empty():
+			continue
+		while missing > 0 and not candidates.is_empty():
+			var picked = candidates[rng.randi_range(0, candidates.size() - 1)]
+			var dup = picked
+			if picked is Resource:
+				dup = (picked as Resource).duplicate(true)
+			if dup is Resource:
+				_init_token_base_value(dup)
+			var replace_idx := _find_loot_replace_slot(options, targets, current, rarity)
+			if replace_idx < 0:
+				break
+			var prev_opt = options[replace_idx]
+			if prev_opt != null and (prev_opt as Object).has_method("get"):
+				var prev_r := String(prev_opt.get("rarity")).to_lower()
+				current[prev_r] = int(current.get(prev_r, 0)) - 1
+			options[replace_idx] = dup
+			current[rarity] = int(current.get(rarity, 0)) + 1
+			missing -= 1
+	return options
 
-	return _pick_with_rarity_schedule(pool, count, _loot_rng, round_num, sched, adjusted)
-	
+func _find_loot_replace_slot(options: Array, target_counts: Dictionary, current_counts: Dictionary, desired_rarity: String) -> int:
+	for i in range(options.size()):
+		var opt = options[i]
+		if opt == null or not (opt as Object).has_method("get"):
+			return i
+		var rar := String(opt.get("rarity")).to_lower()
+		var target := int(target_counts.get(rar, 0))
+		if int(current_counts.get(rar, 0)) > target:
+			return i
+	for i in range(options.size()):
+		var opt = options[i]
+		if opt == null or not (opt as Object).has_method("get"):
+			return i
+		var rar := String(opt.get("rarity")).to_lower()
+		if rar != desired_rarity:
+			return i
+	return options.size() - 1
+
 func _scan_token_assets(root: String) -> Array:
 	var out: Array = []
 	var dir := DirAccess.open(root)
@@ -3691,6 +3762,45 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 							_replace_token_at_offset(ctx, offd, (empty_res4 as Resource).resource_path, -1, false)
 				_resync_contribs_from_board(ctx, _contribs)
 				_refresh_dynamic_passives(ctx, _contribs)
+			"destroy_non_triggered_empties":
+				var triggered_real: Array = []
+				var triggered_null := 0
+				for c in _contribs:
+					if c is Dictionary:
+						var tok = c.get("token")
+						if _is_empty_token(tok):
+							if tok == null:
+								triggered_null += 1
+							else:
+								triggered_real.append(tok)
+				var arr_em := _get_inventory_array()
+				var changed := false
+				for i in range(arr_em.size()):
+					var tok_e = arr_em[i]
+					if not _is_empty_token(tok_e):
+						continue
+					var skip := false
+					if tok_e != null and triggered_real.has(tok_e):
+						triggered_real.erase(tok_e)
+						skip = true
+					elif tok_e == null and triggered_null > 0:
+						triggered_null -= 1
+						skip = true
+					if skip:
+						continue
+					_notify_any_token_destroyed(ctx, tok_e, "destroy_non_triggered_empty")
+					arr_em[i] = null
+					changed = true
+				if changed:
+					_set_inventory_array(arr_em)
+					_resync_contribs_from_board(ctx, _contribs)
+					_refresh_dynamic_passives(ctx, _contribs)
+				continue
+			"adjust_empty_rarity_bonus":
+				var delta := float((cmd as Dictionary).get("amount", 0.0))
+				if delta != 0.0:
+					empty_non_common_bonus_per = max(0.0, empty_non_common_bonus_per + delta)
+				continue
 			"replace_self_random_by_tag":
 				var tagrs := String((cmd as Dictionary).get("target_tag", ""))
 				var sets := _class_allowed_sets(ctx)
@@ -4081,6 +4191,13 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				_refresh_dynamic_passives(ctx, _contribs)
 			"restart_round":
 				_restart_current_round()
+			"guarantee_next_loot_rarity":
+				var rare := String((cmd as Dictionary).get("rarity", "")).strip_edges().to_lower()
+				if rare != "":
+					var cnt := max(1, int((cmd as Dictionary).get("count", 1)))
+					var prev := int(_next_loot_guarantees.get(rare, 0))
+					if cnt > prev:
+						_next_loot_guarantees[rare] = cnt
 			"add_loot_options_bonus":
 				_loot_options_bonus += int((cmd as Dictionary).get("amount", 1))
 			_:

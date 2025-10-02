@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=10 format=3 uid="uid://cniwqoryr38rd"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=11 format=3 uid="uid://cniwqoryr38rd"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="3_icon"]
+[ext_resource type="Script" path="res://abilties/campfireActiveAbility.gd" id="3_active"]
 [ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
 [ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="Z_cond"]
 [ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
@@ -10,7 +11,7 @@
 [sub_resource type="Resource" id="Camp_Action"]
 script = ExtResource("Z_action")
 op = "permanent_add"
-amount = 2
+amount = 1
 target_override_kind = "self"
 
 [sub_resource type="Resource" id="Camp_Cond"]
@@ -22,7 +23,11 @@ tag = "common"
 script = ExtResource("Z_effect")
 conditions = Array[ExtResource("Z_cond")]([SubResource("Camp_Cond")])
 actions = Array[ExtResource("Z_action")]([SubResource("Camp_Action")])
-id = "campfire_adjacent_common_self_perm2"
+id = "campfire_adjacent_common_self_perm1"
+
+[sub_resource type="Resource" id="Camp_Active"]
+script = ExtResource("3_active")
+id = "campfire_buff_and_destroy"
 
 [resource]
 script = ExtResource("1_token")
@@ -30,5 +35,6 @@ name = "Campfire"
 icon = ExtResource("3_icon")
 value = 2
 tags = PackedStringArray("General")
-abilities = Array[ExtResource("2_abilities")]([SubResource("Camp_Spec")])
-passiveDescription = "If both adjacent tokens are Common, this token gains +2 permanently."
+abilities = Array[ExtResource("2_abilities")]([SubResource("Camp_Active"), SubResource("Camp_Spec")])
+activeDescription = "Give all other triggered tokens this token's value, then destroy this token."
+passiveDescription = "+1 permanently if both adjacent tokens are Common."

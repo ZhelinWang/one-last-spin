@@ -1,32 +1,29 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/spawnTokensByPathAbility.gd" id="3_spawn"]
-[ext_resource type="Script" path="res://abilties/onAnyDestroyedSelfPermAddAbility.gd" id="4_gain"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="5_icon"]
+[ext_resource type="Script" path="res://abilties/spawnTokensByPathAbility.gd" id="2_active"]
+[ext_resource type="Script" path="res://abilties/pirateMirrorChestValueAbility.gd" id="3_passive"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="4_abilities"]
+[ext_resource type="Script" path="res://abilties/onAnyDestroyedSelfPermAddAbility.gd" id="5_placeholder"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="6_icon"]
 
 [sub_resource type="Resource" id="A_spawn"]
-script = ExtResource("3_spawn")
+script = ExtResource("2_active")
 token_path = "res://tokens/TreasureHunters/smallChest.tres"
 count = 1
 id = "pirate_add_small_chest"
-trigger = 0
 
-[sub_resource type="Resource" id="A_gain"]
-script = ExtResource("4_gain")
-amount = 0
-id = "pirate_gain_destroyed_chest_value"
+[sub_resource type="Resource" id="A_mirror"]
+script = ExtResource("3_passive")
+id = "pirate_mirror_chest_values"
 
 [resource]
 script = ExtResource("1_token")
 name = "Pirate"
 rarity = "rare"
-icon = ExtResource("5_icon")
+icon = ExtResource("6_icon")
 value = 5
 tags = PackedStringArray("Treasure")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_spawn")])
-activeDescription = "Add a small chest to the inventory."
-passiveDescription = "Gains value from destroyed Chests."
-
-
+abilities = Array[ExtResource("4_abilities")]([SubResource("A_spawn"), SubResource("A_mirror")])
+activeDescription = "Add a Small Chest to the inventory."
+passiveDescription = "Gains the value of destroyed Chests."

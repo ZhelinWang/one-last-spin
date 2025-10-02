@@ -8,6 +8,7 @@
 [sub_resource type="Resource" id="A_bank"]
 script = ExtResource("4_destroy_gain")
 also_replace_with_path = "res://tokens/Hoarder/coin.tres"
+replacement_paths = PackedStringArray("res://tokens/Hoarder/coin.tres", "res://tokens/Hoarder/copperCoin.tres", "res://tokens/TreasureHunters/rustedCoin.tres")
 id = "bank_destroy_gain_half_replace_coin"
 target_kind = 2
 

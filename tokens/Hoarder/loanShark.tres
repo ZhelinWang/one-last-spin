@@ -1,20 +1,26 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://drnvk8abxgx4e"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3 uid="uid://drnvk8abxgx4e"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" uid="uid://bij6yk8prsda5" path="res://abilties/onAdjacentDestroyedGainAbility.gd" id="3_gain"]
-[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" path="res://abilties/loanSharkAbility.gd" id="2_active"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
+[ext_resource type="Script" uid="uid://bij6yk8prsda5" path="res://abilties/onAdjacentDestroyedGainAbility.gd" id="4_passive"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
-[sub_resource type="Resource" id="A_gain"]
-script = ExtResource("3_gain")
+[sub_resource type="Resource" id="Active"]
+script = ExtResource("2_active")
+id = "loan_shark_collect"
+
+[sub_resource type="Resource" id="Passive"]
+script = ExtResource("4_passive")
 id = "loan_shark_adjacent_destroyed_gain_half"
 
 [resource]
 script = ExtResource("1_token")
 name = "Loan Shark"
 rarity = "uncommon"
-icon = ExtResource("4_icon")
+icon = ExtResource("5_icon")
 value = 3
 tags = PackedStringArray("Hoarder", "Villain")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
+abilities = Array[ExtResource("3_abilities")]([SubResource("Active"), SubResource("Passive")])
+activeDescription = "Destroy a random adjacent token and add a random Coin to the inventory."
 passiveDescription = "When an adjacent token is destroyed, gain half its value permanently."

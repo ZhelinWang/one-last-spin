@@ -7,6 +7,8 @@
 
 [sub_resource type="Resource" id="A_spawn"]
 script = ExtResource("3_spawn")
+count = 2
+coin_paths = PackedStringArray("res://tokens/Hoarder/coin.tres", "res://tokens/Hoarder/copperCoin.tres", "res://tokens/TreasureHunters/rustedCoin.tres")
 id = "counterfeiter_spawn_two_coins"
 
 [resource]

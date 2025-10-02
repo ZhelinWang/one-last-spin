@@ -1,14 +1,13 @@
 [gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/destroyAllCopiesChooseAbility.gd" id="3_destroy"]
+[ext_resource type="Script" path="res://abilties/destroyTriggeredEmptiesAbility.gd" id="2_active"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
 [ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_shovel"]
-script = ExtResource("3_destroy")
-id = "shovel_destroy_all_copies"
-trigger = 0
+script = ExtResource("2_active")
+id = "shovel_destroy_triggered_empties"
 
 [resource]
 script = ExtResource("1_token")
@@ -17,6 +16,5 @@ rarity = "rare"
 icon = ExtResource("4_icon")
 value = 4
 tags = PackedStringArray("Treasure")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_shovel")])
-activeDescription = "Destroy all copies of target token."
-
+abilities = Array[ExtResource("3_abilities")]([SubResource("A_shovel")])
+activeDescription = "Destroy all triggered Empty tokens."

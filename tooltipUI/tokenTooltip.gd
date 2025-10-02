@@ -147,6 +147,11 @@ func set_data(data: TokenLootData) -> void:
 			var col = data.get_meta("__temp_spin_color")
 			if col is Color:
 				temp_color = col
+	if has_temp and temp_color == neutral:
+		if temp_delta > 0.0:
+			temp_color = temp_gain_color
+		elif temp_delta < 0.0:
+			temp_color = temp_loss_color
 	if base_only:
 		_value_label.text = "Value: %d" % base_val
 		_value_label.add_theme_color_override("font_color", neutral)

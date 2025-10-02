@@ -2,11 +2,12 @@
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" uid="uid://g633yuu2dk18" path="res://abilties/promoteTargetsToChestAbility.gd" id="3_promote"]
+[ext_resource type="Script" path="res://abilties/promoteTargetsToChestAbility.gd" id="3_promote"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_promote"]
 script = ExtResource("3_promote")
+chest_paths = PackedStringArray("res://tokens/TreasureHunters/smallChest.tres", "res://tokens/TreasureHunters/goldenChest.tres")
 id = "treasure_hoard_promote_two_to_chest"
 
 [resource]
@@ -17,5 +18,5 @@ icon = ExtResource("4_icon")
 value = 6
 tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_promote")])
-activeDescription = "Transform 2 target tokens into a Chest."
+activeDescription = "Transform 2 chosen tokens into random Chests."
 passiveDescription = "Add a random Chest each round."

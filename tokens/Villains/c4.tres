@@ -1,14 +1,13 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/destroyTwoTargetsThenSelfAbility.gd" id="3_c4"]
+[ext_resource type="Script" path="res://abilties/destroyNonTriggeredEmptiesSelfAbility.gd" id="2_active"]
+[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
 [ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_c4"]
-script = ExtResource("3_c4")
-id = "c4_destroy_two_then_self"
-trigger = 0
+script = ExtResource("2_active")
+id = "c4_destroy_empties"
 
 [resource]
 script = ExtResource("1_token")
@@ -17,6 +16,5 @@ rarity = "uncommon"
 icon = ExtResource("4_icon")
 value = 3
 tags = PackedStringArray("Villain")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_c4")])
-activeDescription = "Destroy two targets, then destroy self."
-
+abilities = Array[ExtResource("3_abilities")]([SubResource("A_c4")])
+activeDescription = "Destroy this token and all non-triggered Empty tokens."

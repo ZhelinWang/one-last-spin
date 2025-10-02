@@ -1,20 +1,26 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://c6oyperqnae4o"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3 uid="uid://c6oyperqnae4o"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" uid="uid://o103ywvlmynx" path="res://abilties/mimicTransformOnAddAbility.gd" id="3_mimic"]
-[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" path="res://abilties/mimicActiveAbility.gd" id="2_active"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
+[ext_resource type="Script" uid="uid://o103ywvlmynx" path="res://abilties/mimicTransformOnAddAbility.gd" id="4_passive"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
-[sub_resource type="Resource" id="A_mimic"]
-script = ExtResource("3_mimic")
+[sub_resource type="Resource" id="Active"]
+script = ExtResource("2_active")
+id = "mimic_copy_random"
+
+[sub_resource type="Resource" id="Passive"]
+script = ExtResource("4_passive")
 id = "mimic_copy_on_add"
 
 [resource]
 script = ExtResource("1_token")
 name = "Mimic"
 rarity = "uncommon"
-icon = ExtResource("4_icon")
+icon = ExtResource("5_icon")
 value = 3
 tags = PackedStringArray("General")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_mimic")])
+abilities = Array[ExtResource("3_abilities")]([SubResource("Active"), SubResource("Passive")])
+activeDescription = "Transform into a random inventory token."
 passiveDescription = "On add, create a copy of a random other token in the inventory."
