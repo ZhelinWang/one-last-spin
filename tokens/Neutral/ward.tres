@@ -1,25 +1,13 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3 uid="uid://cubnrb28doq36"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=4 format=3 uid="uid://cubnrb28doq36"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/wardActiveBuffAbility.gd" id="2_active"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
-[ext_resource type="Script" uid="uid://dqjnbv86n4c0y" path="res://abilties/adjacentWardAbility.gd" id="4_passive"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
-
-[sub_resource type="Resource" id="Active"]
-script = ExtResource("2_active")
-id = "ward_buff_neighbors"
-amount = 1
-
-[sub_resource type="Resource" id="Passive"]
-script = ExtResource("4_passive")
-id = "ward_adjacent_redirect"
 
 [resource]
 script = ExtResource("1_token")
 name = "Ward"
 icon = ExtResource("5_icon")
 tags = PackedStringArray("General")
-abilities = Array[ExtResource("3_abilities")]([SubResource("Active"), SubResource("Passive")])
 activeDescription = "Give adjacent tokens +1 this spin."
 passiveDescription = "When an adjacent token would be destroyed, destroy this token instead."

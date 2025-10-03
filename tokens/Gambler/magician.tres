@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://q5mmob4ct67u"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=11 format=3 uid="uid://q5mmob4ct67u"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="3_aeqsq"]
 [ext_resource type="Script" uid="uid://dfq4xcc03t20g" path="res://abilties/ifTriggeredHasNameGainAbility.gd" id="3_passive"]
 [ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="4_action"]
 [ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="5_effect"]
@@ -9,7 +10,6 @@
 
 [sub_resource type="Resource" id="Action_All"]
 script = ExtResource("4_action")
-op = "add"
 amount = 1
 desc_template = "+%d Magician"
 target_override_kind = "any"

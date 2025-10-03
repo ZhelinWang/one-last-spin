@@ -2301,7 +2301,7 @@ func _apply_loot_guarantees(options: Array, pool: Array, rng: RandomNumberGenera
 	for rarity in targets.keys():
 		var target_count := int(targets[rarity])
 		var have := int(current.get(rarity, 0))
-		var missing := max(0, target_count - have)
+		var missing = max(0, target_count - have)
 		if missing <= 0:
 			continue
 		var candidates: Array = pool_by_rarity.get(rarity, [])
@@ -4194,7 +4194,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 			"guarantee_next_loot_rarity":
 				var rare := String((cmd as Dictionary).get("rarity", "")).strip_edges().to_lower()
 				if rare != "":
-					var cnt := max(1, int((cmd as Dictionary).get("count", 1)))
+					var cnt = max(1, int((cmd as Dictionary).get("count", 1)))
 					var prev := int(_next_loot_guarantees.get(rare, 0))
 					if cnt > prev:
 						_next_loot_guarantees[rare] = cnt

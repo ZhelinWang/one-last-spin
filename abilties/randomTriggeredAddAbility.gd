@@ -3,9 +3,9 @@ class_name RandomTriggeredAddAbility
 
 @export var amount: int = 1
 @export var include_self: bool = false
-@export var desc_template: String = "+%d Lucky"
 
 func _init():
+	desc_template = "+%d Lucky"
 	winner_only = true
 	trigger = Trigger.ACTIVE_DURING_SPIN
 
@@ -28,8 +28,8 @@ func build_final_steps(ctx: Dictionary, contribs: Array, source_token: Resource)
 	if not ctx.has("rng"):
 		rng.randomize()
 	var pick: Dictionary = candidates[rng.randi_range(0, candidates.size() - 1)]
-	var off := int(pick.get("offset", 0))
-	var desc := desc_template
+	var off: int = int(pick.get("offset", 0))
+	var desc: String = desc_template
 	if desc.find("%d") != -1:
 		desc = desc % amount
 	return [{
