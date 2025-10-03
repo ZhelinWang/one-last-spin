@@ -19,4 +19,4 @@ value = 6
 tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_promote")])
 activeDescription = "Transform 2 chosen tokens into random Chests."
-passiveDescription = "Add a random Chest each round."
+passiveDescription = "Add a Small Chest to the inventory each spin."

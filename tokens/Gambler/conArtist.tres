@@ -23,5 +23,5 @@ icon = ExtResource("5_icon")
 value = 3
 tags = PackedStringArray("Gambler", "Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_steal2"), SubResource("A_cond")])
-activeDescription = "Steal +2 from the target."
-passiveDescription = "Destroy this token if there are no Empty tokens in inventory."
+activeDescription = "Steal +2 from a target token."
+passiveDescription = "Destroy this token if there are no Empty tokens in the inventory."

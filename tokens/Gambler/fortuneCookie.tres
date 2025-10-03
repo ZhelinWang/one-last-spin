@@ -27,5 +27,5 @@ icon = ExtResource("4_icon")
 value = 5
 tags = PackedStringArray("Gambler")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_cookie"), SubResource("Resource_oxtjk")])
-activeDescription = "Buff a random triggered token by +(1–8)."
-passiveDescription = "25% chance to add +(1–8) to a random triggered token this spin."
+activeDescription = "Add +(1-8) permanently to a random other triggered token."
+passiveDescription = "25% chance each spin to add +(1-8) permanently to a random triggered token (including itself)."
