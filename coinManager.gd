@@ -3925,7 +3925,8 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				var token_path := String((cmd as Dictionary).get("token_path", ""))
 				var set_value := int((cmd as Dictionary).get("set_value", -1))
 				var preserve_tags := bool((cmd as Dictionary).get("preserve_tags", false))
-				_replace_token_at_offset(ctx, off, token_path, set_value, preserve_tags)
+				var token_ref = (cmd as Dictionary).get("token_ref", null)
+				_replace_token_at_offset(ctx, off, token_path, set_value, preserve_tags, null, token_ref)
 				_resync_contribs_from_board(ctx, _contribs)
 				_refresh_dynamic_passives(ctx, _contribs)
 			"replace_all_empties":
@@ -4647,8 +4648,11 @@ func _resolve_inventory_owner_node() -> Node:
 			return sr
 	return null
 
-func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, set_value: int, preserve_tags: bool, target_token_override = null) -> Resource:
-	if token_path.strip_edges() == "":
+func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, set_value: int, preserve_tags: bool, target_token_override = null, source_token_ref = null) -> Resource:
+	var trimmed_path := String(token_path).strip_edges()
+	var has_path := trimmed_path != ""
+	token_path = trimmed_path
+	if not has_path and source_token_ref == null:
 		return null
 	var slot := _slot_from_ctx(ctx, offset)
 	if slot != null:
@@ -4741,8 +4745,14 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 							ctx_dict["neighbors"] = fresh_neighbors
 		return null
 
-	var rep: Resource = ResourceLoader.load(token_path)
-	if rep == null or not (rep is Resource):
+	var rep: Resource = null
+	if has_path:
+		rep = ResourceLoader.load(trimmed_path)
+		if rep == null or not (rep is Resource):
+			return null
+	elif source_token_ref is Resource:
+		rep = source_token_ref
+	else:
 		return null
 	var inst: Resource = (rep as Resource).duplicate(true)
 	_init_token_base_value(inst)

@@ -31,17 +31,22 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 		rng.randomize()
 	var pick = candidates[rng.randi_range(0, candidates.size() - 1)]
 	var path := ""
+	var token_ref = null
 	if pick is Resource:
+		token_ref = pick
 		path = String((pick as Resource).resource_path)
-	if path.strip_edges() == "":
+	if path.strip_edges() == "" and token_ref == null:
 		return []
 	var self_c := _find_self_contrib(contribs, source_token)
 	if self_c.is_empty():
 		return []
-	return [{
+	var cmd := {
 		"op": "replace_at_offset",
 		"offset": int(self_c.get("offset", 0)),
 		"token_path": path,
 		"set_value": -1,
 		"preserve_tags": false
-	}]
+	}
+	if token_ref != null:
+		cmd["token_ref"] = token_ref
+	return [cmd]
