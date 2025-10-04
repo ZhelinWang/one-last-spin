@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://cn7a4r2bik3sd"]
+
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_30xt5"]
+[ext_resource type="Script" uid="uid://dwak3r30fea4t" path="res://abilties/stealPermanentAbility.gd" id="2_3rjbg"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="3_2621k"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="4_ipcmd"]
+
+[sub_resource type="Resource" id="A_steal"]
+script = ExtResource("2_3rjbg")
+id = "bandit_steal_one"
+winner_only = true
+
+[resource]
+script = ExtResource("4_ipcmd")
+name = "Bandit Racoon"
+icon = ExtResource("3_2621k")
+value = 2
+tags = PackedStringArray("Human")
+abilities = Array[ExtResource("1_30xt5")]([SubResource("A_steal")])
+activeDescription = "Steal +1 from a target."

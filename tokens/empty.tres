@@ -9,5 +9,5 @@ script = ExtResource("1_1yh0o")
 name = "Empty"
 icon = ExtResource("1_ap2sj")
 tags = PackedStringArray()
-passiveDescription = "3% increased chance for rarer tokens to spawn."
+passiveDescription = "2% increased chance for rarer tokens to spawn."
 metadata/_custom_type_script = "uid://2lqsh3g3xqag"

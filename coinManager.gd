@@ -12,8 +12,7 @@ signal round_ended(round_number: int, requirement: int, paid: bool)
 signal game_over_shown(round_number: int, requirement: int, total_coins: int)
 signal game_reset()
 
-# rarity tokens
-@export var empty_non_common_bonus_per: float = 0.03  # 3% per Empty
+@export var empty_non_common_bonus_per: float = 0.02  
 
 # Loot signals
 signal loot_choice_needed(round_number: int)
@@ -4228,6 +4227,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 					print("[Commands] Unknown op: ", op)
 
 		_current_effect_source = prev_effect_source
+	await _drain_passive_refresh_queue(ctx, _contribs)
 func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 	if contribs == null or not (contribs is Array):
 		return
@@ -4256,6 +4256,10 @@ func _resync_contribs_from_board(ctx: Dictionary, contribs: Array) -> void:
 		var token_changed: bool = prev_token != token
 		contrib["token"] = token
 		if token_changed:
+			_queue_pending_passive_refresh(ctx, offset_val)
+			for neighbor_offset in [offset_val - 1, offset_val + 1]:
+				if abs(neighbor_offset) <= 2:
+					_queue_pending_passive_refresh(ctx, neighbor_offset)
 			contrib["delta"] = 0
 			contrib["mult"] = 1.0
 			contrib["steps"] = []
@@ -5334,6 +5338,78 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 				_update_slot_map_for_replacements(ctx, replaced_tokens)
 			# Note: do not auto-register unrelated tokens as highlight targets here.
 			# Targets are registered individually when they are actually affected above.
+
+
+func _queue_pending_passive_refresh(ctx, offset: int) -> void:
+	if ctx == null:
+		return
+	if not (ctx is Dictionary):
+		return
+	var pending_var = ctx.get("__pending_passive_offsets", [])
+	var list: Array = []
+	if pending_var is Array:
+		list = pending_var
+	if not list.has(offset):
+		list.append(offset)
+	ctx["__pending_passive_offsets"] = list
+
+func _find_contrib_index_by_offset(contribs: Array, offset: int) -> int:
+	if contribs == null or not (contribs is Array):
+		return -1
+	for i in range(contribs.size()):
+		var entry = contribs[i]
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		if int((entry as Dictionary).get("offset", 999)) == offset:
+			return i
+	return -1
+
+func _reapply_passives_for_offset(ctx: Dictionary, contribs: Array, offset: int) -> void:
+	if ctx == null or not (ctx is Dictionary):
+		return
+	if contribs == null or not (contribs is Array):
+		return
+	var idx := _find_contrib_index_by_offset(contribs, offset)
+	if idx < 0:
+		return
+	var contrib: Dictionary = contribs[idx]
+	var token = contrib.get("token")
+	if token == null or not token.has_method("get"):
+		return
+	var parts := _collect_ability_spin_steps(ctx, contrib, null)
+	var immediate_var = parts.get("immediate", [])
+	var immediate: Array = []
+	if immediate_var is Array:
+		immediate = (immediate_var as Array)
+	if not immediate.is_empty():
+		await _apply_steps_now(idx, contrib, immediate.duplicate(true), ctx, token)
+
+func _drain_passive_refresh_queue(ctx: Dictionary, contribs: Array) -> void:
+	if ctx == null or not (ctx is Dictionary):
+		return
+	if contribs == null or not (contribs is Array):
+		ctx["__pending_passive_offsets"] = []
+		return
+	var guard: int = 0
+	while guard < 16:
+		guard += 1
+		var pending_var = ctx.get("__pending_passive_offsets", [])
+		if not (pending_var is Array):
+			break
+		var offsets: Array = (pending_var as Array).duplicate(true)
+		if offsets.is_empty():
+			ctx["__pending_passive_offsets"] = []
+			break
+		ctx["__pending_passive_offsets"] = []
+		var seen: Dictionary = {}
+		for off in offsets:
+			var off_int := int(off)
+			if seen.has(off_int):
+				continue
+			seen[off_int] = true
+			await _reapply_passives_for_offset(ctx, contribs, off_int)
+	if guard >= 16 and debug_spin:
+		print("[Passives] Passive refresh guard limit reached; remaining=", ctx.get("__pending_passive_offsets", []))
 
 func _destroy_inventory_coins(max_to_destroy: int, ctx: Dictionary) -> int:
 	if max_to_destroy <= 0:

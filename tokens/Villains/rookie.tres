@@ -12,7 +12,7 @@ winner_only = true
 
 [resource]
 script = ExtResource("1_token")
-name = "Rookie"
+name = "Swindler"
 icon = ExtResource("4_icon")
 tags = PackedStringArray("Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
