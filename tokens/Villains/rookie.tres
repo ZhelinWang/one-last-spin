@@ -14,6 +14,6 @@ winner_only = true
 script = ExtResource("1_token")
 name = "Rookie"
 icon = ExtResource("4_icon")
-tags = PackedStringArray("Villain")
+tags = PackedStringArray("Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
 activeDescription = "If an adjacent token has higher value, gain +1 permanently."

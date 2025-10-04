@@ -16,6 +16,6 @@ script = ExtResource("1_token")
 name = "Merchant"
 rarity = "rare"
 icon = ExtResource("4_icon")
-tags = PackedStringArray("General")
+tags = PackedStringArray("Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_bonus")])
 activeDescription = "Destroy a target token and trigger a token selection."

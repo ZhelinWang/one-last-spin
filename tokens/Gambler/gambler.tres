@@ -16,6 +16,6 @@ name = "Gambler"
 rarity = "legendary"
 icon = ExtResource("4_icon")
 value = 6
-tags = PackedStringArray("Gambler")
+tags = PackedStringArray("Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
 activeDescription = "Gain +10 permanently for each Empty token in the inventory."

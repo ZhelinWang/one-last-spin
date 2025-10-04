@@ -15,6 +15,6 @@ script = ExtResource("1_token")
 name = "Sacrificial Idol"
 rarity = "rare"
 icon = ExtResource("4_icon")
-tags = PackedStringArray("General")
+tags = PackedStringArray("Offering")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_restart")])
 activeDescription = "Destroy this token and restart the current round."

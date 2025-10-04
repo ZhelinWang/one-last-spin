@@ -15,6 +15,6 @@ name = "Illusionist"
 rarity = "uncommon"
 icon = ExtResource("4_icon")
 value = 2
-tags = PackedStringArray("Gambler", "Human")
+tags = PackedStringArray("Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_illus")])
 activeDescription = "Give all Empty tokens +1 permanently for each Illusionist in inventory, then destroy all Illusionists."

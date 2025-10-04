@@ -16,6 +16,6 @@ script = ExtResource("1_token")
 name = "Lockpick"
 icon = ExtResource("4_icon")
 value = 2
-tags = PackedStringArray("Treasure")
+tags = PackedStringArray()
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_destroy")])
 activeDescription = "Destroy all triggered Chest tokens."

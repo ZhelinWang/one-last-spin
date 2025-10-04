@@ -18,6 +18,6 @@ name = "Hitman"
 rarity = "rare"
 icon = ExtResource("4_icon")
 value = 4
-tags = PackedStringArray("Villain")
+tags = PackedStringArray("Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
 activeDescription = "Destroy a target token and gain its value permanently."

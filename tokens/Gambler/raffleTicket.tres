@@ -15,6 +15,6 @@ script = ExtResource("1_token")
 name = "Raffle Ticket"
 rarity = "rare"
 icon = ExtResource("4_icon")
-tags = PackedStringArray("Gambler")
+tags = PackedStringArray()
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_raffle")])
 activeDescription = "25% chance to double the permanent value of the target."

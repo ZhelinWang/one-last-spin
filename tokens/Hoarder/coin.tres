@@ -13,6 +13,6 @@ id = "coin_self_perm_plus1"
 script = ExtResource("2_token")
 name = "Coin"
 icon = ExtResource("3_icon")
-tags = PackedStringArray("coin", "Hoarder")
+tags = PackedStringArray("Coin")
 abilities = Array[ExtResource("1_abilities")]([SubResource("A_perm")])
 activeDescription = "Gain +1 permanently."

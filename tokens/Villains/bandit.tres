@@ -15,6 +15,6 @@ script = ExtResource("1_token")
 name = "Bandit"
 icon = ExtResource("4_icon")
 value = 2
-tags = PackedStringArray("Villain")
+tags = PackedStringArray("Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_steal")])
 activeDescription = "Steal +1 from a target."

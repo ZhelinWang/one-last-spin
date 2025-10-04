@@ -24,6 +24,6 @@ name = "Key"
 rarity = "uncommon"
 icon = ExtResource("5_icon")
 value = 3
-tags = PackedStringArray("Treasure")
+tags = PackedStringArray()
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_mult"), SubResource("A_destroy")])
 activeDescription = "Double the value of all triggered Chest tokens, then destroy triggered Chests."

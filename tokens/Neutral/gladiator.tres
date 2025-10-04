@@ -9,6 +9,7 @@
 [sub_resource type="Resource" id="A_active"]
 script = ExtResource("3_active")
 id = "gladiator_active_neighbor_shave"
+winner_only = true
 
 [sub_resource type="Resource" id="A_gain"]
 script = ExtResource("4_gain")
@@ -20,7 +21,7 @@ name = "Gladiator"
 rarity = "uncommon"
 icon = ExtResource("5_icon")
 value = 3
-tags = PackedStringArray("General")
+tags = PackedStringArray("Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_active"), SubResource("A_gain")])
 activeDescription = "Adjacent tokens lose 1 value."
 passiveDescription = "When an adjacent token loses value, gain that amount permanently."

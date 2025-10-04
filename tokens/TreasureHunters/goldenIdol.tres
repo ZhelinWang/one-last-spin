@@ -16,6 +16,6 @@ name = "Golden Idol"
 rarity = "legendary"
 icon = ExtResource("4_icon")
 value = 5
-tags = PackedStringArray("Treasure")
+tags = PackedStringArray()
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_idol")])
 activeDescription = "Add this token's value permanently to all other triggered tokens."

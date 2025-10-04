@@ -24,6 +24,6 @@ script = ExtResource("1_token")
 name = "Compass"
 icon = ExtResource("3_icon")
 value = 2
-tags = PackedStringArray("Treasure")
+tags = PackedStringArray()
 abilities = Array[ExtResource("2_abilities")]([SubResource("Spec")])
 activeDescription = "Buff a targeted token by +1 permanently."

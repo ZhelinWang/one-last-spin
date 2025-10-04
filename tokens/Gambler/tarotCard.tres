@@ -16,6 +16,6 @@ name = "Tarot Card"
 rarity = "rare"
 icon = ExtResource("4_icon")
 value = 4
-tags = PackedStringArray("Gambler")
+tags = PackedStringArray()
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_all")])
 activeDescription = "Give all triggered tokens +1 permanently."

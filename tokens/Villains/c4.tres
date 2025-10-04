@@ -16,6 +16,6 @@ name = "C4"
 rarity = "uncommon"
 icon = ExtResource("4_icon")
 value = 3
-tags = PackedStringArray("Villain")
+tags = PackedStringArray()
 abilities = Array[ExtResource("3_abilities")]([SubResource("A_c4")])
 activeDescription = "Destroy this token and all non-triggered Empty tokens."

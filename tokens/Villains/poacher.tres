@@ -16,6 +16,6 @@ name = "Poacher"
 rarity = "legendary"
 icon = ExtResource("5_icon")
 value = 6
-tags = PackedStringArray("Villain")
+tags = PackedStringArray("Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("PoacherActive")])
 activeDescription = "Add a new copy of the last destroyed token."

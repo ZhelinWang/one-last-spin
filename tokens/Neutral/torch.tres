@@ -17,6 +17,6 @@ name = "Torch"
 rarity = "uncommon"
 icon = ExtResource("4_icon")
 value = 2
-tags = PackedStringArray("General")
+tags = PackedStringArray()
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_reroll")])
 activeDescription = "Target a token and transform it into a random token of the same rarity."
