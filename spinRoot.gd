@@ -306,6 +306,85 @@ func _slot_for_offset(offset: int) -> Control:
 		return null
 	return slots_hbox.get_child(idx) as Control
 
+func _apply_slot_token(slot: Control, token) -> void:
+	if slot == null:
+		return
+	if coin_mgr == null:
+		coin_mgr = get_node_or_null("/root/coinManager")
+	if token == null:
+		var prev_token = null
+		if slot.has_meta("token_data"):
+			prev_token = slot.get_meta("token_data")
+			slot.remove_meta("token_data")
+		if coin_mgr != null and coin_mgr.has_method("_unregister_token_control") and prev_token != null:
+			coin_mgr.call("_unregister_token_control", prev_token, slot)
+		if slot.has_method("_apply"):
+			slot.call("_apply", null)
+		else:
+			var si := slot.get_node_or_null("slotItem")
+			if si != null and si.has_method("set"):
+				si.set("data", null)
+		return
+	if coin_mgr != null and coin_mgr.has_method("_apply_token_to_slot"):
+		coin_mgr.call("_apply_token_to_slot", slot, token)
+	else:
+		slot.set_meta("token_data", token)
+		if slot.has_method("_apply"):
+			slot.call("_apply", token)
+		else:
+			var si2 := slot.get_node_or_null("slotItem")
+			if si2 != null and si2.has_method("set"):
+				si2.set("data", token)
+
+func handle_triggered_empty_removed(offset: int) -> void:
+	if offset == 0:
+		return
+	if offset < 0:
+		var current := offset
+		while current < 0:
+			var src_off := current - 1
+			var dst_slot := _slot_for_offset(current)
+			var src_slot := _slot_for_offset(src_off)
+			if dst_slot == null:
+				break
+			var token = null
+			if src_slot != null and src_slot.has_meta("token_data"):
+				token = src_slot.get_meta("token_data")
+			_apply_slot_token(dst_slot, token)
+			if token == null:
+				break
+			current += 1
+		if offset > -2:
+			var boundary_slot := _slot_for_offset(-2)
+			var src_slot := _slot_for_offset(-3)
+			if boundary_slot != null and src_slot != null and src_slot.has_meta("token_data"):
+				var tok = src_slot.get_meta("token_data")
+				if tok != null:
+					_apply_slot_token(boundary_slot, tok)
+	else:
+		var current := offset
+		while current > 0:
+			var src_off := current + 1
+			var dst_slot := _slot_for_offset(current)
+			var src_slot := _slot_for_offset(src_off)
+			if dst_slot == null:
+				break
+			var token = null
+			if src_slot != null and src_slot.has_meta("token_data"):
+				token = src_slot.get_meta("token_data")
+			_apply_slot_token(dst_slot, token)
+			if token == null:
+				break
+			current -= 1
+		if offset < 2:
+			var boundary_slot := _slot_for_offset(2)
+			var src_slot := _slot_for_offset(3)
+			if boundary_slot != null and src_slot != null and src_slot.has_meta("token_data"):
+				var tok = src_slot.get_meta("token_data")
+				if tok != null:
+					_apply_slot_token(boundary_slot, tok)
+	_capture_slot_baseline_for_preview()
+
 func _clone_token_ref(token):
 	if token is Resource:
 		var dup := (token as Resource).duplicate(true)

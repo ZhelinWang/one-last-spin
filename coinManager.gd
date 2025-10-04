@@ -2526,6 +2526,22 @@ func _is_empty_token(t) -> bool:
 				return true
 	return false
 
+func _token_path_is_empty(token_path: String) -> bool:
+
+	var normalized := String(token_path).strip_edges()
+
+	if normalized == "":
+
+		return false
+
+	var reference := String(empty_token_path).strip_edges()
+
+	if reference == "":
+
+		return false
+
+	return normalized == reference
+
 # ---------- Layout helpers ----------
 func _anchor_full_rect(ctrl: Control) -> void:
 	if ctrl == null:
@@ -3774,28 +3790,34 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 							else:
 								triggered_real.append(tok)
 				var arr_em := _get_inventory_array()
+				var new_arr: Array = []
 				var changed := false
 				for i in range(arr_em.size()):
 					var tok_e = arr_em[i]
-					if not _is_empty_token(tok_e):
+					var remove_this := false
+					if _is_empty_token(tok_e):
+						var skip := false
+						if tok_e != null and triggered_real.has(tok_e):
+							triggered_real.erase(tok_e)
+							skip = true
+						elif tok_e == null and triggered_null > 0:
+							triggered_null -= 1
+							skip = true
+						if not skip:
+							_notify_any_token_destroyed(ctx, tok_e, "destroy_non_triggered_empty")
+							remove_this = true
+					if remove_this:
+						changed = true
 						continue
-					var skip := false
-					if tok_e != null and triggered_real.has(tok_e):
-						triggered_real.erase(tok_e)
-						skip = true
-					elif tok_e == null and triggered_null > 0:
-						triggered_null -= 1
-						skip = true
-					if skip:
-						continue
-					_notify_any_token_destroyed(ctx, tok_e, "destroy_non_triggered_empty")
-					arr_em[i] = null
-					changed = true
+					new_arr.append(tok_e)
 				if changed:
-					_set_inventory_array(arr_em)
+					_set_inventory_array(new_arr)
+					if ctx != null and ctx is Dictionary:
+						(ctx as Dictionary)["board_tokens"] = _get_inventory_array()
 					_resync_contribs_from_board(ctx, _contribs)
 					_refresh_dynamic_passives(ctx, _contribs)
 				continue
+
 			"adjust_empty_rarity_bonus":
 				var delta := float((cmd as Dictionary).get("amount", 0.0))
 				if delta != 0.0:
@@ -4631,6 +4653,10 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 		if slot.has_meta("token_data"):
 			target_token = slot.get_meta("token_data")
 
+	var removing_empty := false
+	if target_token != null:
+		removing_empty = _is_empty_token(target_token) and _token_path_is_empty(token_path)
+
 	# If we have a token to remove, let its abilities react (e.g., on-removed penalties)
 	if target_token != null:
 		# Record destroyer on ctx for on_removed hooks
@@ -4684,6 +4710,32 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 			print("[Commands] Could not locate target token in inventory for offset ", offset)
 		return null
 
+	if removing_empty:
+		(arr as Array).remove_at(idx)
+		owner.set(prop, arr)
+		if owner.has_method("_update_inventory_strip"):
+			owner.call_deferred("_update_inventory_strip")
+		if owner.has_method("_refresh_inventory_baseline"):
+			owner.call_deferred("_refresh_inventory_baseline")
+		if ctx != null and ctx is Dictionary:
+			var ctx_dict: Dictionary = ctx
+			ctx_dict["board_tokens"] = _get_inventory_array()
+			if abs(offset) <= 2 and offset != 0 and ctx_dict.has("spin_root"):
+				var sr = ctx_dict["spin_root"]
+				if sr != null:
+					if (sr as Object).has_method("handle_triggered_empty_removed"):
+						sr.call("handle_triggered_empty_removed", offset)
+					if (sr as Object).has_method("_build_slot_map"):
+						var updated_map = sr.call("_build_slot_map")
+						if typeof(updated_map) == TYPE_DICTIONARY:
+							ctx_dict["slot_map"] = updated_map
+					if (sr as Object).has_method("_gather_neighbor_tokens") and (sr as Object).has_method("get"):
+						var win_idx_var = sr.get("_last_winning_slot_idx")
+						if typeof(win_idx_var) == TYPE_INT:
+							var fresh_neighbors = sr.call("_gather_neighbor_tokens", int(win_idx_var))
+							ctx_dict["neighbors"] = fresh_neighbors
+		return null
+
 	var rep: Resource = ResourceLoader.load(token_path)
 	if rep == null or not (rep is Resource):
 		return null
@@ -4721,7 +4773,6 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	_register_effect_target_current(inst)
 
 	return inst
-
 func _find_contrib_by_offset(contribs: Array, off: int) -> Dictionary:
 	for c in contribs:
 		if c is Dictionary and int((c as Dictionary).get("offset", 999)) == int(off):
