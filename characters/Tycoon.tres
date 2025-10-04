@@ -9,7 +9,7 @@
 [ext_resource type="Resource" uid="uid://bno2hq5t7as17" path="res://tokens/Neutral/apprentice.tres" id="7_q250p"]
 [ext_resource type="Resource" uid="uid://bj8jtgxsh2pe2" path="res://tokens/empty.tres" id="8_btyae"]
 [ext_resource type="Resource" uid="uid://esod1bfgab0g" path="res://tokens/Neutral/wanderer.tres" id="8_xf3nv"]
-[ext_resource type="Resource" uid="uid://ccgkpbxh4pbd4" path="res://tokens/Gambler/fortuneTeller.tres" id="9_xf3nv"]
+[ext_resource type="Resource" uid="uid://ccgkpbxh4pbd4" path="res://tokens/Gambler/crystalBall.tres" id="9_xf3nv"]
 
 [resource]
 script = ExtResource("1_25yjl")

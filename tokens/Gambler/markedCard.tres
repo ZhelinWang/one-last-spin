@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3 uid="uid://ljl2m8hi1uvw"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://ljl2m8hi1uvw"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/spawnTokensByPathAbility.gd" id="2_active"]
+[ext_resource type="Script" uid="uid://b7hiry7c544au" path="res://abilties/spawnTokensByPathAbility.gd" id="2_active"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
 [ext_resource type="Script" uid="uid://pnb0s437ic3r" path="res://abilties/markedCardsPairDoubleAbility.gd" id="4_passive"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
@@ -9,7 +9,6 @@
 [sub_resource type="Resource" id="Active"]
 script = ExtResource("2_active")
 token_path = "res://tokens/Gambler/markedCard.tres"
-count = 1
 id = "marked_card_spawn_copy"
 
 [sub_resource type="Resource" id="Passive"]

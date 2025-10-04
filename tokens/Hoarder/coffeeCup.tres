@@ -10,6 +10,7 @@
 script = ExtResource("2_active")
 token_path = "res://tokens/Hoarder/intern.tres"
 id = "coffee_cup_add_intern"
+winner_only = true
 
 [sub_resource type="Resource" id="Passive"]
 script = ExtResource("4_passive")

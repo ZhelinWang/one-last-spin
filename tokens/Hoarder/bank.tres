@@ -1,9 +1,10 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://digrc05na5bl"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://digrc05na5bl"]
 
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_abilities"]
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="2_token"]
 [ext_resource type="Texture2D" uid="uid://cp3iuwm7kpsmh" path="res://tokens/tokenAssets/bank/bank.png" id="3_icon"]
 [ext_resource type="Script" uid="uid://cin8ykabr654p" path="res://abilties/destroyTargetAndGainValueAbility.gd" id="4_destroy_gain"]
+[ext_resource type="Script" uid="uid://bwqwm3ix5l3id" path="res://abilties/bankTransformEmptiesAbility.gd" id="5_transform"]
 
 [sub_resource type="Resource" id="A_bank"]
 script = ExtResource("4_destroy_gain")
@@ -11,6 +12,12 @@ also_replace_with_path = "res://tokens/Hoarder/coin.tres"
 replacement_paths = PackedStringArray("res://tokens/Hoarder/coin.tres", "res://tokens/Hoarder/copperCoin.tres", "res://tokens/TreasureHunters/rustedCoin.tres")
 id = "bank_destroy_gain_half_replace_coin"
 target_kind = 2
+winner_only = true
+
+[sub_resource type="Resource" id="B_bank_passive"]
+script = ExtResource("5_transform")
+coin_paths = null
+id = "bank_transform_triggered_empties"
 
 [resource]
 script = ExtResource("2_token")
@@ -19,5 +26,6 @@ rarity = "legendary"
 icon = ExtResource("3_icon")
 value = 6
 tags = PackedStringArray("Hoarder")
-abilities = Array[ExtResource("1_abilities")]([SubResource("A_bank")])
-activeDescription = "Destroy a token and gain half its value permanently. Add a random coin in its place."
+abilities = Array[ExtResource("1_abilities")]([SubResource("A_bank"), SubResource("B_bank_passive")])
+activeDescription = "Destroy a target token and gain half its value permanently."
+passiveDescription = "Triggered Empty tokens transform into random Coins."

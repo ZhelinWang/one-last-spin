@@ -26,7 +26,7 @@ id = "trickster_lose_one_per_spin"
 
 [resource]
 script = ExtResource("1_token")
-name = "Trickster"
+name = "Copy Cat"
 rarity = "uncommon"
 icon = ExtResource("4_icon")
 value = 3

@@ -2,12 +2,11 @@
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/illusionistBuffEmptiesDestroySelfAbility.gd" id="3_illus"]
+[ext_resource type="Script" uid="uid://b3ukw056p0cea" path="res://abilties/illusionistBuffEmptiesDestroySelfAbility.gd" id="3_illus"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_illus"]
 script = ExtResource("3_illus")
-buff_amount_per = 1
 id = "illusionist_buff_empties_destroy_self"
 
 [resource]

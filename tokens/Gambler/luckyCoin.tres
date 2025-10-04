@@ -16,4 +16,4 @@ icon = ExtResource("4_icon")
 value = 2
 tags = PackedStringArray("Gambler")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_rand")])
-activeDescription = "Change this token permanently by 1 value randomly."
+activeDescription = "Gain +1 or -1 permanently randomly."

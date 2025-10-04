@@ -31,4 +31,4 @@ icon = ExtResource("6_icon")
 tags = PackedStringArray("Gambler", "Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("Effect_All"), SubResource("Passive")])
 activeDescription = "Give all triggered tokens +1 this spin."
-passiveDescription = "Gain +1 permanently if an Empty token triggers this spin."
+passiveDescription = "Gain +1 permanently if triggered tokens included an Empty token."

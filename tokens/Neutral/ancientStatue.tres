@@ -17,4 +17,5 @@ icon = ExtResource("4_icon")
 value = 6
 tags = PackedStringArray("General")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_guard")])
-passiveDescription = "Tokens below this token's value cannot be destroyed from pick effects."
+activeDescription = "Gain +2 value permanently."
+passiveDescription = "Tokens below this token's value cannot be destroyed from any effects."

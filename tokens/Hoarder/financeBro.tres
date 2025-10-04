@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3 uid="uid://cwhijv6wi2rsr"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://cwhijv6wi2rsr"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/spawnCoinsAbility.gd" id="2_active"]
+[ext_resource type="Script" uid="uid://dhdx56yp4iqq7" path="res://abilties/spawnCoinsAbility.gd" id="2_active"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
 [ext_resource type="Script" uid="uid://gnnglnu40k4c" path="res://abilties/adjacentAnyOfTagsPermanentAddAbility.gd" id="4_passive"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
@@ -25,5 +25,5 @@ icon = ExtResource("5_icon")
 value = 3
 tags = PackedStringArray("Hoarder", "Human")
 abilities = Array[ExtResource("3_abilities")]([SubResource("Active"), SubResource("Passive")])
-activeDescription = "Spawn a random Coin token."
+activeDescription = "Add a random Coin token."
 passiveDescription = "Gains +1 per spin if adjacent to a Coin or Human."
