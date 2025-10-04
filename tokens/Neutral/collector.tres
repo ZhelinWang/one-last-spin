@@ -9,6 +9,7 @@
 [sub_resource type="Resource" id="Active"]
 script = ExtResource("2_active")
 id = "collector_random_steal"
+winner_only = true
 
 [sub_resource type="Resource" id="Passive"]
 script = ExtResource("4_passive")

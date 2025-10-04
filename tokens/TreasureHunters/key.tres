@@ -1,24 +1,22 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://ct24qj1kxha3q"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/genericMutliplyAbility.gd" id="3_mult"]
-[ext_resource type="Script" path="res://abilties/destroyTriggeredTagAbility.gd" id="4_destroy"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="5_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://0hidxch6kiaf" path="res://abilties/genericMutliplyAbility.gd" id="3_mult"]
+[ext_resource type="Script" uid="uid://qwnb8g6ej8f5" path="res://abilties/destroyTriggeredTagAbility.gd" id="4_destroy"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
 [sub_resource type="Resource" id="A_mult"]
 script = ExtResource("3_mult")
-factor = 2.0
-target_kind = 3 # TAG
-target_tag = "chest"
 id = "key_double_chests"
-trigger = 0
+target_kind = 3
+winner_only = true
 
 [sub_resource type="Resource" id="A_destroy"]
 script = ExtResource("4_destroy")
-target_tag = "chest"
 id = "key_destroy_triggered_chests"
-trigger = 0
+target_tag = "chest"
+winner_only = true
 
 [resource]
 script = ExtResource("1_token")
@@ -28,5 +26,4 @@ icon = ExtResource("5_icon")
 value = 3
 tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_mult"), SubResource("A_destroy")])
-activeDescription = "Double value of all chest tokens; then destroy triggered Chests."
-
+activeDescription = "Double the value of all triggered Chest tokens, then destroy triggered Chests."

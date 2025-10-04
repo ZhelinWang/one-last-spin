@@ -1,17 +1,17 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=10 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=11 format=3 uid="uid://bpqrpq15k0swx"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/setSelfPermToValueAbility.gd" id="3_set"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://b6p0a47dlm805" path="res://abilties/setSelfPermToValueAbility.gd" id="3_set"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="4_2swti"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
 
 [sub_resource type="Resource" id="A_set5"]
 script = ExtResource("3_set")
-target_value = 5
 id = "rusted_coin_set_to_5"
-trigger = 0
+winner_only = true
 
 [sub_resource type="Resource" id="A_lose1"]
 script = ExtResource("Z_action")
@@ -21,18 +21,16 @@ target_override_kind = "self"
 
 [sub_resource type="Resource" id="Spec_lose1"]
 script = ExtResource("Z_effect")
-id = "rusted_coin_lose_one_per_spin"
-actions = [ SubResource("A_lose1") ]
+actions = Array[ExtResource("Z_action")]([SubResource("A_lose1")])
 once_per_spin = true
+id = "rusted_coin_lose_one_per_spin"
 
 [resource]
 script = ExtResource("1_token")
 name = "Rusted Coin"
-rarity = "common"
 icon = ExtResource("4_icon")
 value = 3
 tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_set5"), SubResource("Spec_lose1")])
-activeDescription = "Set self's permanent value to 5."
-passiveDescription = "Loses 1 permanently each spin."
-
+activeDescription = "Set this token's value to 5 permanently."
+passiveDescription = "Loses -1 permanently each spin."

@@ -9,6 +9,7 @@
 [sub_resource type="Resource" id="Active"]
 script = ExtResource("2_active")
 id = "mimic_copy_random"
+winner_only = true
 
 [sub_resource type="Resource" id="Passive"]
 script = ExtResource("4_passive")

@@ -287,6 +287,29 @@ func _make_tag_chip(text: String) -> PanelContainer:
 	chip.add_child(lbl)
 	return chip
 
+
+func _is_empty_token_data(data: TokenLootData) -> bool:
+	if data == null:
+		return false
+	return String(data.name).strip_edges().to_lower() == "empty"
+
+func _format_empty_passive_desc() -> String:
+	var bonus := 0.03
+	var root := get_tree().get_root()
+	if root != null:
+		var cm := root.get_node_or_null("coinManager")
+		if cm != null:
+			var bonus_var = cm.get("empty_non_common_bonus_per")
+			if bonus_var != null:
+				bonus = float(bonus_var)
+	var percent := bonus * 100.0
+	var percent_text := "%0.2f" % percent
+	while percent_text.ends_with("0") and percent_text.find(".") != -1:
+		percent_text = percent_text.substr(0, percent_text.length() - 1)
+	if percent_text.ends_with("."):
+		percent_text = percent_text.substr(0, percent_text.length() - 1)
+	return "%s%% increased chance for rarer tokens to spawn." % percent_text
+
 func _move_to_tooltip_layer() -> void:
 	var scene := get_tree().current_scene
 	if scene == null:

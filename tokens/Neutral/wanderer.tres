@@ -9,6 +9,7 @@
 script = ExtResource("3_set")
 id = "wanderer_set_target_to_self"
 target_kind = 2
+winner_only = true
 
 [resource]
 script = ExtResource("1_token")

@@ -1,17 +1,16 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://tnt6fj7e2qnw"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/spawnTokensByPathAbility.gd" id="2_active"]
-[ext_resource type="Script" path="res://abilties/pirateMirrorChestValueAbility.gd" id="3_passive"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="4_abilities"]
-[ext_resource type="Script" path="res://abilties/onAnyDestroyedSelfPermAddAbility.gd" id="5_placeholder"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="6_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://b7hiry7c544au" path="res://abilties/spawnTokensByPathAbility.gd" id="2_active"]
+[ext_resource type="Script" uid="uid://bvgdlx3xokus8" path="res://abilties/pirateMirrorChestValueAbility.gd" id="3_passive"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="4_abilities"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="6_icon"]
 
 [sub_resource type="Resource" id="A_spawn"]
 script = ExtResource("2_active")
 token_path = "res://tokens/TreasureHunters/smallChest.tres"
-count = 1
 id = "pirate_add_small_chest"
+winner_only = true
 
 [sub_resource type="Resource" id="A_mirror"]
 script = ExtResource("3_passive")
@@ -26,4 +25,4 @@ value = 5
 tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("4_abilities")]([SubResource("A_spawn"), SubResource("A_mirror")])
 activeDescription = "Add a Small Chest to the inventory."
-passiveDescription = "Gains the value of destroyed Chests."
+passiveDescription = "Gains the value of destroyed Chest tokens."

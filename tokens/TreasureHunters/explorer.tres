@@ -1,11 +1,12 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=11 format=3 uid="uid://c4nh88h0f03et"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/explorerOpenedChestsAbility.gd" id="3_passive"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="4_action"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="5_effect"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="6_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://bg60msgyrlh4u" path="res://abilties/explorerOpenedChestsAbility.gd" id="3_passive"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="3_ybb7t"]
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="4_action"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="5_effect"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="6_icon"]
 
 [sub_resource type="Resource" id="Action_Chest"]
 script = ExtResource("4_action")
@@ -33,4 +34,4 @@ value = 3
 tags = PackedStringArray("Treasure", "Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("Effect_Chest"), SubResource("Passive")])
 activeDescription = "Give all Chest tokens +1 permanently."
-passiveDescription = "+1 permanently for each Chest opened this game."
+passiveDescription = "+1 permanently for each Chest destroyed this game."

@@ -1,22 +1,17 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=12 format=3 uid="uid://c4gjj2uqf3fhk"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/shinyPebbleEmptyBonusAbility.gd" id="2_active"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="4_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="5_action"]
-[ext_resource type="Script" path="res://abilties/specs/ConditionSpec.gd" id="6_cond"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="7_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://b54mhi0f1o04h" path="res://abilties/shinyPebbleEmptyBonusAbility.gd" id="2_active"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="4_effect"]
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="5_action"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="6_cond"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="7_icon"]
 
 [sub_resource type="Resource" id="Active"]
 script = ExtResource("2_active")
-bonus_increment = 0.01
 id = "shiny_pebble_bonus_increase"
-
-[sub_resource type="Resource" id="Cond_adj_chest"]
-script = ExtResource("6_cond")
-kind = "adjacent_any_tag"
-tag = "chest"
+winner_only = true
 
 [sub_resource type="Resource" id="Act_perm"]
 script = ExtResource("5_action")
@@ -24,19 +19,23 @@ op = "permanent_add"
 amount = 1
 target_override_kind = "self"
 
+[sub_resource type="Resource" id="Cond_adj_chest"]
+script = ExtResource("6_cond")
+kind = "adjacent_any_tag"
+tag = "chest"
+
 [sub_resource type="Resource" id="Spec_passive"]
 script = ExtResource("4_effect")
-conditions = [ SubResource("Cond_adj_chest") ]
-actions = [ SubResource("Act_perm") ]
+conditions = Array[ExtResource("6_cond")]([SubResource("Cond_adj_chest")])
+actions = Array[ExtResource("5_action")]([SubResource("Act_perm")])
 id = "shiny_pebble_adjacent_chest"
 
 [resource]
 script = ExtResource("1_token")
 name = "Shiny Pebble"
-rarity = "common"
 icon = ExtResource("7_icon")
 value = 2
 tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("3_abilities")]([SubResource("Active"), SubResource("Spec_passive")])
-activeDescription = "Increase Empty rarity bonus by 1%."
+activeDescription = "Increase Empty rarity bonus by 1% permanently."
 passiveDescription = "+1 permanently if adjacent to a Chest."

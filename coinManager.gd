@@ -4736,7 +4736,7 @@ func _find_self_contrib(contribs: Array, source_token) -> Dictionary:
 
 func _op_needs_offset(op: String) -> bool:
 	match op:
-		"replace_at_offset", "destroy", "destroy_and_gain_fraction", "reroll_same_rarity", "replace_by_rarity_step", "set_perm_to_self_current":
+		"replace_at_offset", "destroy", "destroy_and_gain_fraction", "reroll_same_rarity", "replace_by_rarity_step", "set_perm_to_self_current", "permanent_add":
 			return true
 		_:
 			return false
@@ -5175,6 +5175,8 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 				return
 
 	var kind_norm := String(target_kind).strip_edges().to_lower()
+	if kind_norm == "choose":
+		kind_norm = "offset"
 	var tag_norm := String(target_tag).strip_edges().to_lower()
 	var name_norm := String(target_name).strip_edges().to_lower()
 	var use_tag_offsets := kind_norm == "tag" and tag_norm != ""

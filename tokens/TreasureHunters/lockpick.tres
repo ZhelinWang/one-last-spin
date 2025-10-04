@@ -1,23 +1,21 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://c1l2qdtyaiuwe"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/destroyTriggeredTagAbility.gd" id="3_destroy"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://qwnb8g6ej8f5" path="res://abilties/destroyTriggeredTagAbility.gd" id="3_destroy"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_destroy"]
 script = ExtResource("3_destroy")
-target_tag = "chest"
 id = "lockpick_open_triggered_chests"
-trigger = 0
+target_tag = "chest"
+winner_only = true
 
 [resource]
 script = ExtResource("1_token")
 name = "Lockpick"
-rarity = "common"
 icon = ExtResource("4_icon")
 value = 2
 tags = PackedStringArray("Treasure")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_destroy")])
-activeDescription = "Open all triggered Chests."
-
+activeDescription = "Destroy all triggered Chest tokens."

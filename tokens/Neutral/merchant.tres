@@ -8,6 +8,7 @@
 [sub_resource type="Resource" id="A_bonus"]
 script = ExtResource("3_bonus")
 amount = 0
+auto_self_step = true
 id = "merchant_bonus_loot_option"
 
 [resource]

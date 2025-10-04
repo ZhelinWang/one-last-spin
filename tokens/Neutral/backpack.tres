@@ -10,6 +10,7 @@
 script = ExtResource("2_active")
 exclude_names = PackedStringArray("Empty")
 id = "backpack_add_random_token"
+winner_only = true
 
 [sub_resource type="Resource" id="Passive"]
 script = ExtResource("4_onadd")

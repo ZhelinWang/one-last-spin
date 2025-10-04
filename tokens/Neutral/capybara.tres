@@ -13,6 +13,7 @@ id = "capybara_cannot_be_destroyed"
 [sub_resource type="Resource" id="A_mult"]
 script = ExtResource("5_mult")
 id = "capybara_double_self"
+winner_only = true
 
 [resource]
 script = ExtResource("2_token")

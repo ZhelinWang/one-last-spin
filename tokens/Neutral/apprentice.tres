@@ -9,6 +9,7 @@
 script = ExtResource("3_replace")
 id = "apprentice_demote_target"
 target_kind = 2
+winner_only = true
 
 [resource]
 script = ExtResource("1_token")

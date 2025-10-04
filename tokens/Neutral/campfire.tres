@@ -11,6 +11,7 @@
 [sub_resource type="Resource" id="Camp_Active"]
 script = ExtResource("3_active")
 id = "campfire_buff_and_destroy"
+winner_only = true
 
 [sub_resource type="Resource" id="Camp_Action"]
 script = ExtResource("Z_action")

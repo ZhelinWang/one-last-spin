@@ -9,6 +9,7 @@
 script = ExtResource("3_reroll")
 id = "torch_reroll_same_rarity"
 target_kind = 2
+winner_only = true
 
 [resource]
 script = ExtResource("1_token")
