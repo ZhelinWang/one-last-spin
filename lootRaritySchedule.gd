@@ -8,10 +8,10 @@ class_name LootRaritySchedule
 @export var rarities: PackedStringArray = ["common", "uncommon", "rare", "legendary"]
 
 # Start-of-run target distribution (rounds_start).
-@export var start_weights: Array[float] = [0.65, 0.25, 0.08, 0.02]
+@export var start_weights: Array[float] = [0.60, 0.30, 0.09, 0.01]
 
 # End-of-run target distribution (rounds_end).
-@export var end_weights: Array[float] = [0.00, 0.40, 0.40, 0.20]
+@export var end_weights: Array[float] = [0.05, 0.40, 0.40, 0.15]
 
 # Normalize per-call to sum to 1.0.
 @export var normalize: bool = true

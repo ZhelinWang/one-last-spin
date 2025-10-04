@@ -2505,7 +2505,8 @@ func _find_empty_index(arr: Array) -> int:
 		return int(indices.back())
 	if empty_replace_strategy == "random":
 		var rng := _mk_rng()
-		return int(rng.randi_range(0, indices.size() - 1))
+		var pick := int(rng.randi_range(0, indices.size() - 1))
+		return int(indices[pick])
 	return int(indices[0])
 
 func _is_empty_token(t) -> bool:

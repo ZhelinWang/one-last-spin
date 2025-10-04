@@ -10,6 +10,7 @@
 script = ExtResource("2_active")
 token_path = "res://tokens/Gambler/markedCard.tres"
 id = "marked_card_spawn_copy"
+winner_only = true
 
 [sub_resource type="Resource" id="Passive"]
 script = ExtResource("4_passive")
