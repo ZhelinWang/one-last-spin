@@ -1,15 +1,13 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3 uid="uid://cuob0816s6jrd"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://cuob0816s6jrd"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/strangePotionGainAbility.gd" id="2_active"]
+[ext_resource type="Script" uid="uid://diqq32vybgtsc" path="res://abilties/strangePotionGainAbility.gd" id="2_active"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
 [ext_resource type="Script" uid="uid://dxcnpnr6nbkhv" path="res://abilties/strangePotionMirrorAbility.gd" id="4_passive"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
 [sub_resource type="Resource" id="Active"]
 script = ExtResource("2_active")
-min_amount = 1
-max_amount = 2
 id = "strange_potion_gain"
 
 [sub_resource type="Resource" id="Passive"]
@@ -24,5 +22,5 @@ icon = ExtResource("5_icon")
 value = 3
 tags = PackedStringArray("General")
 abilities = Array[ExtResource("3_abilities")]([SubResource("Active"), SubResource("Passive")])
-activeDescription = "Gain +(1-2) permanently when triggered."
+activeDescription = "Gain +(1-2)."
 passiveDescription = "A random triggered token mirrors this token's value changes."

@@ -23,5 +23,5 @@ icon = ExtResource("5_icon")
 value = 2
 tags = PackedStringArray("Hoarder")
 abilities = Array[ExtResource("3_abilities")]([SubResource("Active"), SubResource("Passive")])
-activeDescription = "Add an Intern to the inventory."
+activeDescription = "Add a new Intern."
 passiveDescription = "Adjacent Human tokens gain +1."

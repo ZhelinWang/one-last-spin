@@ -25,5 +25,5 @@ icon = ExtResource("5_icon")
 value = 3
 tags = PackedStringArray("Hoarder", "Human")
 abilities = Array[ExtResource("3_abilities")]([SubResource("Active"), SubResource("Passive")])
-activeDescription = "Add a random Coin token."
+activeDescription = "Add a new random Coin token."
 passiveDescription = "Gains +1 per spin if adjacent to a Coin or Human."

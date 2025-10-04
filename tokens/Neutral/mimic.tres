@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3 uid="uid://c6oyperqnae4o"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://c6oyperqnae4o"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/mimicActiveAbility.gd" id="2_active"]
+[ext_resource type="Script" uid="uid://yy0m1om2efu7" path="res://abilties/mimicActiveAbility.gd" id="2_active"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
 [ext_resource type="Script" uid="uid://o103ywvlmynx" path="res://abilties/mimicTransformOnAddAbility.gd" id="4_passive"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
@@ -22,5 +22,5 @@ icon = ExtResource("5_icon")
 value = 3
 tags = PackedStringArray("General")
 abilities = Array[ExtResource("3_abilities")]([SubResource("Active"), SubResource("Passive")])
-activeDescription = "Transform into a random inventory token."
-passiveDescription = "On add, create a copy of a random other token in the inventory."
+activeDescription = "Transform into a random token in inventory."
+passiveDescription = "On add, create a copy of a random token in the inventory."

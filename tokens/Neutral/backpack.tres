@@ -1,16 +1,15 @@
 [gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://0qs8ut077osc"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/spawnRandomTokenAbility.gd" id="2_active"]
+[ext_resource type="Script" uid="uid://c73kjc6bs0jph" path="res://abilties/spawnRandomTokenAbility.gd" id="2_active"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
 [ext_resource type="Script" uid="uid://dfgwbv7vsqtxl" path="res://abilties/onAcquireAddEmptiesAbility.gd" id="4_onadd"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
 [sub_resource type="Resource" id="Active"]
 script = ExtResource("2_active")
-id = "backpack_add_random_token"
 exclude_names = PackedStringArray("Empty")
-count = 1
+id = "backpack_add_random_token"
 
 [sub_resource type="Resource" id="Passive"]
 script = ExtResource("4_onadd")
@@ -23,5 +22,5 @@ icon = ExtResource("5_icon")
 value = 2
 tags = PackedStringArray("General")
 abilities = Array[ExtResource("3_abilities")]([SubResource("Active"), SubResource("Passive")])
-activeDescription = "Add a random token into the inventory."
-passiveDescription = "On add, also add 3 Empty tokens into the inventory."
+activeDescription = "Add a new random token."
+passiveDescription = "On add, add 3 new Empty tokens."

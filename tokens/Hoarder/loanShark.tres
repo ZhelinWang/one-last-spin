@@ -23,5 +23,5 @@ icon = ExtResource("5_icon")
 value = 3
 tags = PackedStringArray("Hoarder", "Villain")
 abilities = Array[ExtResource("3_abilities")]([SubResource("Active"), SubResource("Passive")])
-activeDescription = "Destroy a random adjacent token and add a random Coin in to the inventory."
+activeDescription = "Destroy a random adjacent token and add a new random Coin."
 passiveDescription = "When an adjacent token is destroyed, gain half its value permanently."

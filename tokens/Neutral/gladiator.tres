@@ -1,20 +1,26 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://cserl3lgmwmcq"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://cserl3lgmwmcq"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" uid="uid://cumf3mbvs7fid" path="res://abilties/gainOnNeighborLossAbility.gd" id="3_gain"]
-[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://dabeb8w3tf26w" path="res://abilties/gladiatorActiveAbility.gd" id="3_active"]
+[ext_resource type="Script" uid="uid://cumf3mbvs7fid" path="res://abilties/gainOnNeighborLossAbility.gd" id="4_gain"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
+
+[sub_resource type="Resource" id="A_active"]
+script = ExtResource("3_active")
+id = "gladiator_active_neighbor_shave"
 
 [sub_resource type="Resource" id="A_gain"]
-script = ExtResource("3_gain")
+script = ExtResource("4_gain")
 id = "gladiator_gain_on_neighbor_loss"
 
 [resource]
 script = ExtResource("1_token")
 name = "Gladiator"
 rarity = "uncommon"
-icon = ExtResource("4_icon")
+icon = ExtResource("5_icon")
 value = 3
 tags = PackedStringArray("General")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_active"), SubResource("A_gain")])
+activeDescription = "Adjacent tokens lose 1 value."
 passiveDescription = "When an adjacent token loses value, gain that amount permanently."

@@ -93,11 +93,9 @@ func _ready() -> void:
 	_inventory_before_spin = _deep_copy_inventory(items)
 	_capture_slot_baseline_for_preview()
 
-	# Use a press handler that supports "Speed up" while spinning
 	spin_button.pressed.connect(_on_spin_button_pressed)
 	_apply_spin_button_state()
 
-	# Bind totals owner so CoinManager can update %valueLabel and connect only minimal signals
 	if coin_mgr:
 		if coin_mgr.has_method("bind_totals_owner"):
 			var owner_node: Node = main_ui if main_ui != null else self
