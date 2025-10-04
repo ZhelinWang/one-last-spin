@@ -76,7 +76,7 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 @export var loot_options_count: int = 3
 @export var loot_scan_root: String = "res://tokens"
 @export var empty_token_path: String = "res://tokens/empty.tres"
-@export var loot_title: String = "ROUND COMPLETE\n\n\nPICK A TOKEN TO ADD\n"
+@export var loot_title: String = "ROUND COMPLETE\n\n\nPICK A TOKEN"
 @export var skip_button_text: String = "SKIP AND ADD AN EMPTY TOKEN"
 # Assign your slotItem scene here (extends Button, property `data: TokenLootData`)
 @export var token_icon_scene: PackedScene
@@ -117,6 +117,8 @@ const ROUND_PAY_BASE_RATE: float = 3.0
 const ROUND_PAY_MAX_RATE: float = 500.0
 const ROUND_PAY_ACCEL_PER_SEC: float = 1.35
 const ROUND_PAY_MIN_FRAME: float = 1.0 / 240.0
+const VALUE_LABEL_FONT_SIZE := 20
+const VALUE_LABEL_OUTLINE_SIZE := 24
 
 # Game Over overlay
 var _round_pay_layer: CanvasLayer
@@ -1263,15 +1265,26 @@ func _get_requirement_for_round(round_num: int) -> int:
 func _gold_bbcode() -> String:
 	return "[color=gold]G[/color]"
 
+func _value_label_number_segment(total: int) -> String:
+	return "[font_size=%d][outline_size=%d]%s[/outline_size][/font_size]" % [VALUE_LABEL_FONT_SIZE, VALUE_LABEL_OUTLINE_SIZE, str(total)]
+
+func _value_label_gold_segment() -> String:
+	return "[font_size=%d][color=gold][outline_size=%d]G[/outline_size][/color][/font_size]" % [VALUE_LABEL_FONT_SIZE, VALUE_LABEL_OUTLINE_SIZE]
+
+func _format_value_label_bbcode(total: int) -> String:
+	return _value_label_number_segment(total) + _value_label_gold_segment()
+
 func _set_value_label_gold(total: int) -> void:
 	var lbl := _resolve_value_label()
 	if lbl == null:
 		return
-	var s := "%d%s" % [total, _gold_bbcode()]
 	if lbl is RichTextLabel:
-		(lbl as RichTextLabel).set_deferred("bbcode_text", s)
+		var rtl := lbl as RichTextLabel
+		rtl.bbcode_enabled = true
+		rtl.set_deferred("bbcode_text", _format_value_label_bbcode(total))
 	else:
-		_set_node_text(lbl, s)
+		var plain := "%dG" % [total]
+		_set_node_text(lbl, plain)
 
 func _update_totals_label(total: int, force: bool = false) -> void:
 	if _value_label_defer_depth > 0 and not force:
