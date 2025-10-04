@@ -65,6 +65,7 @@ var _prev_scroll: float = 0.0
 @onready var spin_button: Button = %spinButton
 @onready var coin_mgr: Node = get_node_or_null("/root/coinManager")
 @onready var inventory_strip: Node = %inventoryStrip
+@onready var artifact_strip: ArtifactStrip = %artifactContainerGrid
 @onready var artifact_xp_bar: ArtifactXPBar = %artifactXPBar
 
 func _ready() -> void:
@@ -72,6 +73,8 @@ func _ready() -> void:
 	_wire_check()
 	if artifact_xp_bar:
 		artifact_xp_bar.set_segment_schedule(artifact_xp_schedule)
+		if not artifact_xp_bar.artifact_selection_ready.is_connected(Callable(self, "_on_artifact_selection_ready")):
+			artifact_xp_bar.artifact_selection_ready.connect(Callable(self, "_on_artifact_selection_ready"))
 
 	if class_data:
 		# Snapshot baseline values for authoring resources, then clone unique instances for the run
@@ -93,6 +96,9 @@ func _ready() -> void:
 	_inventory_before_spin = _deep_copy_inventory(items)
 	_capture_slot_baseline_for_preview()
 
+	if artifact_strip:
+		artifact_strip.clear_artifacts()
+
 	spin_button.pressed.connect(_on_spin_button_pressed)
 	_apply_spin_button_state()
 
@@ -113,6 +119,11 @@ func _ready() -> void:
 			coin_mgr.connect("loot_choice_needed", Callable(self, "_on_loot_choice_needed"))
 		if coin_mgr.has_signal("game_reset"):
 			coin_mgr.connect("game_reset", Callable(self, "_on_game_reset"))
+		if coin_mgr.has_signal("artifact_list_changed") and not coin_mgr.is_connected("artifact_list_changed", Callable(self, "_on_artifact_list_changed")):
+			coin_mgr.connect("artifact_list_changed", Callable(self, "_on_artifact_list_changed"))
+		if artifact_strip and coin_mgr.has_method("get_active_artifacts"):
+			var art_list = coin_mgr.call("get_active_artifacts")
+			artifact_strip.set_artifacts(art_list)
 	else:
 		push_warning("spinRoot: CoinManager autoload not found. Using fallback tally (no effects).")
 
@@ -931,6 +942,17 @@ func _on_loot_choice_replaced(round_num: int, token: TokenLootData, index: int) 
 	_update_inventory_strip()
 	_refresh_inventory_baseline()
 	_apply_spin_button_state()
+
+
+func _on_artifact_selection_ready() -> void:
+	if coin_mgr == null:
+		coin_mgr = get_node_or_null("/root/coinManager")
+	if coin_mgr != null and coin_mgr.has_method("queue_artifact_selection"):
+		coin_mgr.call_deferred("queue_artifact_selection")
+
+func _on_artifact_list_changed(artifacts: Array) -> void:
+	if artifact_strip:
+		artifact_strip.set_artifacts(artifacts)
 
 func _on_loot_choice_needed(_round_num: int) -> void:
 	_apply_spin_button_state()

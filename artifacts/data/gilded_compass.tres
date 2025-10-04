@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ArtifactData" format=3]
+
+[ext_resource type="Script" path="res://artifacts/artifacts.gd" id="1"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="2"]
+
+[resource]
+script = ExtResource("1")
+effect_name = "Gilded Compass"
+display_name = "Gilded Compass"
+description = "Guides runs toward richer horizons once its rules exist."
+icon = ExtResource("2")
+unique_id = "gilded_compass"
+tooltip_details = "Functional effect not implemented yet."
+flavor_text = "It refuses to point north, favoring opportunity instead."

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ArtifactData" format=3]
+
+[ext_resource type="Script" path="res://artifacts/artifacts.gd" id="1"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="2"]
+
+[resource]
+script = ExtResource("1")
+effect_name = "Timeworn Hourglass"
+display_name = "Timeworn Hourglass"
+description = "Sand frozen mid-fall, waiting for time-bending rules."
+icon = ExtResource("2")
+unique_id = "timeworn_hourglass"
+tooltip_details = "Functional effect not implemented yet."
+flavor_text = "Its grains shimmer between moments."

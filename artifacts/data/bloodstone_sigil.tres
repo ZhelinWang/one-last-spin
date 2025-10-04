@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ArtifactData" format=3]
+
+[ext_resource type="Script" path="res://artifacts/artifacts.gd" id="1"]
+[ext_resource type="Texture2D" path="res://placehold.jpg" id="2"]
+
+[resource]
+script = ExtResource("1")
+effect_name = "Bloodstone Sigil"
+display_name = "Bloodstone Sigil"
+description = "A crimson seal ready to be infused with a future artifact ability."
+icon = ExtResource("2")
+unique_id = "bloodstone_sigil"
+tooltip_details = "Functional effect not implemented yet."
+flavor_text = "It hums faintly, sensing untapped power."

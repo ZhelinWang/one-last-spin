@@ -19,6 +19,10 @@ signal loot_choice_needed(round_number: int)
 signal loot_choice_selected(round_number: int, token)
 signal loot_choice_replaced(round_number: int, token, index: int) # replaces first/last/random empty in inventory
 
+signal artifact_selection_started(options: Array)
+signal artifact_acquired(artifact: ArtifactData)
+signal artifact_list_changed(artifacts: Array)
+
 @export var step_delay_sec: float = 0.5
 @export var passive_trigger_delay_sec: float = 0.5
 @export var base_show_delay_sec: float = 0.2
@@ -81,6 +85,12 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 # Assign your slotItem scene here (extends Button, property `data: TokenLootData`)
 @export var token_icon_scene: PackedScene
 
+@export_range(1, 5, 1) var artifact_options_count: int = 3
+@export_range(1, 5, 1) var max_artifacts: int = 5
+@export var artifact_loot_title: String = "ARTIFACT UNLOCKED\n\n\nCHOOSE AN ARTIFACT"
+@export var artifact_scan_paths: PackedStringArray = PackedStringArray(["res://artifacts/data"])
+@export var artifact_manual_pool: Array = []
+
 @export var loot_tile_scale: float = 3.0
 
 # Inventory wiring for replacement
@@ -98,7 +108,7 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 @export var screen_shake_moderate_intensity := 1.5
 @export var screen_shake_heavy_intensity := 2
 @export var screen_shake_duration := 0.5
-@export var highlight_flash_color: Color = Color(0.392, 0.392, 0.392, 1.0)
+@export var highlight_flash_color: Color = Color(0.588, 0.588, 0.588, 1.0)
 @export var highlight_flash_in_sec: float = 0.8
 @export var highlight_flash_out_sec: float = 0.8
 @export var highlight_flash_pause_sec: float = 1.5
@@ -111,6 +121,11 @@ var total_coins: int = 0
 var spin_index: int = 0
 
 var _artifacts: Array[ArtifactData] = []
+var _artifact_library: Array[ArtifactData] = []
+var _artifact_selection_active: bool = false
+var _artifact_selection_queued: bool = false
+var _artifact_current_options: Array[ArtifactData] = []
+var _loot_title_label: Label
 var _totals_owner: Node = null # %valueLabel, %roundLabel, %deadlineLabel
 
 const ROUND_PAY_BASE_RATE: float = 3.0
@@ -180,6 +195,7 @@ var _next_loot_guarantees: Dictionary = {}
 
 func _ready() -> void:
 	_loot_rng.randomize()
+	_initialize_artifact_library()
 	if not is_connected("winner_description_shown", Callable(self, "_on_winner_description_shown")):
 		connect("winner_description_shown", Callable(self, "_on_winner_description_shown"))
 
@@ -220,23 +236,220 @@ func _get_token_description(token, kind: String = "") -> String:
 	return str(token)
 
 # ---------- Artifacts wiring ----------
-func set_artifacts_order(effects: Array) -> void:
-	_artifacts = []
-	for e in effects:
-		if e is ArtifactData:
-			_artifacts.append(e)
+func _initialize_artifact_library() -> void:
+	_artifact_library.clear()
+	var pool: Array = []
+	if artifact_manual_pool != null and artifact_manual_pool.size() > 0:
+		pool = artifact_manual_pool
+	else:
+		pool = _scan_artifact_directories(artifact_scan_paths)
+	for art in pool:
+		if art is ArtifactData:
+			_artifact_library.append(art)
+	if _artifact_library.is_empty():
+		push_warning("CoinManager: no artifacts were loaded for the selection pool.")
 
-func register_artifact(effect: ArtifactData) -> void:
-	if effect and not _artifacts.has(effect):
-		_artifacts.append(effect)
+func _scan_artifact_directories(paths: PackedStringArray) -> Array:
+	var results: Array[ArtifactData] = []
+	if paths == null:
+		return results
+	for raw_path in paths:
+		var dir_path := str(raw_path).strip_edges()
+		if dir_path == "":
+			continue
+		var dir := DirAccess.open(dir_path)
+		if dir == null:
+			push_warning("CoinManager: unable to open artifact directory %s" % dir_path)
+			continue
+		dir.list_dir_begin()
+		while true:
+			var file_name := dir.get_next()
+			if file_name == "":
+				break
+			if dir.current_is_dir():
+				continue
+			if file_name.begins_with("."):
+				continue
+			if not (file_name.ends_with(".tres") or file_name.ends_with(".res")):
+				continue
+			var full_path := dir_path.path_join(file_name)
+			var res := ResourceLoader.load(full_path)
+			if res is ArtifactData:
+				results.append(res)
+		dir.list_dir_end()
+	return results
+
+func set_artifacts_order(effects: Array) -> void:
+	_artifacts.clear()
+	if effects != null:
+		for e in effects:
+			if e is ArtifactData:
+				var inst := _clone_artifact(e)
+				if inst != null and not _has_artifact_by_uid(_artifact_unique_id(inst)):
+					_artifacts.append(inst)
+	_emit_artifact_list_changed()
+
+func register_artifact(effect: ArtifactData) -> ArtifactData:
+	if effect == null:
+		return null
+	var uid := _artifact_unique_id(effect)
+	if uid != "":
+		var existing := _get_artifact_by_uid(uid)
+		if existing != null:
+			return existing
+	var inst := _clone_artifact(effect)
+	if inst == null:
+		return null
+	_artifacts.append(inst)
+	_emit_artifact_list_changed()
+	return inst
 
 func unregister_artifact(effect: ArtifactData) -> void:
-	if effect:
-		_artifacts.erase(effect)
+	if effect == null:
+		return
+	var uid := _artifact_unique_id(effect)
+	for i in range(_artifacts.size() - 1, -1, -1):
+		var art = _artifacts[i]
+		if art == null:
+			continue
+		if (uid != "" and _artifact_unique_id(art) == uid) or art == effect:
+			_artifacts.remove_at(i)
+			break
+	_emit_artifact_list_changed()
 
 func clear_artifacts() -> void:
 	_artifacts.clear()
+	_emit_artifact_list_changed()
 
+func get_active_artifacts() -> Array:
+	return _artifacts.duplicate()
+
+func queue_artifact_selection() -> void:
+	if max_artifacts > 0 and _artifacts.size() >= max_artifacts:
+		_artifact_selection_queued = false
+		return
+	_artifact_selection_queued = true
+	_try_start_artifact_selection()
+
+func _try_start_artifact_selection() -> void:
+	if not _artifact_selection_queued:
+		return
+	if _artifact_selection_active or _loot_selection_pending or _loot_selection_forced or _target_selection_pending or _game_over_active:
+		return
+	var available := _collect_available_artifacts()
+	if available.is_empty():
+		_artifact_selection_queued = false
+		return
+	var options := _pick_artifact_options(available, artifact_options_count)
+	if options.is_empty():
+		_artifact_selection_queued = false
+		return
+	_artifact_selection_queued = false
+	_artifact_selection_active = true
+	_artifact_current_options = options.duplicate()
+	_loot_selection_pending = true
+	_loot_selection_forced = true
+	_update_loot_skip_state()
+	_notify_spin_lock_state()
+	_try_start_artifact_selection()
+	_build_loot_overlay_if_needed()
+	_refresh_loot_title()
+	if _loot_skip_btn != null and is_instance_valid(_loot_skip_btn):
+		_loot_skip_btn.visible = false
+	emit_signal("artifact_selection_started", options)
+	_show_loot_overlay(-1, options, _loot_gen)
+
+func _handle_artifact_pick(choice) -> void:
+	var art: ArtifactData = null
+	if choice is ArtifactData:
+		art = choice
+	if art == null:
+		return
+	var stored := register_artifact(art)
+	if stored != null:
+		emit_signal("artifact_acquired", stored)
+	_artifact_selection_active = false
+	_artifact_current_options.clear()
+	_hide_loot_overlay()
+	_refresh_loot_title()
+	_try_start_artifact_selection()
+
+func _collect_available_artifacts() -> Array:
+	if _artifact_library.is_empty():
+		_initialize_artifact_library()
+	var out: Array[ArtifactData] = []
+	for art in _artifact_library:
+		if art == null:
+			continue
+		if max_artifacts > 0 and _artifacts.size() >= max_artifacts:
+			break
+		var uid := _artifact_unique_id(art)
+		if uid == "" or not _has_artifact_by_uid(uid):
+			out.append(art)
+	return out
+
+func _pick_artifact_options(pool: Array, count: int) -> Array:
+	var result: Array[ArtifactData] = []
+	if pool.is_empty():
+		return result
+	var temp := pool.duplicate()
+	var needed := clampi(count, 1, temp.size())
+	for i in range(needed):
+		if temp.is_empty():
+			break
+		var idx := int(_loot_rng.randi_range(0, temp.size() - 1))
+		result.append(temp[idx])
+		temp.remove_at(idx)
+	return result
+
+func _clone_artifact(effect: ArtifactData) -> ArtifactData:
+	if effect == null:
+		return null
+	if effect is Resource:
+		return (effect as Resource).duplicate(true)
+	return effect
+
+func _artifact_unique_id(effect: ArtifactData) -> String:
+	if effect == null:
+		return ""
+	if effect.has_method("get_unique_id"):
+		return str(effect.call("get_unique_id"))
+	if effect.has_method("get"):
+		var raw = effect.get("unique_id")
+		if raw != null:
+			return str(raw)
+	return str(effect.get_instance_id())
+
+func _has_artifact_by_uid(uid: String) -> bool:
+	if uid.strip_edges() == "":
+		return false
+	for art in _artifacts:
+		if art == null:
+			continue
+		if _artifact_unique_id(art) == uid:
+			return true
+	return false
+
+func _get_artifact_by_uid(uid: String) -> ArtifactData:
+	if uid.strip_edges() == "":
+		return null
+	for art in _artifacts:
+		if art != null and _artifact_unique_id(art) == uid:
+			return art
+	return null
+
+func _emit_artifact_list_changed() -> void:
+	emit_signal("artifact_list_changed", _artifacts.duplicate())
+
+func _refresh_loot_title() -> void:
+	if _loot_title_label == null or not is_instance_valid(_loot_title_label):
+		return
+	var text := loot_title
+	if _artifact_selection_active:
+		var alt := artifact_loot_title.strip_edges()
+		if alt != "":
+			text = alt
+	_loot_title_label.text = text
 func reset_run() -> void:
 	total_active = 0
 	total_passive = 0
@@ -250,6 +463,11 @@ func reset_run() -> void:
 	_token_tag_offsets.clear()
 	_token_name_offsets.clear()
 	_token_global_offset = 0
+	_artifact_selection_active = false
+	_artifact_selection_queued = false
+	_artifact_current_options.clear()
+	clear_artifacts()
+	_refresh_loot_title()
 	if is_instance_valid(_bank_tween):
 		_bank_tween.kill()
 	_bank_tween = null
@@ -1998,6 +2216,8 @@ func _build_loot_overlay_if_needed() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 28)
 	vb.add_child(title)
+	_loot_title_label = title
+	_refresh_loot_title()
 
 	_loot_options_hbox = HBoxContainer.new()
 	_loot_options_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -2030,6 +2250,7 @@ func _show_loot_overlay(round_num: int, options: Array, expected_gen: int = -1) 
 	if _loot_block != null and is_instance_valid(_loot_block):
 		_anchor_full_rect(_loot_block)
 
+	_refresh_loot_title()
 	_loot_last_round = round_num
 
 	print("[Loot] Offered options for round ", round_num, ":")
@@ -2049,7 +2270,8 @@ func _show_loot_overlay(round_num: int, options: Array, expected_gen: int = -1) 
 
 	for token in options:
 		# Ensure loot shows the current per-run adjusted value
-		_init_token_base_value(token)
+		if not _artifact_selection_active:
+			_init_token_base_value(token)
 		var frame := PanelContainer.new()
 		frame.name = "ItemFrame"
 		frame.custom_minimum_size = Vector2(tile_px, tile_px)
@@ -2079,7 +2301,7 @@ func _show_loot_overlay(round_num: int, options: Array, expected_gen: int = -1) 
 		var used_scene := false
 		var press_target: Button = null
 
-		if token_icon_scene != null:
+		if token_icon_scene != null and not _artifact_selection_active:
 			var inst := token_icon_scene.instantiate()
 			if inst is Button:
 				press_target = inst as Button
@@ -2090,6 +2312,7 @@ func _show_loot_overlay(round_num: int, options: Array, expected_gen: int = -1) 
 				press_target.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 				press_target.set("data", token)
 				press_target.set_meta("token_data", token)
+				press_target.set_meta("artifact_pick", _artifact_selection_active)
 				var tip := TooltipSpawner.new()
 				tip.name = "TooltipSpawner"
 				tip.set_meta("token_data", token)
@@ -2123,6 +2346,7 @@ func _show_loot_overlay(round_num: int, options: Array, expected_gen: int = -1) 
 			inner.add_child(icon_tex)
 
 			btn.set_meta("token_data", token)
+			btn.set_meta("artifact_pick", _artifact_selection_active)
 			var tip2 := TooltipSpawner.new()
 			tip2.name = "TooltipSpawner"
 			tip2.set_meta("token_data", token)
@@ -2176,6 +2400,9 @@ func _hide_loot_overlay() -> void:
 		_loot_layer.visible = false
 	_loot_selection_pending = false
 	_loot_selection_forced = false
+	_artifact_selection_active = false
+	_artifact_current_options.clear()
+	_refresh_loot_title()
 	_update_loot_skip_state()
 	_notify_spin_lock_state()
 
@@ -2184,7 +2411,13 @@ func _update_loot_skip_state() -> void:
 		_loot_skip_btn.visible = not _loot_selection_forced
 		_loot_skip_btn.disabled = _loot_selection_forced
 func _on_loot_pressed_node(node: Button) -> void:
-	var token: Resource = node.get_meta("token_data") as Resource
+	var data = null
+	if node.has_meta("token_data"):
+		data = node.get_meta("token_data")
+	if node.has_meta("artifact_pick") and bool(node.get_meta("artifact_pick")):
+		_handle_artifact_pick(data)
+		return
+	var token: Resource = data as Resource
 	_emit_loot_selected(_loot_last_round, token)
 
 func _on_loot_skip_pressed(round_num: int) -> void:
@@ -2237,6 +2470,7 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 	# New round begins after a token is added/replaced. Refresh counters to 0.
 	_update_round_and_deadline_labels()
 	_update_spin_counters()
+	_try_start_artifact_selection()
 
 func _load_empty_token() -> Resource:
 	var res: Resource = null
@@ -4855,6 +5089,7 @@ func _pick_random_same_rarity_path(tokens_root: String, rarity: String, exclude_
 	if out.is_empty():
 		return ""
 	_loot_rng.randomize()
+	_initialize_artifact_library()
 	return out[_loot_rng.randi_range(0, out.size()-1)]
 
 func _pick_random_by_rarity_path(tokens_root: String, rarity: String) -> String:
@@ -4869,6 +5104,7 @@ func _pick_random_by_rarity_path(tokens_root: String, rarity: String) -> String:
 	if out.is_empty():
 		return ""
 	_loot_rng.randomize()
+	_initialize_artifact_library()
 	return out[_loot_rng.randi_range(0, out.size()-1)]
 
 func _collect_token_paths_under(root: String) -> Array[String]:
@@ -5273,7 +5509,16 @@ func _apply_permanent_add_inventory(target_kind: String, target_offset: int, tar
 	var anchor_token = null
 	var anchor_key := ""
 	var allow_propagate_same_key := (kind_norm == "self" or kind_norm == "offset") and propagate_same_key
-	if kind_norm == "self" or kind_norm == "offset":
+	if kind_norm == "self":
+		if _current_effect_source is Resource:
+			anchor_token = _current_effect_source
+			anchor_key = _token_key(anchor_token)
+		if anchor_token == null:
+			var anchor_slot := _slot_from_ctx(ctx, target_offset)
+			if anchor_slot != null and anchor_slot.has_meta("token_data"):
+				anchor_token = anchor_slot.get_meta("token_data")
+				anchor_key = _token_key(anchor_token)
+	elif kind_norm == "offset":
 		var anchor_slot := _slot_from_ctx(ctx, target_offset)
 		if anchor_slot != null and anchor_slot.has_meta("token_data"):
 			anchor_token = anchor_slot.get_meta("token_data")

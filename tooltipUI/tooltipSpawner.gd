@@ -2,7 +2,7 @@ extends Node
 class_name TooltipSpawner
 
 @export var follow_mouse := true
-var _tooltip: TokenTooltipView
+var _tooltip: Control
 var _owner_ctrl: Control
 var _overlay_root: CanvasItem
 var _highlight_token = null
@@ -27,9 +27,9 @@ func _process(_dt: float) -> void:
 		_position_tooltip()
 
 func _on_entered() -> void:
-	var data: TokenLootData = null
-	if _owner_ctrl != null:
-		data = _owner_ctrl.get_meta("token_data") as TokenLootData
+	var data = null
+	if _owner_ctrl != null and _owner_ctrl.has_meta("token_data"):
+		data = _owner_ctrl.get_meta("token_data")
 	if data == null:
 		_highlight_token = null
 		return
@@ -39,24 +39,45 @@ func _on_entered() -> void:
 		return
 	if is_instance_valid(_tooltip):
 		_tooltip.queue_free()
-	_tooltip = TokenTooltipView.new()
-	_tooltip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	# Propagate context: allow inventory tooltips to show base-only values
-	var base_only := false
-	if _owner_ctrl != null and _owner_ctrl.has_meta("tooltip_base_only"):
-		base_only = bool(_owner_ctrl.get_meta("tooltip_base_only"))
-	_tooltip.base_only = base_only
+		_tooltip = null
+
+	var tooltip_node: Control = null
+	var is_token := data is TokenLootData
+	var is_artifact := data is ArtifactData
+
+	if is_artifact:
+		tooltip_node = ArtifactTooltipView.new()
+	elif is_token:
+		tooltip_node = TokenTooltipView.new()
+	else:
+		return
+
+	if tooltip_node is CanvasItem:
+		(tooltip_node as CanvasItem).texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+	if is_token and tooltip_node is TokenTooltipView:
+		var base_only := false
+		if _owner_ctrl != null and _owner_ctrl.has_meta("tooltip_base_only"):
+			base_only = bool(_owner_ctrl.get_meta("tooltip_base_only"))
+		(tooltip_node as TokenTooltipView).base_only = base_only
+
+	_tooltip = tooltip_node
 	_overlay_root.add_child(_tooltip)
-	_tooltip.set_data(data)
+	if _tooltip.has_method("set_data"):
+		_tooltip.call("set_data", data)
 	_tooltip.visible = true
 	_position_tooltip()
-	_highlight_token = data
-	if _coin_mgr == null:
-		_coin_mgr = get_node_or_null("/root/coinManager")
-	if _coin_mgr != null and _coin_mgr.has_method("start_effect_highlight_for_token"):
-		_coin_mgr.call("start_effect_highlight_for_token", data)
-		# If the spin is still in progress, keep the highlight in sync as effects register.
-		_connect_highlight_refresh()
+
+	if is_token:
+		_highlight_token = data
+		if _coin_mgr == null:
+			_coin_mgr = get_node_or_null("/root/coinManager")
+		if _coin_mgr != null and _coin_mgr.has_method("start_effect_highlight_for_token"):
+			_coin_mgr.call("start_effect_highlight_for_token", data)
+			# If the spin is still in progress, keep the highlight in sync as effects register.
+			_connect_highlight_refresh()
+	else:
+		_highlight_token = null
 
 func _on_exited() -> void:
 	_disconnect_highlight_refresh()
