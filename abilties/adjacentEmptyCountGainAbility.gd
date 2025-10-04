@@ -1,4 +1,4 @@
-extends TokenAbility
+﻿extends TokenAbility
 class_name AdjacentEmptyCountGainAbility
 
 @export var amount_per: int = 1
@@ -14,5 +14,7 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
             count += 1
     if count <= 0:
         return []
-    return [{"op":"permanent_add","target_kind":"self","amount": int(count*amount_per), "destroy_if_zero": false}]
+    var offset := int(self_c.get("offset", 0))
+    return [{"op":"permanent_add","target_kind":"self","target_offset": offset, "amount": int(count*amount_per), "destroy_if_zero": false}]
+
 

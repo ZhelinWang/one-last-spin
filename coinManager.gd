@@ -76,7 +76,7 @@ signal loot_choice_replaced(round_number: int, token, index: int) # replaces fir
 @export var loot_options_count: int = 3
 @export var loot_scan_root: String = "res://tokens"
 @export var empty_token_path: String = "res://tokens/empty.tres"
-@export var loot_title: String = "ROUND COMPLETE\n\nCHOOSE A TOKEN TO REPLACE AN EMPTY TOKEN"
+@export var loot_title: String = "ROUND COMPLETE\n\n\nPICK A TOKEN TO ADD\n"
 @export var skip_button_text: String = "SKIP AND ADD AN EMPTY TOKEN"
 # Assign your slotItem scene here (extends Button, property `data: TokenLootData`)
 @export var token_icon_scene: PackedScene
