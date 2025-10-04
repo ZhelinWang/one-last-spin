@@ -1,13 +1,14 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://di7kx6ctcuvss"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/destroyNonTriggeredEmptiesSelfAbility.gd" id="2_active"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://2fjb75kpmdhs" path="res://abilties/destroyNonTriggeredEmptiesSelfAbility.gd" id="2_active"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_c4"]
 script = ExtResource("2_active")
 id = "c4_destroy_empties"
+winner_only = true
 
 [resource]
 script = ExtResource("1_token")

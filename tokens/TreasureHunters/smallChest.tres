@@ -8,6 +8,7 @@
 [sub_resource type="Resource" id="A_payout"]
 script = ExtResource("3_payout")
 id = "small_chest_open_self"
+winner_only = true
 
 [resource]
 script = ExtResource("1_token")

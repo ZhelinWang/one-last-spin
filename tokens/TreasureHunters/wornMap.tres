@@ -1,23 +1,19 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://uinymynxjuf6"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/replaceSelfRandomByTagAbility.gd" id="3_replace"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://b6av02wyc8ftr" path="res://abilties/replaceSelfWithTokenAbility.gd" id="3_active"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
-[sub_resource type="Resource" id="A_chest"]
-script = ExtResource("3_replace")
-target_tag = "chest"
-id = "worn_map_promote_to_random_chest"
-trigger = 0
+[sub_resource type="Resource" id="A_golden"]
+script = ExtResource("3_active")
+replacement_path = "res://tokens/TreasureHunters/goldenChest.tres"
+id = "worn_map_promote_to_golden"
 
 [resource]
 script = ExtResource("1_token")
 name = "Worn Map"
-rarity = "common"
 icon = ExtResource("4_icon")
-value = 1
 tags = PackedStringArray("Treasure")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_chest")])
-activeDescription = "Promote self into a random Chest."
-
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_golden")])
+activeDescription = "Transform this token into a Golden Chest."

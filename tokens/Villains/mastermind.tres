@@ -24,4 +24,4 @@ value = 6
 tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_m_active"), SubResource("A_m_removed")])
 activeDescription = "Destroy all copies of target token, then buff all triggered tokens gain its value permanently."
-passiveDescription = "If destroyed by another token, that token promotes to a Mastermind."
+passiveDescription = "If this token is destroyed by another token's effect, that token transforms in to a Mastermind."

@@ -1,14 +1,14 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://bru4t421nb8x6"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/spyCopyAndDestroyAbility.gd" id="3_spy"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://dsxg14pv2tcja" path="res://abilties/spyCopyAndDestroyAbility.gd" id="3_spy"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
 [sub_resource type="Resource" id="A_spy"]
 script = ExtResource("3_spy")
 id = "spy_copy_and_destroy"
-trigger = 0
+winner_only = true
 
 [resource]
 script = ExtResource("1_token")
@@ -19,4 +19,3 @@ value = 2
 tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_spy")])
 activeDescription = "Copy target’s value permanently, then destroy the target."
-

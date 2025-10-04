@@ -8,6 +8,7 @@
 [sub_resource type="Resource" id="A_gain"]
 script = ExtResource("3_gain")
 id = "rookie_gain_if_adjacent_higher"
+winner_only = true
 
 [resource]
 script = ExtResource("1_token")
@@ -15,4 +16,4 @@ name = "Rookie"
 icon = ExtResource("4_icon")
 tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("2_abilities")]([SubResource("A_gain")])
-passiveDescription = "If an adjacent token has higher value, gain +1 permanently."
+activeDescription = "If an adjacent token has higher value, gain +1 permanently."

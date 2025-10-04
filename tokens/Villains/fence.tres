@@ -8,6 +8,7 @@
 [sub_resource type="Resource" id="A_act"]
 script = ExtResource("2_25rvq")
 id = "fence_destroy_random_common_gain"
+winner_only = true
 
 [resource]
 script = ExtResource("4_foe3q")
@@ -15,4 +16,4 @@ name = "Fence"
 icon = ExtResource("3_5n4hs")
 tags = PackedStringArray("Villain")
 abilities = Array[ExtResource("1_h04ac")]([SubResource("A_act")])
-activeDescription = "Destroy a random triggered Common and gain its value permanently."
+activeDescription = "Destroy a random other triggered Common and gain its value permanently."

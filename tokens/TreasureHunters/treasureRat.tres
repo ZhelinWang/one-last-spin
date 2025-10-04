@@ -1,21 +1,27 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://ccdtf48twxxa2"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://ccdtf48twxxa2"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/treasureRatAbility.gd" id="3_rat"]
-[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://brte3uikgnutx" path="res://abilties/treasureRatActiveAbility.gd" id="3_active"]
+[ext_resource type="Script" uid="uid://dpu4n121ri4pk" path="res://abilties/treasureRatAbility.gd" id="4_passive"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
-[sub_resource type="Resource" id="A_rat"]
-script = ExtResource("3_rat")
-id = "treasure_rat_abilities"
+[sub_resource type="Resource" id="TreasureRatActive"]
+script = ExtResource("3_active")
+id = "treasure_rat_active_replace"
+winner_only = true
+
+[sub_resource type="Resource" id="TreasureRatPassive"]
+script = ExtResource("4_passive")
+id = "treasure_rat_passive_spawn"
 
 [resource]
 script = ExtResource("1_token")
 name = "Treasure Rat"
 rarity = "uncommon"
-icon = ExtResource("4_icon")
+icon = ExtResource("5_icon")
 value = 2
 tags = PackedStringArray("Treasure")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_rat")])
+abilities = Array[ExtResource("2_abilities")]([SubResource("TreasureRatActive"), SubResource("TreasureRatPassive")])
 activeDescription = "Convert a chosen target to a Worn Map."
-passiveDescription = "25% chance to turn an adjacent Empty into a Chest."
+passiveDescription = "25% chance to replace an adjacent Empty into a Chest token."

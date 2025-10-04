@@ -1,36 +1,25 @@
 extends TokenAbility
 class_name TreasureRatAbility
 
-@export var worn_map_path: String = "res://tokens/TreasureHunters/wornMap.tres"
 @export var chest_path: String = "res://tokens/TreasureHunters/smallChest.tres"
 @export var spawn_chance: float = 0.25
 
+func _init():
+	trigger = Trigger.ACTIVE_DURING_SPIN
+	winner_only = false
+
 func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) -> Array:
 	var out: Array = []
-	var self_c := _find_self_contrib(contribs, source_token)
-
-	# Active: only when this token is the winner
-	if trigger == TokenAbility.Trigger.ACTIVE_DURING_SPIN and not self_c.is_empty() and int(self_c.get("offset", 99)) == 0:
-		var path := String(worn_map_path).strip_edges()
-		if path != "":
-			out.append({
-				"op": "replace_at_offset",
-				"token_path": path,
-				"set_value": -1,
-				"preserve_tags": false,
-				"target_kind": "choose"
-			})
-
+	var self_c: Dictionary = _find_self_contrib(contribs, source_token)
 	if self_c.is_empty():
 		return out
 
-	var empties: Array[int] = []
+	var empty_offsets: Array[int] = []
 	for nc in _adjacent_contribs(contribs, self_c):
 		var tok = nc.get("token")
-		if tok != null and (tok as Object).has_method("get") and String(tok.get("name")) == "Empty":
-			empties.append(int(nc.get("offset", 0)))
-
-	if empties.is_empty():
+		if tok != null and (tok as Object).has_method("get") and String(tok.get("name")).strip_edges().to_lower() == "empty":
+			empty_offsets.append(int(nc.get("offset", 0)))
+	if empty_offsets.is_empty():
 		return out
 
 	var rng: RandomNumberGenerator = ctx.get("rng") if ctx.has("rng") else RandomNumberGenerator.new()
@@ -43,7 +32,7 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 	if chest_path_s == "":
 		return out
 
-	var off_choice := empties[rng.randi_range(0, empties.size() - 1)]
+	var off_choice: int = empty_offsets[rng.randi_range(0, empty_offsets.size() - 1)]
 	out.append({
 		"op": "replace_at_offset",
 		"offset": off_choice,

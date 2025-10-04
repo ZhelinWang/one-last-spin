@@ -1,21 +1,21 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://fhli7cgbhgsl"]
 
-[ext_resource type="Script" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/onAnyDestroyedSpawnCopyAbility.gd" id="3_copy"]
-[ext_resource type="Texture2D" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
+[ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://cl8wasq5vqopr" path="res://abilties/poacherActiveAbility.gd" id="3_active"]
+[ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
-[sub_resource type="Resource" id="A_copy"]
-script = ExtResource("3_copy")
-id = "poacher_copy_on_destroyed"
+[sub_resource type="Resource" id="PoacherActive"]
+script = ExtResource("3_active")
+id = "poacher_spawn_last_destroyed"
+winner_only = true
 
 [resource]
 script = ExtResource("1_token")
 name = "Poacher"
 rarity = "legendary"
-icon = ExtResource("4_icon")
+icon = ExtResource("5_icon")
 value = 6
 tags = PackedStringArray("Villain")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_copy")])
-passiveDescription = "Whenever a token is destroyed, add a copy of it to the inventory."
-
+abilities = Array[ExtResource("2_abilities")]([SubResource("PoacherActive")])
+activeDescription = "Add a new copy of the last destroyed token."
