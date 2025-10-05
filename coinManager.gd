@@ -3975,6 +3975,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				bool((c0 as Dictionary).get("triggered_only", true)))
 		elif op0 == "register_ward":
 			_register_ward_offset(ctx, int((c0 as Dictionary).get("offset", 0)))
+	var __choose_ordinal: int = 0
 	for cmd in cmds:
 		if typeof(cmd) != TYPE_DICTIONARY:
 			continue
@@ -3992,7 +3993,8 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 			if need_choose:
 				_target_selection_pending = true
 				_notify_spin_lock_state(ctx)
-				var off_choice := await _prompt_target_offset(ctx, true)
+				__choose_ordinal += 1
+				var off_choice := await _prompt_target_offset(ctx, true, __choose_ordinal)
 				_target_selection_pending = false
 				_notify_spin_lock_state(ctx)
 				(cmd as Dictionary)["offset"] = int(off_choice)
@@ -5080,11 +5082,11 @@ func _op_needs_offset(op: String) -> bool:
 		_:
 			return false
 
-func _prompt_target_offset(ctx: Dictionary, exclude_center: bool = true) -> int:
+func _prompt_target_offset(ctx: Dictionary, exclude_center: bool = true, ordinal: int = 1) -> int:
 	if ctx != null and ctx.has("spin_root"):
 		var sr = ctx["spin_root"]
 		if sr != null and (sr as Object).has_method("choose_target_offset"):
-			return await sr.call("choose_target_offset", exclude_center)
+			return await sr.call("choose_target_offset", exclude_center, ordinal)
 	# Fallback: prefer first neighbor to the right
 	return 1
 

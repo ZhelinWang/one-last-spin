@@ -62,6 +62,9 @@ var _crossings: PackedFloat32Array = []
 var _next_cross := 0
 var _prev_scroll: float = 0.0
 
+# Target selection arrows
+ 
+
 @onready var spin_button: Button = %spinButton
 @onready var coin_mgr: Node = get_node_or_null("/root/coinManager")
 @onready var inventory_strip: Node = %inventoryStrip
@@ -760,6 +763,8 @@ func _on_winner_description_shown(winner, text: String) -> void:
 	pass
 
 func _on_spin_totals_ready(result: Dictionary) -> void:
+	_hide_target_cursor()
+	
 	_ingest_baseline_from_result(result)
 	_spinning = false
 	_apply_spin_button_state()
@@ -810,6 +815,9 @@ func spin() -> void:
 
 	_inventory_before_spin = _deep_copy_inventory(items)
 	hide_base_preview()
+	_hide_target_cursor()
+
+	
 
 	_spin_done = false
 	_spinning = true
@@ -990,7 +998,7 @@ func _insert_token_replacing_empties(token: TokenLootData, copies: int) -> Array
 	for i in range(max(1, copies)):
 		var inst: TokenLootData = token if i == 0 else ((token as Resource).duplicate(true) as TokenLootData)
 		_init_token_base_value(inst)
-		var idx := _find_empty_index_in_items(empty_path)
+		var idx: int = _find_empty_index_in_items(empty_path)
 		if idx >= 0:
 			items[idx] = inst
 		else:
@@ -1041,11 +1049,36 @@ func add_empty_slots(count: int) -> void:
 
 signal target_chosen(offset: int)
 
-func choose_target_offset(exclude_center: bool = true) -> int:
+# ---- Target cursor overlay ----
+var _target_cursor: Control = null
+func _show_target_cursor(count: int) -> void:
+	var ui := get_tree().get_root().get_node_or_null("mainUI") as Control
+	if ui == null:
+		return
+	if _target_cursor != null and is_instance_valid(_target_cursor):
+		if _target_cursor.has_method("set_count"):
+			_target_cursor.call("set_count", count)
+		return
+	var scn := load("res://ui/TargetCursor.tscn")
+	if scn is PackedScene:
+		_target_cursor = (scn as PackedScene).instantiate() as Control
+		if _target_cursor != null:
+			if _target_cursor.has_method("set_count"):
+				_target_cursor.call("set_count", count)
+			ui.add_child(_target_cursor)
+
+func _hide_target_cursor() -> void:
+	if _target_cursor != null and is_instance_valid(_target_cursor):
+		_target_cursor.queue_free()
+	_target_cursor = null
+
+func choose_target_offset(exclude_center: bool = true, ordinal: int = 1) -> int:
 	# Allow player to click one of the currently triggered slots (neighbors + edges), optionally excluding center.
 	var offsets: Array[int] = [-2, -1, 0, 1, 2]
 	if exclude_center:
 		offsets = [-2, -1, 1, 2]
+	# Show overlay target cursor while awaiting selection
+	_show_target_cursor(max(1, ordinal))
 	var overlays: Array[Node] = []
 	for off in offsets:
 		var slot := _slot_for_offset(off)
@@ -1075,9 +1108,11 @@ func choose_target_offset(exclude_center: bool = true) -> int:
 	for ov in overlays:
 		if ov != null and is_instance_valid(ov):
 			ov.queue_free()
+	_hide_target_cursor()
 	return int(picked)
 
 func _on_target_pick_pressed(off: int) -> void:
+	_hide_target_cursor()
 	emit_signal("target_chosen", off)
 
 func replace_token_in_inventory(old_token: Resource, new_token: Resource) -> void:
