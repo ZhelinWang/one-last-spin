@@ -252,7 +252,8 @@ func _set_spin_button_enabled(enabled: bool) -> void:
 	else:
 		if spin_button.text == "":
 			spin_button.text = "Spin"
-		spin_button.tooltip_text = "Please wait..."
+			spin_button.tooltip_text = "Please wait..."
+
 
 func _is_spin_button_enabled() -> bool:
 	if not is_instance_valid(spin_button):

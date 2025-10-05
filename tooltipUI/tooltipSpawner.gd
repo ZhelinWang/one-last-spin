@@ -8,6 +8,7 @@ var _overlay_root: CanvasItem
 var _highlight_token = null
 var _coin_mgr: Node = null
 var _connected_refresh := false
+var _dim_locked := false
 
 func _ready() -> void:
 	_owner_ctrl = get_parent() as Control
@@ -27,6 +28,7 @@ func _process(_dt: float) -> void:
 		_position_tooltip()
 
 func _on_entered() -> void:
+	# Keep prior dim lock across hover enter; do not reset here
 	var data = null
 	if _owner_ctrl != null and _owner_ctrl.has_meta("token_data"):
 		data = _owner_ctrl.get_meta("token_data")
@@ -60,6 +62,12 @@ func _on_entered() -> void:
 		if _owner_ctrl != null and _owner_ctrl.has_meta("tooltip_base_only"):
 			base_only = bool(_owner_ctrl.get_meta("tooltip_base_only"))
 		(tooltip_node as TokenTooltipView).base_only = base_only
+		# Apply initial dim state for triggered-but-non-winner slots (spinner only)
+		var dim_now := _compute_dim_for_owner()
+		if dim_now:
+			_dim_locked = true
+		(tooltip_node as TokenTooltipView).force_dim_active = dim_now
+		(tooltip_node as TokenTooltipView).set_dim_active(dim_now)
 
 	_tooltip = tooltip_node
 	_overlay_root.add_child(_tooltip)
@@ -81,6 +89,7 @@ func _on_entered() -> void:
 
 func _on_exited() -> void:
 	_disconnect_highlight_refresh()
+	# Do not reset _dim_locked on hover exit; we recompute/clear it only when state changes
 	if _coin_mgr == null:
 		_coin_mgr = get_node_or_null("/root/coinManager")
 	if _coin_mgr != null and _coin_mgr.has_method("stop_effect_highlight_for_token") and _highlight_token != null:
@@ -126,6 +135,42 @@ func _refresh_highlight_if_hovering(_a = null, _b = null, _c = null, _d = null, 
 		return
 	if _coin_mgr.has_method("start_effect_highlight_for_token"):
 		_coin_mgr.call("start_effect_highlight_for_token", _highlight_token)
+	# Also keep the tooltip's dim state in sync across spin phases
+	if is_instance_valid(_tooltip) and _tooltip is TokenTooltipView:
+		var dim_now := _compute_dim_for_owner()
+		if dim_now:
+			_dim_locked = true
+		var desired := dim_now or _dim_locked
+		(_tooltip as TokenTooltipView).force_dim_active = desired
+		(_tooltip as TokenTooltipView).set_dim_active(desired)
+
+func _compute_dim_for_owner() -> bool:
+	# Grey out Active when hovering a triggered-but-non-winner slot (±2 around center, excluding center).
+	# Inventory items should not be affected (no spinRoot ancestor).
+	var sr: Node = _owner_ctrl
+	while sr != null and sr.name != "spinRoot":
+		sr = sr.get_parent()
+	if sr == null:
+		return false
+	var slots = sr.get("slots_hbox") if (sr as Object).has_method("get") else null
+	if slots == null or not (slots is Node):
+		slots = sr.get_node_or_null("spinner/spinnerTilesMargin/scrollContainer/slotsHBox")
+	if slots == null or not (slots is HBoxContainer):
+		return false
+	var kids: Array = (slots as HBoxContainer).get_children()
+	# Resolve which slot this owner belongs to: walk up until the direct child of slots_hbox
+	var owner_node: Node = _owner_ctrl
+	var slot_ancestor: Node = null
+	while owner_node != null and owner_node.get_parent() != null:
+		if owner_node.get_parent() == slots:
+			slot_ancestor = owner_node
+			break
+		owner_node = owner_node.get_parent()
+	var idx: int = kids.find(slot_ancestor if slot_ancestor != null else _owner_ctrl)
+	var center_idx: int = int(sr.get("_last_winning_slot_idx")) if (sr as Object).has_method("get") else -1
+	if idx == -1 or center_idx < 0:
+		return false
+	return abs(idx - center_idx) <= 2 and idx != center_idx
 
 func _position_tooltip() -> void:
 	if not is_instance_valid(_tooltip):

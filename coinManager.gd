@@ -2104,13 +2104,7 @@ func _on_winner_description_shown(winner, _text_ignored: String) -> void:
 	if title.strip_edges() == "":
 		title = str(winner)
 
-	var desc := ""
-	if winner != null and winner.has_method("get"):
-		var ad = winner.get("activeDescription")
-		if typeof(ad) == TYPE_STRING:
-			desc = String(ad).strip_edges()
-	if desc == "":
-		desc = "No active effect."
+	# Only show the active token name; omit description
 
 	var title_hex := "#f62c25"
 	if lbl is RichTextLabel:
@@ -2121,12 +2115,12 @@ func _on_winner_description_shown(winner, _text_ignored: String) -> void:
 			if base_size <= 0:
 				base_size = 24
 			rtl.set_meta("__base_font_size", base_size)
-		var text := "[color=%s]%s:[/color] %s" % [title_hex, title.to_upper(), desc.to_upper()]
+		var text := "[color=%s]%s[/color]" % [title_hex, title.to_upper()]
 		rtl.bbcode_text = text
 		rtl.set_meta("__font_reduced", false)
 		call_deferred("_adjust_active_effect_label_font", rtl)
 	else:
-		_set_node_text(lbl, "%s\n%s" % [title.to_upper(), desc.to_upper()])
+		_set_node_text(lbl, "%s" % [title.to_upper()])
 
 func _resolve_active_effect_label() -> Node:
 	if _active_effect_label != null and is_instance_valid(_active_effect_label):

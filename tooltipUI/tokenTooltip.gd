@@ -3,6 +3,8 @@ class_name TokenTooltipView
 
 @export var pixel_font: FontFile   # Optional: assign a pixel/bitmap font in Inspector
 @export var base_only: bool = false
+# When true, dims the Active description to indicate it won't trigger (e.g., side slots during spin)
+@export var force_dim_active: bool = false
 @export var temp_gain_color: Color = Color8(80, 220, 80)
 @export var temp_loss_color: Color = Color8(220, 80, 80)
 
@@ -187,6 +189,8 @@ func set_data(data: TokenLootData) -> void:
 	_active_desc_wrap.visible = has_active
 	if has_active:
 		_active_desc_label.text = String(data.activeDescription)
+		# Apply any requested dimming
+		set_dim_active(force_dim_active)
 	else:
 		_active_desc_label.text = ""
 
@@ -329,3 +333,13 @@ func _reparent_to_layer(layer: CanvasLayer) -> void:
 	if get_parent():
 		get_parent().remove_child(self)
 	layer.add_child(self)
+
+# Public helper to update dimming dynamically (e.g., as spin phases progress)
+func set_dim_active(dim: bool) -> void:
+	force_dim_active = dim
+	if _active_desc_label == null:
+		return
+	if dim:
+		_active_desc_label.modulate = Color(0.6, 0.6, 0.68)
+	else:
+		_active_desc_label.modulate = Color(0.9, 0.9, 0.95)
