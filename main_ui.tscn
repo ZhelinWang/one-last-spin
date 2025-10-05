@@ -343,16 +343,20 @@ grow_vertical = 2
 alignment = 1
 
 [node name="HBoxContainer" type="HBoxContainer" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer/Panel/VBoxContainer"]
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
 alignment = 1
 
-[node name="artifactContainerGrid" type="GridContainer" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer/Panel/VBoxContainer/HBoxContainer"]
+[node name="artifactContainerGrid" type="GridContainer" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer/Panel/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 6
+size_flags_vertical = 4
 columns = 5
 script = ExtResource("101_artstrip")
+background_color = Color(0.078431375, 0.078431375, 0.101960786, 0)
+border_color = Color(1, 1, 1, 0)
 
 [node name="deadlineDisplay" type="Panel" parent="mainContainer/topUIMarginContainer/goldStatusBar/topUIContainer"]
 material = SubResource("ShaderMaterial_yubjs")
@@ -702,13 +706,15 @@ size_flags_horizontal = 8
 size_flags_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_sd2ej")
 
-[node name="NinePatchRect" type="NinePatchRect" parent="mainContainer/bottomUISpinContainer/spinButtonWrapper/HBoxContainer/classAbilityPanel"]
+[node name="abilityButton" type="NinePatchRect" parent="mainContainer/bottomUISpinContainer/spinButtonWrapper/HBoxContainer/classAbilityPanel"]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_default_cursor_shape = 2
 texture = ExtResource("12_v54cu")
 
 [node name="spinCounterHBox" type="HBoxContainer" parent="mainContainer"]

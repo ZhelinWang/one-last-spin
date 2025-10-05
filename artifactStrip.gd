@@ -4,7 +4,6 @@ class_name ArtifactStrip
 @export var max_artifacts: int = 5
 @export var icon_size: Vector2i = Vector2i(64, 64)
 @export var tile_padding: Vector2i = Vector2i(12, 12)
-@export var show_names: bool = true
 @export var name_font_size: int = 14
 @export var background_color: Color = Color(0.08, 0.08, 0.1, 0.85)
 @export var border_color: Color = Color(0.82, 0.12, 0.16)
@@ -65,12 +64,11 @@ func _render() -> void:
 
 func _add_artifact_tile(artifact: ArtifactData) -> void:
 	var frame := PanelContainer.new()
-	frame.custom_minimum_size = Vector2(icon_size.x + tile_padding.x, icon_size.y + tile_padding.y + (name_font_size + 6 if show_names else 0))
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP
 	frame.tooltip_text = ""
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = background_color
-	sb.set_border_width_all(2)
+	#sb.set_border_width_all(2)
 	var art_color := border_color
 	if artifact != null and artifact.has_method("get_color"):
 		art_color = artifact.call("get_color")
@@ -95,16 +93,6 @@ func _add_artifact_tile(artifact: ArtifactData) -> void:
 		icon_rect.texture = artifact.call("get_icon")
 	vb.add_child(icon_rect)
 
-	if show_names:
-		var name_lbl := Label.new()
-		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_lbl.add_theme_font_size_override("font_size", name_font_size)
-		name_lbl.add_theme_color_override("font_color", Color(0.94, 0.94, 0.98))
-		name_lbl.add_theme_constant_override("outline_size", 1)
-		name_lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-		name_lbl.text = artifact.call("get_display_name") if artifact != null else ""
-		vb.add_child(name_lbl)
 
 	frame.set_meta("token_data", artifact)
 	var tip := TooltipSpawner.new()

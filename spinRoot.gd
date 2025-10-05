@@ -67,6 +67,7 @@ var _prev_scroll: float = 0.0
 @onready var inventory_strip: Node = %inventoryStrip
 @onready var artifact_strip: ArtifactStrip = %artifactContainerGrid
 @onready var artifact_xp_bar: ArtifactXPBar = %artifactXPBar
+@onready var ability_button: Control = %abilityButton
 
 func _ready() -> void:
 	_rng.randomize()
@@ -75,6 +76,11 @@ func _ready() -> void:
 		artifact_xp_bar.set_segment_schedule(artifact_xp_schedule)
 		if not artifact_xp_bar.artifact_selection_ready.is_connected(Callable(self, "_on_artifact_selection_ready")):
 			artifact_xp_bar.artifact_selection_ready.connect(Callable(self, "_on_artifact_selection_ready"))
+
+	if ability_button:
+		ability_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		if not ability_button.gui_input.is_connected(Callable(self, "_on_ability_button_gui_input")):
+			ability_button.gui_input.connect(Callable(self, "_on_ability_button_gui_input"))
 
 	if class_data:
 		# Snapshot baseline values for authoring resources, then clone unique instances for the run
@@ -1103,6 +1109,16 @@ func _on_tokens_added_to_inventory(count: int) -> void:
 		return
 	if artifact_xp_bar:
 		artifact_xp_bar.add_tokens(count)
+
+func _on_ability_button_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var vp := get_viewport()
+		if vp != null:
+			vp.set_input_as_handled()
+		if coin_mgr == null:
+			coin_mgr = get_node_or_null("/root/coinManager")
+		if coin_mgr != null and coin_mgr.has_method("queue_artifact_selection"):
+			coin_mgr.call_deferred("queue_artifact_selection")
 
 func _find_empty_index_in_items(empty_path: String) -> int:
 	var candidates: Array[int] = []

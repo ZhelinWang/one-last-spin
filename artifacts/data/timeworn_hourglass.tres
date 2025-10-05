@@ -7,6 +7,10 @@
 script = ExtResource("1")
 effect_name = "Timeworn Hourglass"
 display_name = "Timeworn Hourglass"
+name = "Timeworn Hourglass"
+rarity = "artifact"
+weight = 1.0
+value = 0
 description = "Sand frozen mid-fall, waiting for time-bending rules."
 icon = ExtResource("2")
 unique_id = "timeworn_hourglass"

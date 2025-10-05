@@ -137,9 +137,9 @@ func _set_segment_schedule(schedule: Array) -> void:
 	queue_redraw()
 
 func _advance_stage() -> void:
+	print("artifact selection")
+	emit_signal("artifact_selection_ready")
 	_segment_progress = 0
 	_segment_index += 1
 	if _segment_index >= _segment_schedule.size():
-		print("artifact selection")
-		emit_signal("artifact_selection_ready")
 		reset_bar()

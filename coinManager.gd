@@ -125,10 +125,11 @@ var _artifact_library: Array[ArtifactData] = []
 var _artifact_selection_active: bool = false
 var _artifact_selection_queued: bool = false
 var _artifact_current_options: Array[ArtifactData] = []
+var _pending_loot_request: Dictionary = {}
 var _loot_title_label: Label
 var _totals_owner: Node = null # %valueLabel, %roundLabel, %deadlineLabel
 
-const ROUND_PAY_BASE_RATE: float = 3.0
+const ROUND_PAY_BASE_RATE: float = 5.0
 const ROUND_PAY_MAX_RATE: float = 500.0
 const ROUND_PAY_ACCEL_PER_SEC: float = 1.35
 const ROUND_PAY_MIN_FRAME: float = 1.0 / 240.0
@@ -351,7 +352,6 @@ func _try_start_artifact_selection() -> void:
 	_loot_selection_forced = true
 	_update_loot_skip_state()
 	_notify_spin_lock_state()
-	_try_start_artifact_selection()
 	_build_loot_overlay_if_needed()
 	_refresh_loot_title()
 	if _loot_skip_btn != null and is_instance_valid(_loot_skip_btn):
@@ -373,6 +373,22 @@ func _handle_artifact_pick(choice) -> void:
 	_hide_loot_overlay()
 	_refresh_loot_title()
 	_try_start_artifact_selection()
+	if not _artifact_selection_active and not _artifact_selection_queued:
+		_flush_pending_loot_request()
+
+func _flush_pending_loot_request() -> void:
+	if _pending_loot_request.is_empty():
+		return
+	if _artifact_selection_active or _artifact_selection_queued:
+		return
+	var req := _pending_loot_request
+	_pending_loot_request = {}
+	var round_num := int(req.get("round", 0))
+	var forced := bool(req.get("forced", false))
+	var ctx = req.get("ctx", {})
+	if ctx == null or not (ctx is Dictionary):
+		ctx = {}
+	_trigger_loot_choice(round_num, forced, ctx)
 
 func _collect_available_artifacts() -> Array:
 	if _artifact_library.is_empty():
@@ -466,6 +482,7 @@ func reset_run() -> void:
 	_artifact_selection_active = false
 	_artifact_selection_queued = false
 	_artifact_current_options.clear()
+	_pending_loot_request.clear()
 	clear_artifacts()
 	_refresh_loot_title()
 	if is_instance_valid(_bank_tween):
@@ -2142,6 +2159,16 @@ func _trigger_loot_choice(round_num: int, forced: bool = false, ctx: Dictionary 
 	# Do not offer loot if a Game Over is active
 	if _game_over_active:
 		return false
+	if _artifact_selection_active or _artifact_selection_queued:
+		var ctx_copy: Dictionary = {}
+		if ctx != null and ctx is Dictionary:
+			ctx_copy = (ctx as Dictionary).duplicate(true)
+		_pending_loot_request = {
+			"round": round_num,
+			"forced": forced,
+			"ctx": ctx_copy
+		}
+		return false
 	_loot_selection_forced = forced
 	if forced:
 		_loot_selection_pending = true
@@ -2166,6 +2193,7 @@ func _trigger_loot_choice(round_num: int, forced: bool = false, ctx: Dictionary 
 	_loot_selection_pending = true
 	_update_loot_skip_state()
 	_notify_spin_lock_state(ctx)
+	_pending_loot_request.clear()
 	_build_loot_overlay_if_needed()
 	var gen := _loot_gen
 	_show_loot_overlay(round_num, options, gen)
@@ -2257,7 +2285,11 @@ func _show_loot_overlay(round_num: int, options: Array, expected_gen: int = -1) 
 	for i in range(options.size()):
 		var t = options[i]
 		if t != null and t.has_method("get"):
-			print("  - ", String(t.get("name")), " | rarity=", t.get("rarity"), " | value=", t.get("value"), " | weight=", t.get("weight"))
+			var n = str(t.get("name"))
+			var r = t.get("rarity")
+			var v = t.get("value")
+			var w = t.get("weight")
+			print("  - ", n, " | rarity=", r, " | value=", v, " | weight=", w)
 
 	_clear_children(_loot_options_hbox)
 

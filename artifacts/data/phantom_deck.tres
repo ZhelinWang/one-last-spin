@@ -7,6 +7,10 @@
 script = ExtResource("1")
 effect_name = "Phantom Deck"
 display_name = "Phantom Deck"
+name = "Phantom Deck"
+rarity = "artifact"
+weight = 1.0
+value = 0
 description = "Illusory cards awaiting their gambling-grade effects."
 icon = ExtResource("2")
 unique_id = "phantom_deck"
