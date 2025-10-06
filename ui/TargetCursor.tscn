@@ -1,17 +1,40 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3 uid="uid://bqf4hfk5qaj8v"]
 
-[ext_resource type="Script" path="res://ui/TargetCursor.gd" id="1_uhz2x"]
+[ext_resource type="Script" uid="uid://bcf6h5bampklk" path="res://ui/TargetCursor.gd" id="1_uhz2x"]
+[ext_resource type="Shader" uid="uid://bjucio58erjia" path="res://textPixel.gdshader" id="2_muhbw"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_8bcpj"]
+shader = ExtResource("2_muhbw")
+shader_parameter/alpha_threshold = 0.5
+shader_parameter/outline_radius = 2.0
+shader_parameter/use_diagonals = true
+shader_parameter/outline_color = Color(0, 0, 0, 1)
+shader_parameter/fill_color = Color(1, 1, 1, 1)
+shader_parameter/fill_mix = 0.0
+shader_parameter/shadow_enabled = true
+shader_parameter/shadow_offset_px = Vector2(2, 2)
+shader_parameter/shadow_alpha = 1.0
 
 [node name="TargetCursor" type="Control"]
-layout_mode = 2
+layout_mode = 3
+anchors_preset = 0
 mouse_filter = 2
 script = ExtResource("1_uhz2x")
+outline_thickness = 4
+text_padding = -10
 
 [node name="CountLabel" type="Label" parent="."]
-layout_mode = 2
+material = SubResource("ShaderMaterial_8bcpj")
+layout_mode = 0
+offset_right = 20.0
+offset_bottom = 22.0
 size_flags_horizontal = 4
-size_flags_vertical = 4
-horizontal_alignment = 2
-vertical_alignment = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_constants/line_spacing = 0
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/outline_size = 10
+theme_override_constants/shadow_outline_size = 0
+theme_override_font_sizes/font_size = 20
 text = "x1"
-
+horizontal_alignment = 2

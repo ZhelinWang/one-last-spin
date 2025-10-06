@@ -313,7 +313,7 @@ size_flags_vertical = 2
 theme_override_constants/margin_left = 0
 theme_override_constants/margin_top = 0
 theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_bottom = 20
 
 [node name="goldStatusBar" type="Panel" parent="mainContainer/topUIMarginContainer"]
 custom_minimum_size = Vector2(0, 150)
@@ -498,7 +498,7 @@ vertical_alignment = 2
 [node name="spinMarginContainer" type="MarginContainer" parent="mainContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/margin_top = 40
+theme_override_constants/margin_top = 30
 theme_override_constants/margin_bottom = 40
 
 [node name="gameElementsContainer" type="VBoxContainer" parent="mainContainer/spinMarginContainer"]
