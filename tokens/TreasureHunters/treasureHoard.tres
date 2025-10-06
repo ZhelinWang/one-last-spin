@@ -2,14 +2,37 @@
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" uid="uid://g633yuu2dk18" path="res://abilties/promoteTargetsToChestAbility.gd" id="3_promote"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="5_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
-[sub_resource type="Resource" id="A_promote"]
-script = ExtResource("3_promote")
-chest_paths = PackedStringArray("res://tokens/TreasureHunters/smallChest.tres", "res://tokens/TreasureHunters/goldenChest.tres")
-id = "treasure_hoard_promote_two_to_chest"
+
+[sub_resource type="Resource" id="A_replace_chests"]
+script = ExtResource("6_action")
+op = "replace_from_choices"
+target_override_kind = "choose"
+choose_count = 2
+token_paths = PackedStringArray("res://tokens/TreasureHunters/smallChest.tres", "res://tokens/TreasureHunters/goldenChest.tres")
+
+[sub_resource type="Resource" id="E_active"]
+script = ExtResource("5_effect")
+id = "treasure_hoard_promote_two_to_chest_spec"
+trigger = 0 # ACTIVE_DURING_SPIN
 winner_only = true
+actions = [ SubResource("A_replace_chests") ]
+
+[sub_resource type="Resource" id="A_spawn_small"]
+script = ExtResource("6_action")
+op = "spawn_token_in_inventory"
+choose_count = 1
+token_path = "res://tokens/TreasureHunters/smallChest.tres"
+
+[sub_resource type="Resource" id="E_passive_spawn"]
+script = ExtResource("5_effect")
+id = "treasure_hoard_passive_spawn_small"
+trigger = 0 # ACTIVE_DURING_SPIN
+once_per_spin = true
+actions = [ SubResource("A_spawn_small") ]
 
 [resource]
 script = ExtResource("1_token")
@@ -18,6 +41,6 @@ rarity = "legendary"
 icon = ExtResource("4_icon")
 value = 6
 tags = PackedStringArray()
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_promote")])
+abilities = Array[ExtResource("2_abilities")]([SubResource("E_active"), SubResource("E_passive_spawn")])
 activeDescription = "Transform 2 targets into random Chest tokens."
 passiveDescription = "Add a Small Chest to the inventory."

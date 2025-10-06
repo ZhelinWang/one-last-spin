@@ -1,19 +1,43 @@
 [gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://dui2624p6xnrh"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" uid="uid://8mc137eigenp" path="res://abilties/randomStealPermanentAbility.gd" id="2_active"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="2_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
-[ext_resource type="Script" uid="uid://cxu25af5vgt45" path="res://abilties/onAnyDestroyedSelfPermAddAbility.gd" id="4_passive"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="7_cond"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
+[sub_resource type="Resource" id="A_self_gain_action"]
+script = ExtResource("6_action")
+op = "permanent_add"
+amount = 1
+target_override_kind = "self"
+
+[sub_resource type="Resource" id="A_target_lose_action"]
+script = ExtResource("6_action")
+op = "permanent_add"
+amount = -1
+target_override_kind = "passive"
+choose_mode = "One Random"
+destroy_if_zero = true
+
 [sub_resource type="Resource" id="Active"]
-script = ExtResource("2_active")
+script = ExtResource("2_effect")
 id = "collector_random_steal"
+trigger = 0 # ACTIVE_DURING_SPIN
 winner_only = true
+actions = [ SubResource("A_self_gain_action"), SubResource("A_target_lose_action") ]
+
+[sub_resource type="Resource" id="Passive_Action"]
+script = ExtResource("6_action")
+op = "permanent_add"
+amount = 1
+target_override_kind = "self"
 
 [sub_resource type="Resource" id="Passive"]
-script = ExtResource("4_passive")
-id = "collector_on_destroyed_plus_one"
+script = ExtResource("2_effect")
+id = "collector_on_destroyed_plus_one_spec"
+actions = [ SubResource("Passive_Action") ]
 
 [resource]
 script = ExtResource("1_token")

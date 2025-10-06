@@ -1,14 +1,23 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://73q5e1oqgwgf"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=10 format=3 uid="uid://73q5e1oqgwgf"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" uid="uid://d14o83aj6q0x2" path="res://abilties/mastermindActiveAbility.gd" id="3_active"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
 [ext_resource type="Script" uid="uid://3lmcx0b2tph3" path="res://abilties/mastermindOnRemovedPromoteKillerAbility.gd" id="4_removed"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
+[sub_resource type="Resource" id="A_m_action"]
+script = ExtResource("6_action")
+op = "mastermind_destroy_target_and_buff"
+target_override_kind = "choose"
+
 [sub_resource type="Resource" id="A_m_active"]
-script = ExtResource("3_active")
-id = "mastermind_destroy_all_copies_and_share"
+script = ExtResource("3_effect")
+id = "mastermind_destroy_buff_spec"
+trigger = 0 # ACTIVE_DURING_SPIN
+winner_only = true
+actions = [ SubResource("A_m_action") ]
 
 [sub_resource type="Resource" id="A_m_removed"]
 script = ExtResource("4_removed")

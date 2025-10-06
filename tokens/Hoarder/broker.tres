@@ -1,13 +1,32 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://bq5shbl2rhifa"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=10 format=3 uid="uid://bq5shbl2rhifa"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" uid="uid://bsg24h7aqvm0r" path="res://abilties/traderAbility.gd" id="3_trader"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
-[sub_resource type="Resource" id="A_trader"]
-script = ExtResource("3_trader")
-id = "trader_active_gain_and_share"
+[sub_resource type="Resource" id="A_gain_self"]
+script = ExtResource("6_action")
+op = "permanent_add"
+min_amount = 1
+max_amount = 3
+target_override_kind = "self"
+
+[sub_resource type="Resource" id="A_share_neighbors_coins"]
+script = ExtResource("6_action")
+op = "permanent_add"
+min_amount = 1
+max_amount = 3
+target_override_kind = "neighbors"
+target_tag = "coin"
+
+[sub_resource type="Resource" id="E_trader"]
+script = ExtResource("3_effect")
+id = "trader_gain_and_share_spec"
+trigger = 0 # ACTIVE_DURING_SPIN
+winner_only = true
+actions = [ SubResource("A_gain_self"), SubResource("A_share_neighbors_coins") ]
 
 [resource]
 script = ExtResource("1_token")
@@ -16,6 +35,7 @@ rarity = "uncommon"
 icon = ExtResource("4_icon")
 value = 2
 tags = PackedStringArray("Human")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_trader")])
-activeDescription = "Gain +(1–3) permanently. "
+abilities = Array[ExtResource("2_abilities")]([SubResource("E_trader")])
+activeDescription = "Gain +(1-3) permanently and adjacent Coins gain the same."
 passiveDescription = "Adjacent Coins copy this token's value changes."
+

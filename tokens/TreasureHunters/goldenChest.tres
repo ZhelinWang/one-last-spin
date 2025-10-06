@@ -1,15 +1,30 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://luug2hmjm3pv"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=10 format=3 uid="uid://luug2hmjm3pv"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" uid="uid://c285d1rp4uckn" path="res://abilties/destroySelfPayoutAbility.gd" id="3_payout"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
+[ext_resource type="Script" uid="uid://dpfq5yav48oqm" path="res://abilties/onRemovedAdjustRunTotalAbility.gd" id="7_onremoved"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
-[sub_resource type="Resource" id="A_payout"]
-script = ExtResource("3_payout")
-denom = 1
-id = "golden_chest_open_self"
+[sub_resource type="Resource" id="A_destroy_self"]
+script = ExtResource("6_action")
+op = "destroy"
+target_override_kind = "offset"
+target_offset = 0
+
+[sub_resource type="Resource" id="A_active"]
+script = ExtResource("3_effect")
+id = "golden_chest_open_self_spec"
+trigger = 0 # ACTIVE_DURING_SPIN
 winner_only = true
+actions = [ SubResource("A_destroy_self") ]
+
+[sub_resource type="Resource" id="A_on_removed"]
+script = ExtResource("7_onremoved")
+multiplier = 3.0
+id = "golden_chest_payout_on_removed"
+trigger = 2
 
 [resource]
 script = ExtResource("1_token")
@@ -18,6 +33,7 @@ rarity = "rare"
 icon = ExtResource("4_icon")
 value = 6
 tags = PackedStringArray("Chest")
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_payout")])
-activeDescription = "Destroy this token and gain 3× value."
-passiveDescription = "When destroyed, trigger this token's active effect"
+abilities = Array[ExtResource("2_abilities")]([SubResource("A_active"), SubResource("A_on_removed")])
+activeDescription = "Open: destroy this token. Payout occurs on removal."
+passiveDescription = "When destroyed, pay out 3× this token's value."
+

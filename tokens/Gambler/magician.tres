@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
 [ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="3_aeqsq"]
-[ext_resource type="Script" uid="uid://dfq4xcc03t20g" path="res://abilties/ifTriggeredHasNameGainAbility.gd" id="3_passive"]
 [ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="4_action"]
 [ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="5_effect"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="6_icon"]
@@ -20,9 +19,22 @@ actions = Array[ExtResource("4_action")]([SubResource("Action_All")])
 id = "magician_buff_all"
 winner_only = true
 
+[sub_resource type="Resource" id="Passive_Cond"]
+script = ExtResource("3_aeqsq")
+kind = "triggered_any_name_is"
+name = "Empty"
+
+[sub_resource type="Resource" id="Passive_Action"]
+script = ExtResource("4_action")
+op = "permanent_add"
+amount = 1
+target_override_kind = "self"
+
 [sub_resource type="Resource" id="Passive"]
-script = ExtResource("3_passive")
+script = ExtResource("5_effect")
 id = "magician_gain_if_empty_triggers"
+conditions = Array[ExtResource("3_aeqsq")]([SubResource("Passive_Cond")])
+actions = Array[ExtResource("4_action")]([SubResource("Passive_Action")])
 
 [resource]
 script = ExtResource("1_token")

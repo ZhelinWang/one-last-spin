@@ -1,14 +1,24 @@
 [gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://dr3hnarurxa71"]
 
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_wwu6u"]
-[ext_resource type="Script" uid="uid://d31fxo41a1ge3" path="res://abilties/destroyRandomTriggeredByRarityAndGainAbility.gd" id="2_xs2mv"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="2_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="3_at8le"]
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="4_1n6d8"]
 
+[sub_resource type="Resource" id="A_destroy_random_common"]
+script = ExtResource("6_action")
+op = "destroy_random_triggered_by_rarity_and_gain"
+rarity = "common"
+match_any_rarity = false
+gain_to_self = true
+
 [sub_resource type="Resource" id="A_act"]
-script = ExtResource("2_xs2mv")
+script = ExtResource("2_effect")
 id = "fence_destroy_random_common_gain"
+trigger = 0 # ACTIVE_DURING_SPIN
 winner_only = true
+actions = [ SubResource("A_destroy_random_common") ]
 
 [resource]
 script = ExtResource("4_1n6d8")

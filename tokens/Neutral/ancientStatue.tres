@@ -2,20 +2,33 @@
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" uid="uid://dhprujurry1vf" path="res://abilties/genericPermanentAddOnActiveAbility.gd" id="3_fj2a6"]
-[ext_resource type="Script" uid="uid://dbg8dg7os4dad" path="res://abilties/valueDestroyGuardAbility.gd" id="3_guard"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="7_effect"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
+[sub_resource type="Resource" id="A_guard_action"]
+script = ExtResource("6_action")
+op = "register_destroy_guard"
+
 [sub_resource type="Resource" id="A_guard"]
-script = ExtResource("3_guard")
-id = "ancient_statue_value_guard"
+script = ExtResource("7_effect")
+id = "ancient_statue_value_guard_spec"
+trigger = 0 # ACTIVE_DURING_SPIN
+actions = [ SubResource("A_guard_action") ]
+
+[sub_resource type="Resource" id="A_perm_action"]
+script = ExtResource("6_action")
+op = "permanent_add"
+amount = 2
 
 [sub_resource type="Resource" id="Resource_dgnu5"]
-script = ExtResource("3_fj2a6")
-amount = 2
-destroy_if_zero = true
+script = ExtResource("3_effect")
+id = "ancient_statue_gain_perm"
+trigger = 0 # ACTIVE_DURING_SPIN
+target_kind = 0 # SELF
 winner_only = true
-metadata/_custom_type_script = "uid://dhprujurry1vf"
+actions = [ SubResource("A_perm_action") ]
 
 [resource]
 script = ExtResource("1_token")

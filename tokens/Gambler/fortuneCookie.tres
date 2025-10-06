@@ -2,22 +2,46 @@
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" uid="uid://m7nunemtatyl" path="res://abilties/fortuneCookieAbility.gd" id="3_cookie"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="4_action"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" path="res://abilties/specs/ConditionSpec.gd" id="5_cond"]
 
-[sub_resource type="Resource" id="A_cookie"]
-script = ExtResource("3_cookie")
-chance = 0.25
+[sub_resource type="Resource" id="A_winner_action"]
+script = ExtResource("4_action")
+op = "permanent_add"
+min_amount = 1
 max_amount = 8
-id = "fortune_cookie_random_add"
+choose_mode = "One Random"
 
-[sub_resource type="Resource" id="Resource_oxtjk"]
-script = ExtResource("3_cookie")
-chance = 1.0
+[sub_resource type="Resource" id="A_passive_action"]
+script = ExtResource("4_action")
+op = "permanent_add"
+min_amount = 1
 max_amount = 8
+choose_mode = "One Random"
+
+[sub_resource type="Resource" id="E_winner"]
+script = ExtResource("3_effect")
 id = "fortune_cookie_random_add_active"
+trigger = 0 # ACTIVE_DURING_SPIN
+target_kind = 5 # ANY
 winner_only = true
-metadata/_custom_type_script = "uid://m7nunemtatyl"
+actions = [ SubResource("A_winner_action") ]
+
+[sub_resource type="Resource" id="E_passive"]
+script = ExtResource("3_effect")
+id = "fortune_cookie_random_add"
+trigger = 0 # ACTIVE_DURING_SPIN
+target_kind = 5 # ANY
+winner_only = false
+conditions = [ SubResource("C_25pct") ]
+actions = [ SubResource("A_passive_action") ]
+
+[sub_resource type="Resource" id="C_25pct"]
+script = ExtResource("5_cond")
+kind = "random_chance"
+chance_percent = 25
 
 [resource]
 script = ExtResource("1_token")
@@ -26,6 +50,6 @@ rarity = "rare"
 icon = ExtResource("4_icon")
 value = 5
 tags = PackedStringArray()
-abilities = Array[ExtResource("2_abilities")]([SubResource("A_cookie"), SubResource("Resource_oxtjk")])
+abilities = Array[ExtResource("2_abilities")]([SubResource("E_passive"), SubResource("E_winner")])
 activeDescription = "Add +(1-8) permanently to a random other triggered token."
 passiveDescription = "25% chance each spin to add +(1-8) permanently to a random triggered token (including itself)."

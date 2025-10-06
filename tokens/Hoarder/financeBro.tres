@@ -1,21 +1,42 @@
 [gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://cwhijv6wi2rsr"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" uid="uid://dhdx56yp4iqq7" path="res://abilties/spawnCoinsAbility.gd" id="2_active"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="2_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
-[ext_resource type="Script" uid="uid://gnnglnu40k4c" path="res://abilties/adjacentAnyOfTagsPermanentAddAbility.gd" id="4_passive"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="7_cond"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
+[sub_resource type="Resource" id="A_spawn_action"]
+script = ExtResource("6_action")
+op = "spawn_random_by_tag"
+target_override_kind = "tag"
+target_tag = "coin"
+choose_count = 1
+
 [sub_resource type="Resource" id="Active"]
-script = ExtResource("2_active")
-count = 1
-coin_paths = PackedStringArray("res://tokens/Hoarder/coin.tres", "res://tokens/Hoarder/copperCoin.tres", "res://tokens/TreasureHunters/rustedCoin.tres")
+script = ExtResource("2_effect")
 id = "finance_bro_spawn_coin"
+trigger = 0 # ACTIVE_DURING_SPIN
+winner_only = true
+actions = [ SubResource("A_spawn_action") ]
+
+[sub_resource type="Resource" id="Cond_adj_either"]
+script = ExtResource("7_cond")
+kind = "adjacent_any_of_tags"
+tags_list = PackedStringArray("coin", "human")
+
+[sub_resource type="Resource" id="Passive_Action"]
+script = ExtResource("6_action")
+op = "permanent_add"
+amount = 1
+target_override_kind = "self"
 
 [sub_resource type="Resource" id="Passive"]
-script = ExtResource("4_passive")
-tags_list = PackedStringArray("coin", "human")
-id = "finance_bro_adjacent_coin_or_human"
+script = ExtResource("2_effect")
+id = "finance_bro_adjacent_coin_or_human_spec"
+conditions = [ SubResource("Cond_adj_either") ]
+actions = [ SubResource("Passive_Action") ]
 
 [resource]
 script = ExtResource("1_token")

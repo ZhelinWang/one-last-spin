@@ -1,20 +1,34 @@
 [gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://centc7nfcrvrk"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" uid="uid://032dudmoehyh" path="res://abilties/crimeBossActiveAbility.gd" id="2_active"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="2_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
-[ext_resource type="Script" uid="uid://cxu25af5vgt45" path="res://abilties/onAnyDestroyedSelfPermAddAbility.gd" id="4_passive"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="7_cond"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
+[sub_resource type="Resource" id="A_destroy_lowest"]
+script = ExtResource("6_action")
+op = "destroy_lowest_triggered"
+exclude_self = true
+
 [sub_resource type="Resource" id="Active"]
-script = ExtResource("2_active")
+script = ExtResource("2_effect")
 id = "crime_boss_destroy_lowest"
+trigger = 0 # ACTIVE_DURING_SPIN
 winner_only = true
+actions = [ SubResource("A_destroy_lowest") ]
+
+[sub_resource type="Resource" id="Passive_Action"]
+script = ExtResource("6_action")
+op = "permanent_add"
+amount = 3
+target_override_kind = "self"
 
 [sub_resource type="Resource" id="Passive"]
-script = ExtResource("4_passive")
-amount = 3
-id = "crime_boss_gain_three_on_destroyed"
+script = ExtResource("2_effect")
+id = "crime_boss_gain_three_on_destroyed_spec"
+actions = [ SubResource("Passive_Action") ]
 
 [resource]
 script = ExtResource("1_token")

@@ -2,14 +2,21 @@
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" uid="uid://cmoeeudbmqo61" path="res://abilties/rerollTargetSameRarityAbility.gd" id="3_reroll"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
+[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
 
+[sub_resource type="Resource" id="A_reroll_action"]
+script = ExtResource("6_action")
+op = "reroll_same_rarity"
+target_override_kind = "choose"
+
 [sub_resource type="Resource" id="A_reroll"]
-script = ExtResource("3_reroll")
+script = ExtResource("3_effect")
 id = "torch_reroll_same_rarity"
-target_kind = 2
+trigger = 0 # ACTIVE_DURING_SPIN
 winner_only = true
+actions = [ SubResource("A_reroll_action") ]
 
 [resource]
 script = ExtResource("1_token")
