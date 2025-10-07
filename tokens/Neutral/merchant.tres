@@ -1,10 +1,10 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://k15bscarf25g"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3 uid="uid://k15bscarf25g"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
 
 [sub_resource type="Resource" id="A_destroy_action"]
 script = ExtResource("6_action")
@@ -18,9 +18,8 @@ op = "trigger_loot_selection"
 [sub_resource type="Resource" id="A_bonus"]
 script = ExtResource("3_effect")
 id = "merchant_destroy_and_trigger_loot"
-trigger = 0 # ACTIVE_DURING_SPIN
-winner_only = true
-actions = [ SubResource("A_destroy_action"), SubResource("A_trigger_action") ]
+#ACTIVE_DURING_SPINwinner_only = true
+actions = [SubResource("A_destroy_action"), SubResource("A_trigger_action")]
 
 [resource]
 script = ExtResource("1_token")

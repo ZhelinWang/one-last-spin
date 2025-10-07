@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
 [ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
 [ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
-[ext_resource type="Script" uid="uid://dpfq5yav48oqm" path="res://abilties/onRemovedAdjustRunTotalAbility.gd" id="4_onremoved"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="7_effect"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
 [sub_resource type="Resource" id="A_perm_action"]
@@ -20,11 +20,16 @@ target_kind = 0 # SELF
 winner_only = true
 actions = [ SubResource("A_perm_action") ]
 
+[sub_resource type="Resource" id="A_removed_action"]
+script = ExtResource("6_action")
+op = "adjust_run_total_by_self_fraction"
+factor = 2.0
+
 [sub_resource type="Resource" id="A_removed"]
-script = ExtResource("4_onremoved")
-multiplier = 2.0
-id = "piggy_gain_on_destroy"
+script = ExtResource("7_effect")
+id = "piggy_gain_on_destroy_spec"
 trigger = 2
+actions = [ SubResource("A_removed_action") ]
 
 [resource]
 script = ExtResource("1_token")

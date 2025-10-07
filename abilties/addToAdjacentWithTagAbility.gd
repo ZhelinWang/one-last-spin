@@ -33,9 +33,8 @@ func build_final_steps(ctx: Dictionary, contribs: Array, source_token: Resource)
                 "amount": amount,
                 "factor": 1.0,
                 "desc": d,
-                "source": "ability:%s" % String(id),
+                "source": "ability:%s" % str(id),
                 "target_kind": "offset",
                 "target_offset": off
             })
     return out
-

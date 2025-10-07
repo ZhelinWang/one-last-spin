@@ -23,5 +23,5 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 		"op": "guarantee_next_loot_rarity",
 		"rarity": rarity_l,
 		"count": amount,
-		"source": "ability:%s" % String(id)
+		"source": "ability:%s" % str(id)
 	}]

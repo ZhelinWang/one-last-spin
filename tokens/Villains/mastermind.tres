@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
 [ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
 [ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
-[ext_resource type="Script" uid="uid://3lmcx0b2tph3" path="res://abilties/mastermindOnRemovedPromoteKillerAbility.gd" id="4_removed"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="7_effect"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
 [sub_resource type="Resource" id="A_m_action"]
@@ -19,10 +19,16 @@ trigger = 0 # ACTIVE_DURING_SPIN
 winner_only = true
 actions = [ SubResource("A_m_action") ]
 
+[sub_resource type="Resource" id="A_m_removed_action"]
+script = ExtResource("6_action")
+op = "promote_killer_to_path"
+token_path = "res://tokens/Villains/mastermind.tres"
+
 [sub_resource type="Resource" id="A_m_removed"]
-script = ExtResource("4_removed")
-id = "mastermind_promote_killer"
+script = ExtResource("7_effect")
+id = "mastermind_promote_killer_spec"
 trigger = 2
+actions = [ SubResource("A_m_removed_action") ]
 
 [resource]
 script = ExtResource("1_token")

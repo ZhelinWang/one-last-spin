@@ -13,4 +13,4 @@ func build_steps(ctx: Dictionary, contrib: Dictionary, source_token: Resource) -
 	var coin_count := _count_in_inventory(ctx, "coin")
 	if coin_count <= 0:
 		return []
-	return [_mk_add_step(int(coin_count), "+%d per Coin" % coin_count, "ability:%s" % String(id))]
+return [_mk_add_step(int(coin_count), "+%d per Coin" % coin_count, "ability:%s" % str(id))]

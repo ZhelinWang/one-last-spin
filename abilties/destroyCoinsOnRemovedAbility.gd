@@ -26,6 +26,6 @@ func build_on_removed_commands(ctx: Dictionary, removed_token: Resource, source_
 		cmds.append({
 			"op": "destroy_all_copies_by_name",
 			"token_name": String(name),
-			"source": "ability:%s" % String(id)
+			"source": "ability:%s" % str(id)
 		})
 	return cmds

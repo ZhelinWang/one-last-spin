@@ -1,28 +1,8 @@
-
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=10 format=3 uid="uid://dsyi2kb5c07lc"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=4 format=3 uid="uid://dsyi2kb5c07lc"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
-[ext_resource type="Script" uid="uid://bp8bc0n6ty5y6" path="res://abilties/petRockValueLockAbility.gd" id="4_lock"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
-
-[sub_resource type="Resource" id="A_set_targets_action"]
-script = ExtResource("6_action")
-op = "set_perm_to_self_current"
-target_override_kind = "any"
-
-[sub_resource type="Resource" id="PetRockActive"]
-script = ExtResource("3_effect")
-id = "pet_rock_equalize_triggered"
-trigger = 0 # ACTIVE_DURING_SPIN
-winner_only = true
-actions = [ SubResource("A_set_targets_action") ]
-
-[sub_resource type="Resource" id="PetRockLock"]
-script = ExtResource("4_lock")
-id = "pet_rock_value_lock"
 
 [resource]
 script = ExtResource("1_token")
@@ -30,6 +10,5 @@ name = "Pet Rock"
 icon = ExtResource("5_icon")
 value = 4
 tags = PackedStringArray("General")
-abilities = Array[ExtResource("2_abilities")]([SubResource("PetRockActive"), SubResource("PetRockLock")])
 activeDescription = "Set all triggered tokens to this token's value."
 passiveDescription = "This token's value cannot be changed."

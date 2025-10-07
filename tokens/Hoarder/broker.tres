@@ -11,6 +11,7 @@ script = ExtResource("6_action")
 op = "permanent_add"
 min_amount = 1
 max_amount = 3
+shared_roll_key = "broker_roll"
 target_override_kind = "self"
 
 [sub_resource type="Resource" id="A_share_neighbors_coins"]
@@ -18,6 +19,7 @@ script = ExtResource("6_action")
 op = "permanent_add"
 min_amount = 1
 max_amount = 3
+shared_roll_key = "broker_roll"
 target_override_kind = "neighbors"
 target_tag = "coin"
 
@@ -38,4 +40,3 @@ tags = PackedStringArray("Human")
 abilities = Array[ExtResource("2_abilities")]([SubResource("E_trader")])
 activeDescription = "Gain +(1-3) permanently and adjacent Coins gain the same."
 passiveDescription = "Adjacent Coins copy this token's value changes."
-

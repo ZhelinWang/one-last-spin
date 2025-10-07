@@ -27,6 +27,5 @@ func on_value_changed(ctx: Dictionary, prev_val: int, new_val: int, source_token
     # Optional: log step into picked contrib
     var steps_var = pick.get("steps")
     var steps: Array = (steps_var if steps_var is Array else [])
-    steps.append({"source":"ability:%s" % String(id), "kind":"mirror", "desc":"Strange Potion mirror", "delta": delta})
+    steps.append({"source":"ability:%s" % str(id), "kind":"mirror", "desc":"Strange Potion mirror", "delta": delta})
     pick["steps"] = steps
-

@@ -55,7 +55,11 @@ class_name AbilityAction
     "Gain On Adjacent Decrease: gain_on_adjacent_decrease",
     "Prevent Decrease (Filter): prevent_decrease",
     "Double Value Change: double_value_change",
-    "Mirror Change To Random: mirror_change_random"
+    "Mirror Change To Random: mirror_change_random",
+    "Adjust Run Total By Self Fraction: adjust_run_total_by_self_fraction",
+    "Destroy Inventory Tag: destroy_inventory_tag",
+    "Promote Killer To Path: promote_killer_to_path",
+    "Lock Value (Filter+Revert): lock_value"
 ) var op: String = "add"
  
 # Additional ops not producing direct commands but used by EffectSpec filter/handlers:
@@ -79,6 +83,10 @@ class_name AbilityAction
 # Optional local conditions for this action
 ## Extra conditions for this action (in addition to EffectSpec conditions).
 @export var conditions: Array[AbilityCondition] = []
+
+# Optional shared roll group. If set (non-empty) and this action uses min/max amount,
+# EffectSpec will roll once per (group+effect+token) per spin and reuse for all actions with the same key.
+@export var shared_roll_key: String = ""
 
 # Optional per-action targeting override. If empty, EffectSpec/TokenAbility targeting is used.
 # Examples: "self", "neighbors", "offset", "tag", "name", "left", "right", "edges", "any", "active", "passive", "choose".
@@ -147,9 +155,21 @@ class_name AbilityAction
 ## For copy_target_to_inventory: copies the chosen/target token into inventory
 # (no extra fields needed; executor resolves from target_offset/choose)
 
+# On-acquire replacement parameters
+## For replace_self_with_random_inventory on acquire: selection behavior
+# Use the same 'exclude_self' flag declared above for destroy_lowest_triggered
+@export var require_different_name: bool = true
+
 # Inventory-derived count helpers
 @export var count_tag: String = ""
 @export var count_name: String = ""
+
+# Inventory destroy parameters (on-removed or commands):
+@export var inventory_tag: String = ""
+@export var max_destroy: int = 0
+@export var inventory_name: String = ""
+@export var max_replace: int = 0
+@export var preserve_tags_for_replace: bool = false
 
 # Name parameter for bulk destroy ops
 @export var token_name: String = ""

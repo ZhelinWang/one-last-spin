@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="3_icon"]
 [ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="3_yl7en"]
-[ext_resource type="Script" uid="uid://dhn7u36xcmou0" path="res://abilties/destroyCoinsOnRemovedAbility.gd" id="4_on_removed"]
+[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="7_effect"]
 [ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="Z_action"]
 [ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="Z_effect"]
 
@@ -26,9 +26,17 @@ actions = Array[ExtResource("Z_action")]([SubResource("Exec_Destroy"), SubResour
 id = "executive_destroy_target_and_buff_coins"
 winner_only = true
 
+[sub_resource type="Resource" id="Exec_OnRemoved_Action"]
+script = ExtResource("Z_action")
+op = "destroy_inventory_tag"
+inventory_tag = "coin"
+max_destroy = 0
+
 [sub_resource type="Resource" id="Exec_OnRemoved"]
-script = ExtResource("4_on_removed")
-id = "executive_remove_coins_on_removed"
+script = ExtResource("7_effect")
+id = "executive_remove_coins_on_removed_spec"
+trigger = 2
+actions = [ SubResource("Exec_OnRemoved_Action") ]
 
 [resource]
 script = ExtResource("1_token")

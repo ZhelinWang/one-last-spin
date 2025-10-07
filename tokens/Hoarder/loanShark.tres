@@ -4,7 +4,7 @@
 [ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="2_effect"]
 [ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
-[ext_resource type="Script" uid="uid://bij6yk8prsda5" path="res://abilties/onAdjacentDestroyedGainAbility.gd" id="4_passive"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="7_cond"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
 
 [sub_resource type="Resource" id="A_destroy_neighbor"]
@@ -26,9 +26,22 @@ id = "loan_shark_collect"
 trigger = 0 # ACTIVE_DURING_SPIN
 actions = [ SubResource("A_destroy_neighbor"), SubResource("A_spawn_coin") ]
 
+[sub_resource type="Resource" id="Cond_adj_dest"]
+script = ExtResource("7_cond")
+kind = "destroyed_is_adjacent"
+
+[sub_resource type="Resource" id="Passive_Action"]
+script = ExtResource("6_action")
+op = "permanent_add_from_last_destroyed"
+gain_numer = 1
+gain_denom = 2
+target_override_kind = "self"
+
 [sub_resource type="Resource" id="Passive"]
-script = ExtResource("4_passive")
-id = "loan_shark_adjacent_destroyed_gain_half"
+script = ExtResource("2_effect")
+id = "loan_shark_adjacent_destroyed_gain_half_spec"
+conditions = [ SubResource("Cond_adj_dest") ]
+actions = [ SubResource("Passive_Action") ]
 
 [resource]
 script = ExtResource("1_token")

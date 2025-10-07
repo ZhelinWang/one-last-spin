@@ -4061,7 +4061,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				_refresh_dynamic_passives(ctx, _contribs)
 			"spawn_random_by_tag":
 				var tag_sr := String((cmd as Dictionary).get("target_tag", ""))
-				var count_sr := max(1, int((cmd as Dictionary).get("count", 1)))
+				var count_sr: int = max(1, int((cmd as Dictionary).get("count", 1)))
 				var choices_sr: Array[String] = []
 				var troot_sr := String(loot_scan_root)
 				var da_sr = DirAccess.open(troot_sr)
@@ -4090,7 +4090,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 						_set_inventory_array(arrx)
 			"spawn_random_by_rarity":
 				var rar_sr := String((cmd as Dictionary).get("rarity", "")).to_lower()
-				var count_rr := max(1, int((cmd as Dictionary).get("count", 1)))
+				var count_rr: int = max(1, int((cmd as Dictionary).get("count", 1)))
 				var troot_rr := String(loot_scan_root)
 				for i in range(count_rr):
 					var p_rr := _pick_random_by_rarity_path(troot_rr, rar_sr)
@@ -4108,7 +4108,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 							arr_rr.append(dupr)
 						_set_inventory_array(arr_rr)
 			"spawn_random_any":
-				var count_any := max(1, int((cmd as Dictionary).get("count", 1)))
+				var count_any: int = max(1, int((cmd as Dictionary).get("count", 1)))
 				var troot_any := String(loot_scan_root)
 				var all_paths_any: Array[String] = _collect_token_paths_under(troot_any)
 				var choices_any: Array[String] = []
@@ -4136,7 +4136,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 							arr_any.append(dupa)
 						_set_inventory_array(arr_any)
 			"spawn_copy_of_last_destroyed":
-				var count_l := max(1, int((cmd as Dictionary).get("count", 1)))
+				var count_l: int = max(1, int((cmd as Dictionary).get("count", 1)))
 				var last_tok = null
 				if ctx is Dictionary and ctx.has("last_destroyed_token"):
 					last_tok = ctx["last_destroyed_token"]
@@ -4152,6 +4152,26 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 					else:
 						arr_l.append(dup_l)
 					_set_inventory_array(arr_l)
+			"destroy_inventory_name":
+				var name_di := String((cmd as Dictionary).get("target_name", ""))
+				var maxdi2 := int((cmd as Dictionary).get("max_destroy", 0))
+				_destroy_inventory_by_name(name_di, maxdi2, ctx)
+			"destroy_inventory_tag":
+				var tagdi := String((cmd as Dictionary).get("target_tag", "")).to_lower()
+				var maxdi := int((cmd as Dictionary).get("max_destroy", 0))
+				_destroy_inventory_by_tag(tagdi, maxdi, ctx)
+			"replace_inventory_tag":
+				var tag_rit := String((cmd as Dictionary).get("target_tag", ""))
+				var path_rit := String((cmd as Dictionary).get("token_path", ""))
+				var maxr := int((cmd as Dictionary).get("max_replace", 0))
+				var pres := bool((cmd as Dictionary).get("preserve_tags", false))
+				_replace_inventory_by_tag(tag_rit, path_rit, maxr, pres, ctx)
+			"replace_inventory_name":
+				var name_rin := String((cmd as Dictionary).get("target_name", ""))
+				var path_rin := String((cmd as Dictionary).get("token_path", ""))
+				var maxr2 := int((cmd as Dictionary).get("max_replace", 0))
+				var pres2 := bool((cmd as Dictionary).get("preserve_tags", false))
+				_replace_inventory_by_name(name_rin, path_rin, maxr2, pres2, ctx)
 			"destroy_lowest_triggered":
 				var exclude_self := bool((cmd as Dictionary).get("exclude_self", true))
 				var best_off := 999
@@ -4477,52 +4497,52 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				_replace_token_at_offset(ctx, offy, path_rr, -1, false)
 				_resync_contribs_from_board(ctx, _contribs)
 				_refresh_dynamic_passives(ctx, _contribs)
-            "replace_by_rarity_step":
-                var offz := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
-                var target_c3 := _find_contrib_by_offset(_contribs, offz)
-                if target_c3.is_empty():
-                    continue
-                var tgt2 = target_c3.get("token")
-                var src_r := String(tgt2.get("rarity")).to_lower()
-                var idx := ["common","uncommon","rare","legendary"].find(src_r)
-                if idx == -1:
-                    continue
-                var mode := String((cmd as Dictionary).get("mode", "demote")).to_lower()
-                if mode == "promote":
-                    idx = min(idx + 1, 3)
-                else:
-                    idx = max(idx - 1, 0)
-                var rtarget: String = ["common","uncommon","rare","legendary"][idx]
-                var troot2 := String((cmd as Dictionary).get("tokens_root", loot_scan_root))
-                var p2 := _pick_random_by_rarity_path(troot2, rtarget)
-                if p2.strip_edges() == "":
-                    continue
-                _replace_token_at_offset(ctx, offz, p2, -1, false)
-                _resync_contribs_from_board(ctx, _contribs)
-                _refresh_dynamic_passives(ctx, _contribs)
-            "replace_by_rarity":
-                var offz2 := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
-                var target_c4 := _find_contrib_by_offset(_contribs, offz2)
-                if target_c4.is_empty():
-                    continue
-                var tgt4 = target_c4.get("token")
-                var src_r4 := String(tgt4.get("rarity")).to_lower()
-                var idx4 := ["common","uncommon","rare","legendary"].find(src_r4)
-                if idx4 == -1:
-                    continue
-                var mode4 := String((cmd as Dictionary).get("mode", "demote")).to_lower()
-                if mode4 == "promote":
-                    idx4 = min(idx4 + 1, 3)
-                else:
-                    idx4 = max(idx4 - 1, 0)
-                var rtarget4: String = ["common","uncommon","rare","legendary"][idx4]
-                var troot4 := String((cmd as Dictionary).get("tokens_root", loot_scan_root))
-                var p4 := _pick_random_by_rarity_path(troot4, rtarget4)
-                if p4.strip_edges() == "":
-                    continue
-                _replace_token_at_offset(ctx, offz2, p4, -1, false)
-                _resync_contribs_from_board(ctx, _contribs)
-                _refresh_dynamic_passives(ctx, _contribs)
+			"replace_by_rarity_step":
+				var offz := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+				var target_c3 := _find_contrib_by_offset(_contribs, offz)
+				if target_c3.is_empty():
+					continue
+				var tgt2 = target_c3.get("token")
+				var src_r := String(tgt2.get("rarity")).to_lower()
+				var idx := ["common","uncommon","rare","legendary"].find(src_r)
+				if idx == -1:
+					continue
+				var mode := String((cmd as Dictionary).get("mode", "demote")).to_lower()
+				if mode == "promote":
+					idx = min(idx + 1, 3)
+				else:
+					idx = max(idx - 1, 0)
+				var rtarget: String = ["common","uncommon","rare","legendary"][idx]
+				var troot2 := String((cmd as Dictionary).get("tokens_root", loot_scan_root))
+				var p2 := _pick_random_by_rarity_path(troot2, rtarget)
+				if p2.strip_edges() == "":
+					continue
+				_replace_token_at_offset(ctx, offz, p2, -1, false)
+				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+			"replace_by_rarity":
+				var offz2 := int((cmd as Dictionary).get("target_offset", (cmd as Dictionary).get("offset", 0)))
+				var target_c4 := _find_contrib_by_offset(_contribs, offz2)
+				if target_c4.is_empty():
+					continue
+				var tgt4 = target_c4.get("token")
+				var src_r4 := String(tgt4.get("rarity")).to_lower()
+				var idx4 := ["common","uncommon","rare","legendary"].find(src_r4)
+				if idx4 == -1:
+					continue
+				var mode4 := String((cmd as Dictionary).get("mode", "demote")).to_lower()
+				if mode4 == "promote":
+					idx4 = min(idx4 + 1, 3)
+				else:
+					idx4 = max(idx4 - 1, 0)
+				var rtarget4: String = ["common","uncommon","rare","legendary"][idx4]
+				var troot4 := String((cmd as Dictionary).get("tokens_root", loot_scan_root))
+				var p4 := _pick_random_by_rarity_path(troot4, rtarget4)
+				if p4.strip_edges() == "":
+					continue
+				_replace_token_at_offset(ctx, offz2, p4, -1, false)
+				_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
 			"destroy_random_triggered_by_rarity_and_gain":
 				var rar := String((cmd as Dictionary).get("rarity", "")).strip_edges().to_lower()
 				var match_any := bool((cmd as Dictionary).get("match_any_rarity", rar == ""))
@@ -5273,11 +5293,11 @@ func _find_self_contrib(contribs: Array, source_token) -> Dictionary:
 	return {}
 
 func _op_needs_offset(op: String) -> bool:
-    match op:
-        "replace_at_offset", "destroy", "destroy_and_gain_fraction", "reroll_same_rarity", "replace_by_rarity_step", "replace_by_rarity", "set_perm_to_self_current", "set_self_perm_to_target_current", "permanent_add", "double_target_permanent", "replace_target_with_self_copy", "replace_at_offset_from_choices", "copy_target_to_inventory":
-            return true
-        _:
-            return false
+	match op:
+		"replace_at_offset", "destroy", "destroy_and_gain_fraction", "reroll_same_rarity", "replace_by_rarity_step", "replace_by_rarity", "set_perm_to_self_current", "set_self_perm_to_target_current", "permanent_add", "double_target_permanent", "replace_target_with_self_copy", "replace_at_offset_from_choices", "copy_target_to_inventory":
+			return true
+		_:
+			return false
 
 func _prompt_target_offset(ctx: Dictionary, exclude_center: bool = true, ordinal: int = 1) -> int:
 	if ctx != null and ctx.has("spin_root"):
@@ -5430,11 +5450,22 @@ func _guard_blocks(ctx: Dictionary, contribs: Array, target_off: int, op: String
 	return false
 
 func _notify_any_token_destroyed(ctx: Dictionary, destroyed_token, cause: String = "") -> void:
-    var arr := _get_inventory_array()
-    # Track last destroyed for effects that may reference it later (e.g., Poacher)
-    if ctx is Dictionary:
-        ctx["last_destroyed_token"] = destroyed_token
-        ctx["destroyed_token"] = destroyed_token
+	var arr := _get_inventory_array()
+	# Track last destroyed for effects that may reference it later (e.g., Poacher)
+	if ctx is Dictionary:
+		ctx["last_destroyed_token"] = destroyed_token
+		ctx["destroyed_token"] = destroyed_token
+		# Try to compute the destroyed slot offset from last contribs snapshot
+		var last_contribs: Variant = ctx.get("__last_contribs", [])
+		var off_val := 999
+		if last_contribs is Array:
+			for c in (last_contribs as Array):
+				if c is Dictionary:
+					var tok = (c as Dictionary).get("token")
+					if tok == destroyed_token:
+						off_val = int((c as Dictionary).get("offset", 999))
+						break
+		ctx["last_destroyed_offset"] = off_val
 	var all_cmds: Array = []
 	# Provide the destroyer token (if any) via context
 	var killer = _current_effect_source
@@ -5446,9 +5477,10 @@ func _notify_any_token_destroyed(ctx: Dictionary, destroyed_token, cause: String
 		var abilities = t.get("abilities")
 		if abilities is Array:
 			for ab in abilities:
-				if ab == null: continue
-            		if (ab as Object).has_method("on_any_token_destroyed"):
-            			var cmds = ab.call("on_any_token_destroyed", ctx, destroyed_token, t)
+				if ab == null:
+					continue
+				if (ab as Object).has_method("on_any_token_destroyed"):
+					var cmds = ab.call("on_any_token_destroyed", ctx, destroyed_token, t)
 					if cmds is Array:
 						for c in cmds:
 							if typeof(c) == TYPE_DICTIONARY:
@@ -5958,6 +5990,167 @@ func _destroy_inventory_coins(max_to_destroy: int, ctx: Dictionary) -> int:
 		if not replaced_tokens.is_empty():
 			_update_slot_map_for_replacements(ctx, replaced_tokens)
 	return destroyed
+
+func _destroy_inventory_by_tag(tag: String, max_to_destroy: int, ctx: Dictionary) -> int:
+	if max_to_destroy < 0: max_to_destroy = 0
+	var owner := _resolve_inventory_owner_node()
+	if owner == null or not owner.has_method("get"):
+		return 0
+	var prop := String(inventory_property)
+	if prop.strip_edges() == "": prop = "items"
+	var arr = owner.get(prop)
+	if typeof(arr) != TYPE_ARRAY:
+		var arr_items = owner.get("items")
+		if typeof(arr_items) == TYPE_ARRAY:
+			prop = "items"; arr = arr_items
+		else:
+			var arr_tokens = owner.get("tokens")
+			if typeof(arr_tokens) == TYPE_ARRAY:
+				prop = "tokens"; arr = arr_tokens
+			else:
+				return 0
+	var empty_res := _load_empty_token()
+	if empty_res == null or not (empty_res is Resource):
+		return 0
+	var destroyed := 0
+	var replaced_tokens: Array = []
+	for i in range((arr as Array).size()):
+		if max_to_destroy > 0 and destroyed >= max_to_destroy:
+			break
+		var tok = (arr as Array)[i]
+		if tok == null or not (tok as Object).has_method("get"):
+			continue
+		if not _token_has_tag(tok, tag):
+			continue
+		var inst: Resource = (empty_res as Resource).duplicate(true)
+		_init_token_base_value(inst)
+		_ensure_token_uid(inst)
+		(arr as Array)[i] = inst
+		replaced_tokens.append({"old": tok, "new": inst})
+		_register_effect_target_current(inst)
+		destroyed += 1
+	if destroyed == 0:
+		return 0
+	owner.set(prop, arr)
+	if owner.has_method("_update_inventory_strip"):
+		owner.call_deferred("_update_inventory_strip")
+	if ctx is Dictionary:
+		ctx["board_tokens"] = _get_inventory_array()
+		if not replaced_tokens.is_empty():
+			_update_slot_map_for_replacements(ctx, replaced_tokens)
+	return destroyed
+
+func _destroy_inventory_by_name(name: String, max_to_destroy: int, ctx: Dictionary) -> int:
+	if max_to_destroy < 0: max_to_destroy = 0
+	var owner := _resolve_inventory_owner_node()
+	if owner == null or not owner.has_method("get"): return 0
+	var prop := String(inventory_property)
+	if prop.strip_edges() == "": prop = "items"
+	var arr = owner.get(prop)
+	if typeof(arr) != TYPE_ARRAY:
+		var arr_items = owner.get("items"); if typeof(arr_items) == TYPE_ARRAY: prop = "items"; arr = arr_items
+		else:
+			var arr_tokens = owner.get("tokens"); if typeof(arr_tokens) == TYPE_ARRAY: prop = "tokens"; arr = arr_tokens
+			else: return 0
+	var empty_res := _load_empty_token()
+	if empty_res == null or not (empty_res is Resource): return 0
+	var destroyed := 0
+	var replaced_tokens: Array = []
+	var name_norm := String(name).strip_edges().to_lower()
+	for i in range((arr as Array).size()):
+		if max_to_destroy > 0 and destroyed >= max_to_destroy: break
+		var tok = (arr as Array)[i]
+		if tok == null or not (tok as Object).has_method("get"): continue
+		var nm = tok.get("name"); if nm == null: continue
+		if String(nm).strip_edges().to_lower() != name_norm: continue
+		var inst: Resource = (empty_res as Resource).duplicate(true)
+		_init_token_base_value(inst); _ensure_token_uid(inst)
+		(arr as Array)[i] = inst
+		replaced_tokens.append({"old": tok, "new": inst}); _register_effect_target_current(inst); destroyed += 1
+	if destroyed == 0: return 0
+	owner.set(prop, arr)
+	if owner.has_method("_update_inventory_strip"): owner.call_deferred("_update_inventory_strip")
+	if ctx is Dictionary:
+		ctx["board_tokens"] = _get_inventory_array()
+		if not replaced_tokens.is_empty(): _update_slot_map_for_replacements(ctx, replaced_tokens)
+	return destroyed
+
+func _replace_inventory_by_tag(tag: String, token_path: String, max_to_replace: int, preserve_tags: bool, ctx: Dictionary) -> int:
+	if token_path.strip_edges() == "": return 0
+	if max_to_replace < 0: max_to_replace = 0
+	var owner := _resolve_inventory_owner_node()
+	if owner == null or not owner.has_method("get"): return 0
+	var prop := String(inventory_property); if prop.strip_edges() == "": prop = "items"
+	var arr = owner.get(prop)
+	if typeof(arr) != TYPE_ARRAY:
+		var arr_items = owner.get("items"); if typeof(arr_items) == TYPE_ARRAY: prop = "items"; arr = arr_items
+		else:
+			var arr_tokens = owner.get("tokens"); if typeof(arr_tokens) == TYPE_ARRAY: prop = "tokens"; arr = arr_tokens
+			else: return 0
+	var rep: Resource = ResourceLoader.load(token_path)
+	if rep == null or not (rep is Resource): return 0
+	var replaced := 0
+	var tag_norm := String(tag).strip_edges().to_lower()
+	var replacements: Array = []
+	for i in range((arr as Array).size()):
+		if max_to_replace > 0 and replaced >= max_to_replace: break
+		var tok = (arr as Array)[i]
+		if tok == null or not (tok as Object).has_method("get"): continue
+		if not _token_has_tag(tok, tag_norm): continue
+		var inst: Resource = (rep as Resource).duplicate(true)
+		_init_token_base_value(inst); _ensure_token_uid(inst)
+		if preserve_tags:
+			var ttags = tok.get("tags")
+			if ttags != null and (inst as Object).has_method("set"):
+				inst.set("tags", ttags)
+		(arr as Array)[i] = inst
+		replacements.append({"old": tok, "new": inst}); _register_effect_target_current(inst); replaced += 1
+	if replaced == 0: return 0
+	owner.set(prop, arr)
+	if owner.has_method("_update_inventory_strip"): owner.call_deferred("_update_inventory_strip")
+	if ctx is Dictionary:
+		ctx["board_tokens"] = _get_inventory_array()
+		if not replacements.is_empty(): _update_slot_map_for_replacements(ctx, replacements)
+	return replaced
+
+func _replace_inventory_by_name(name: String, token_path: String, max_to_replace: int, preserve_tags: bool, ctx: Dictionary) -> int:
+	if token_path.strip_edges() == "": return 0
+	if max_to_replace < 0: max_to_replace = 0
+	var owner := _resolve_inventory_owner_node()
+	if owner == null or not owner.has_method("get"): return 0
+	var prop := String(inventory_property); if prop.strip_edges() == "": prop = "items"
+	var arr = owner.get(prop)
+	if typeof(arr) != TYPE_ARRAY:
+		var arr_items = owner.get("items"); if typeof(arr_items) == TYPE_ARRAY: prop = "items"; arr = arr_items
+		else:
+			var arr_tokens = owner.get("tokens"); if typeof(arr_tokens) == TYPE_ARRAY: prop = "tokens"; arr = arr_tokens
+			else: return 0
+	var rep: Resource = ResourceLoader.load(token_path)
+	if rep == null or not (rep is Resource): return 0
+	var replaced := 0
+	var name_norm := String(name).strip_edges().to_lower()
+	var replacements: Array = []
+	for i in range((arr as Array).size()):
+		if max_to_replace > 0 and replaced >= max_to_replace: break
+		var tok = (arr as Array)[i]
+		if tok == null or not (tok as Object).has_method("get"): continue
+		var nm = tok.get("name"); if nm == null: continue
+		if String(nm).strip_edges().to_lower() != name_norm: continue
+		var inst: Resource = (rep as Resource).duplicate(true)
+		_init_token_base_value(inst); _ensure_token_uid(inst)
+		if preserve_tags:
+			var ttags = tok.get("tags")
+			if ttags != null and (inst as Object).has_method("set"):
+				inst.set("tags", ttags)
+		(arr as Array)[i] = inst
+		replacements.append({"old": tok, "new": inst}); _register_effect_target_current(inst); replaced += 1
+	if replaced == 0: return 0
+	owner.set(prop, arr)
+	if owner.has_method("_update_inventory_strip"): owner.call_deferred("_update_inventory_strip")
+	if ctx is Dictionary:
+		ctx["board_tokens"] = _get_inventory_array()
+		if not replacements.is_empty(): _update_slot_map_for_replacements(ctx, replacements)
+	return replaced
 
 func _init_token_base_value(tok, min_value: int = 1) -> void:
 	if tok == null:

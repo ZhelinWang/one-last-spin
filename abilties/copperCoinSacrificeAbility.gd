@@ -21,7 +21,7 @@ func build_final_steps(ctx: Dictionary, contribs: Array, source_token: Resource)
 			"amount": 1,
 			"factor": 1.0,
 			"desc": "+1 Copper Coin",
-			"source": "ability:%s" % String(id),
+			"source": "ability:%s" % str(id),
 			"target_kind": "offset",
 			"target_offset": off,
 			"_temporary": true

@@ -36,7 +36,7 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 		"target_offset": target_offset,
 		"amount": amount,
 		"destroy_if_zero": false,
-		"source": "ability:%s" % String(id)
+		"source": "ability:%s" % str(id)
 	}]
 
 func build_final_steps(ctx: Dictionary, contribs: Array, source_token: Resource) -> Array:

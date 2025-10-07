@@ -19,7 +19,6 @@ func build_on_removed_commands(ctx: Dictionary, removed_token: Resource, source_
     out.append({
         "op": "adjust_run_total",
         "amount": amt,
-        "source": "ability:%s" % String(id)
+        "source": "ability:%s" % str(id)
     })
     return out
-
