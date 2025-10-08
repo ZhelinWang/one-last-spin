@@ -8,7 +8,7 @@
 script = ExtResource("1_token")
 name = "Pet Rock"
 icon = ExtResource("5_icon")
-value = 4
+value = 3
 tags = PackedStringArray("General")
 activeDescription = "Set all triggered tokens to this token's value."
 passiveDescription = "This token's value cannot be changed."

@@ -12,6 +12,7 @@ script = ExtResource("Z_action")
 op = "permanent_add"
 amount = 1
 target_override_kind = "choose"
+token_paths = null
 
 [sub_resource type="Resource" id="Spec"]
 script = ExtResource("Z_effect")

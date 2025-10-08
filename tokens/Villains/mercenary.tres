@@ -1,39 +1,35 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://h4krp5ki2vsk"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=11 format=3 uid="uid://h4krp5ki2vsk"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
-[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="7_cond"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
-
-[sub_resource type="Resource" id="A_replace_self_action"]
-script = ExtResource("6_action")
-op = "replace_target_with_self_copy"
-target_override_kind = "choose"
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="7_cond"]
 
 [sub_resource type="Resource" id="A_active"]
 script = ExtResource("3_effect")
 id = "mercenary_copy_self_over_target"
-trigger = 0 # ACTIVE_DURING_SPIN
-actions = [ SubResource("A_replace_self_action") ]
-
-[sub_resource type="Resource" id="Cond_adj_merc"]
-script = ExtResource("7_cond")
-kind = "adjacent_any_name_is"
-name = "Mercenary"
+winner_only = true
 
 [sub_resource type="Resource" id="A_passive_action"]
 script = ExtResource("6_action")
 op = "permanent_add"
 amount = 1
 target_override_kind = "self"
+token_paths = null
+
+[sub_resource type="Resource" id="Cond_adj_merc"]
+script = ExtResource("7_cond")
+kind = "adjacent_any_name_is"
+name = "Mercenary"
+tags_list = null
 
 [sub_resource type="Resource" id="A_passive"]
 script = ExtResource("3_effect")
+conditions = Array[ExtResource("7_cond")]([SubResource("Cond_adj_merc")])
+actions = Array[ExtResource("6_action")]([SubResource("A_passive_action")])
 id = "mercenary_adjacent_mercenary_plus_one_spec"
-conditions = [ SubResource("Cond_adj_merc") ]
-actions = [ SubResource("A_passive_action") ]
 
 [resource]
 script = ExtResource("1_token")

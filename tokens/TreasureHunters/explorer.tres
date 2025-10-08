@@ -1,8 +1,7 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=11 format=3 uid="uid://c4nh88h0f03et"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=12 format=3 uid="uid://c4nh88h0f03et"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="7_cond"]
 [ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="3_ybb7t"]
 [ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="4_action"]
 [ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="5_effect"]
@@ -14,6 +13,7 @@ op = "permanent_add"
 amount = 1
 target_override_kind = "tag"
 target_tag = "chest"
+token_paths = null
 
 [sub_resource type="Resource" id="Effect_Chest"]
 script = ExtResource("5_effect")
@@ -21,22 +21,24 @@ actions = Array[ExtResource("4_action")]([SubResource("Action_Chest")])
 id = "explorer_buff_chests"
 winner_only = true
 
-[sub_resource type="Resource" id="Cond_destroy_chest"]
-script = ExtResource("7_cond")
-kind = "destroyed_has_tag"
-tag = "chest"
-
 [sub_resource type="Resource" id="Passive_Action"]
 script = ExtResource("4_action")
 op = "permanent_add"
 amount = 1
 target_override_kind = "self"
+token_paths = null
+
+[sub_resource type="Resource" id="Cond_destroy_chest"]
+script = ExtResource("3_ybb7t")
+kind = "destroyed_has_tag"
+tag = "chest"
+tags_list = null
 
 [sub_resource type="Resource" id="Passive"]
 script = ExtResource("5_effect")
+conditions = Array[ExtResource("3_ybb7t")]([SubResource("Cond_destroy_chest")])
+actions = Array[ExtResource("4_action")]([SubResource("Passive_Action")])
 id = "explorer_gain_for_opened_chests_spec"
-conditions = [ SubResource("Cond_destroy_chest") ]
-actions = [ SubResource("Passive_Action") ]
 
 [resource]
 script = ExtResource("1_token")

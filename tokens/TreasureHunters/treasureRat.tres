@@ -1,29 +1,24 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://ccdtf48twxxa2"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=12 format=3 uid="uid://ccdtf48twxxa2"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
-[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="7_cond"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="7_cond"]
 
 [sub_resource type="Resource" id="A_replace_action"]
 script = ExtResource("6_action")
 op = "replace"
 target_override_kind = "choose"
+token_paths = null
 token_path = "res://tokens/TreasureHunters/wornMap.tres"
 
 [sub_resource type="Resource" id="TreasureRatActive"]
 script = ExtResource("3_effect")
+actions = Array[ExtResource("6_action")]([SubResource("A_replace_action")])
 id = "treasure_rat_active_replace"
-trigger = 0 # ACTIVE_DURING_SPIN
 winner_only = true
-actions = [ SubResource("A_replace_action") ]
-
-[sub_resource type="Resource" id="Cond_25"]
-script = ExtResource("7_cond")
-kind = "random_chance"
-chance_percent = 25
 
 [sub_resource type="Resource" id="Passive_Action"]
 script = ExtResource("6_action")
@@ -33,11 +28,17 @@ target_name = "Empty"
 choose_mode = "One Random"
 token_paths = PackedStringArray("res://tokens/TreasureHunters/smallChest.tres", "res://tokens/TreasureHunters/goldenChest.tres")
 
+[sub_resource type="Resource" id="Cond_25"]
+script = ExtResource("7_cond")
+kind = "random_chance"
+tags_list = null
+chance_percent = 25
+
 [sub_resource type="Resource" id="TreasureRatPassive"]
 script = ExtResource("3_effect")
+conditions = Array[ExtResource("7_cond")]([SubResource("Cond_25")])
+actions = Array[ExtResource("6_action")]([SubResource("Passive_Action")])
 id = "treasure_rat_passive_spawn_spec"
-conditions = [ SubResource("Cond_25") ]
-actions = [ SubResource("Passive_Action") ]
 
 [resource]
 script = ExtResource("1_token")

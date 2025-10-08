@@ -1,23 +1,23 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://dobn2vwp0lbfg"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3 uid="uid://dobn2vwp0lbfg"]
 
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="1_abilities"]
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="2_token"]
 [ext_resource type="Texture2D" uid="uid://b8bq600tl64lg" path="res://tokens/tokenAssets/coin/coin.png" id="3_icon"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="4_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="5_action"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="3_pfcgl"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="4_effect"]
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="5_action"]
 
 [sub_resource type="Resource" id="A_perm_action"]
 script = ExtResource("5_action")
 op = "permanent_add"
 amount = 1
+token_paths = null
 
 [sub_resource type="Resource" id="E_perm"]
 script = ExtResource("4_effect")
+actions = Array[ExtResource("5_action")]([SubResource("A_perm_action")])
 id = "coin_self_perm_plus1"
-trigger = 0 # ACTIVE_DURING_SPIN
-target_kind = 0 # SELF
 winner_only = true
-actions = [ SubResource("A_perm_action") ]
 
 [resource]
 script = ExtResource("2_token")

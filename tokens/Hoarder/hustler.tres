@@ -13,6 +13,7 @@ op = "permanent_add"
 amount = 1
 desc_template = "+%d permanent"
 target_override_kind = "self"
+token_paths = null
 propagate_same_key = true
 
 [sub_resource type="Resource" id="Spec_Hustler"]

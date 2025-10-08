@@ -1,38 +1,37 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://c5t0ldv30t4vs"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=11 format=3 uid="uid://c5t0ldv30t4vs"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="2_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="3_7rwve"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="3_abilities"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="7_effect"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="7_effect"]
 
 [sub_resource type="Resource" id="A_perm_action"]
 script = ExtResource("6_action")
 op = "permanent_add"
 amount = -1
+token_paths = null
 destroy_if_zero = true
 
 [sub_resource type="Resource" id="Active"]
-script = ExtResource("2_effect")
+script = ExtResource("7_effect")
+actions = Array[ExtResource("6_action")]([SubResource("A_perm_action")])
 id = "assassin_self_tax"
-trigger = 0 # ACTIVE_DURING_SPIN
-target_kind = 0 # SELF
 winner_only = true
-actions = [ SubResource("A_perm_action") ]
 
 [sub_resource type="Resource" id="Passive_Action"]
 script = ExtResource("6_action")
 op = "destroy_and_gain_fraction"
 target_override_kind = "neighbors"
 choose_mode = "One Random"
-gain_numer = 1
 gain_denom = 1
+token_paths = null
 
 [sub_resource type="Resource" id="Passive"]
 script = ExtResource("7_effect")
+actions = Array[ExtResource("6_action")]([SubResource("Passive_Action")])
 id = "assassin_random_neighbor_destroy_and_steal_spec"
-actions = [ SubResource("Passive_Action") ]
 
 [resource]
 script = ExtResource("1_token")
