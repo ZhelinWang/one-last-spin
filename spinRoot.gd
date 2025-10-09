@@ -55,6 +55,8 @@ var _inventory_before_spin: Array = []
 var _inventory_preview_active := false
 var _slot_baseline_tokens: Dictionary = {}
 var _overshoot_offset: float = 0.0
+var _recycle_queue: Array = []
+const WINNER_RIGHT_BUFFER := 4
 
 # SFX internals
 var _sfx_pool: Array[AudioStreamPlayer] = []
@@ -809,12 +811,17 @@ func spin() -> void:
 	var laps = _rng.randi_range(min_laps, max_laps)
 	var appended = _build_strip_for_spin(laps)
 	_spin_history_counts.push_back(appended)
+	_append_recycled_slots()
 
 	# 3) flush
 	await get_tree().process_frame
 
 	# 4) pick winner (4th from end)
-	var win_idx = slots_hbox.get_child_count() - 4
+	var total_children := slots_hbox.get_child_count()
+	var win_idx := total_children - 4
+	if total_children >= WINNER_RIGHT_BUFFER + 5:
+		win_idx = total_children - (WINNER_RIGHT_BUFFER + 3)
+	win_idx = clampi(win_idx, 0, total_children - 1)
 	_last_winning_slot_idx = win_idx
 	var slot = slots_hbox.get_child(win_idx) as Control
 	_win_item = slot.get_meta("token_data") as TokenLootData
@@ -858,12 +865,32 @@ func _build_strip_for_spin(laps: int) -> int:
 
 func _remove_oldest_spin() -> void:
 	var remove_count = _spin_history_counts.pop_front()
+	var recycle_tokens: Array = []
 	for i in range(remove_count):
 		if slots_hbox.get_child_count() == 0:
 			break
 		var child = slots_hbox.get_child(0) as Control
 		slots_hbox.remove_child(child)
-		child.free()
+		if recycle_tokens.size() < WINNER_RIGHT_BUFFER and child != null and child.has_meta("token_data"):
+			var tok = child.get_meta("token_data")
+			if tok != null:
+				recycle_tokens.append(tok)
+		if child != null:
+			child.queue_free()
+	if recycle_tokens.size() > 1:
+		recycle_tokens.shuffle()
+	_recycle_queue = recycle_tokens
+
+func _append_recycled_slots() -> void:
+	if _recycle_queue.is_empty():
+		return
+	var tokens: Array = _recycle_queue.duplicate()
+	_recycle_queue.clear()
+	if tokens.size() > 1:
+		tokens.shuffle()
+	for tok in tokens:
+		if tok != null:
+			_add_slot(tok)
 
 func _scroll_for_aligning(slot: Control) -> int:
 	var slot_center = slot.position.x + slot.size.x * 0.5
