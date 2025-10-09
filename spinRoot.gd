@@ -55,6 +55,9 @@ var _inventory_before_spin: Array = []
 var _inventory_preview_active := false
 var _slot_baseline_tokens: Dictionary = {}
 var _overshoot_offset: float = 0.0
+var _speedup_factor: float = 1.0
+var _baseline_spin_distance: float = 0.0
+var _spin_duration_scale: float = 1.0
 var _recycle_queue: Array = []
 const WINNER_RIGHT_BUFFER := 4
 
@@ -826,8 +829,12 @@ func _get_neighbor_info(center_idx: int) -> Array:
 	return info
 
 func _try_speedup(factor: float) -> bool:
+	var desired = max(1.0, factor)
+	if is_equal_approx(_speedup_factor, desired):
+		return false
+	_speedup_factor = desired
 	if _current_tween and _current_tween.is_running() and _current_tween.has_method("set_speed_scale"):
-		_current_tween.set_speed_scale(factor)
+		_current_tween.set_speed_scale(_speedup_factor)
 		return true
 	return false
 
@@ -842,6 +849,8 @@ func spin() -> void:
 	
 
 	_spin_done = false
+	_speedup_factor = 1.0
+	_spin_duration_scale = 1.0
 	_spinning = true
 	_apply_spin_button_state()
 
@@ -881,14 +890,28 @@ func spin() -> void:
 	_prepare_pass_sfx(start_scroll, overshoot_scroll)
 	set_process(true)
 
+	var travel_distance = abs(overshoot_scroll - start_scroll)
+	if travel_distance < 1.0:
+		travel_distance = 1.0
+	if _baseline_spin_distance <= 0.0:
+		_baseline_spin_distance = travel_distance
+	_spin_duration_scale = travel_distance / _baseline_spin_distance
+	_spin_duration_scale = clampf(_spin_duration_scale, 0.6, 1.6)
+	var primary_duration = max(0.1, spin_duration_sec * _spin_duration_scale)
+
 	_current_tween = get_tree().create_tween()
-	_current_tween.tween_property(scroll_container, "scroll_horizontal", overshoot_scroll, spin_duration_sec).set_trans(trans).set_ease(easing)
+	if _speedup_factor != 1.0:
+		_current_tween.set_speed_scale(_speedup_factor)
+	_current_tween.tween_property(scroll_container, "scroll_horizontal", overshoot_scroll, primary_duration).set_trans(trans).set_ease(easing)
 
 	await _current_tween.finished
 
 	if abs(_overshoot_offset) > 0.5:
+		var settle_duration = max(0.05, overshoot_settle_duration * clampf(_spin_duration_scale, 0.75, 1.25))
 		_current_tween = get_tree().create_tween()
-		_current_tween.tween_property(scroll_container, "scroll_horizontal", _target_scroll, overshoot_settle_duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if _speedup_factor != 1.0:
+			_current_tween.set_speed_scale(_speedup_factor)
+		_current_tween.tween_property(scroll_container, "scroll_horizontal", _target_scroll, settle_duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		await _current_tween.finished
 	else:
 		scroll_container.scroll_horizontal = _target_scroll
@@ -1044,14 +1067,18 @@ func _insert_token_replacing_empties(token: TokenLootData, copies: int) -> Array
 			empty_path = String(ep)
 	var added_count := 0
 	var instances: Array[TokenLootData] = []
+	var add_as_new_empty := _token_matches_empty(token, empty_path)
 	for i in range(max(1, copies)):
 		var inst: TokenLootData = token if i == 0 else ((token as Resource).duplicate(true) as TokenLootData)
 		_init_token_base_value(inst)
-		var idx: int = _find_empty_index_in_items(empty_path)
-		if idx >= 0:
-			items[idx] = inst
-		else:
+		if add_as_new_empty:
 			items.append(inst)
+		else:
+			var idx: int = _find_empty_index_in_items(empty_path)
+			if idx >= 0:
+				items[idx] = inst
+			else:
+				items.append(inst)
 		added_count += 1
 		instances.append(inst)
 	if added_count > 0:
@@ -1295,6 +1322,25 @@ func _find_empty_index_in_items(empty_path: String) -> int:
 	if candidates.size() > 0:
 		return int(candidates[0])
 	return -1
+
+func _token_matches_empty(token, empty_path: String) -> bool:
+	var normalized := String(empty_path).strip_edges()
+	if token == null:
+		return true
+	if normalized != "" and token is Resource:
+		var rp := (token as Resource).resource_path
+		if rp != "" and rp == normalized:
+			return true
+	if token is Object and (token as Object).has_method("get"):
+		var is_empty = token.get("isEmpty")
+		if is_empty != null and bool(is_empty):
+			return true
+		var nm = token.get("name")
+		if typeof(nm) == TYPE_STRING:
+			var s := String(nm).strip_edges().to_lower()
+			if s == "empty" or s == "empty token":
+				return true
+	return false
 
 func _on_game_reset() -> void:
 	# Reset items to starting tokens on game reset

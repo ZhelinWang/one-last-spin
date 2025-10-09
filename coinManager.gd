@@ -2475,62 +2475,64 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 	var prop_str: String = String(inventory_property).strip_edges()
 	var owner_str: String = String(inventory_owner_path)
 
+	var arr: Array = []
 	if prop_str != "" and owner_str != "":
-		var arr := _get_inventory_array()
-		if arr.size() > 0:
-			var target_empty = _take_pending_empty_token()
-			var idx := -1
-			if target_empty != null:
-				idx = arr.find(target_empty)
-			if idx < 0:
-				idx = _find_empty_index(arr)
-			if idx >= 0:
-				var replaced_pairs: Array = []
-				var prev_token = null
-				if idx < arr.size():
-					prev_token = arr[idx]
-				arr[idx] = tok
-				if prev_token != null:
-					replaced_pairs.append({"old": prev_token, "new": tok})
-				# Handle duplicate-on-add abilities (e.g., Copper Coin total_copies=2)
-				var copies: int = _copies_to_add_for_token(tok)
-				var extra: int = copies - 1
-				if extra < 0:
-					extra = 0
-				for j in range(extra):
-					var jidx := _find_empty_index(arr)
-					if jidx < 0:
-						break
-					var prev_dup = null
-					if jidx < arr.size():
-						prev_dup = arr[jidx]
-					var dup: Resource = (tok as Resource).duplicate(true)
-					_init_token_base_value(dup)
-					arr[jidx] = dup
-					if prev_dup != null:
-						replaced_pairs.append({"old": prev_dup, "new": dup})
-				# Commit once after all replacements to minimize churn
-				_set_inventory_array(arr)
-				# Emit signal for the initial replacement; UI can resync if needed
-				emit_signal("loot_choice_replaced", round_num, tok, idx)
-				var fallback_pairs: Array = []
-				for pair in replaced_pairs:
-					var old_tok = pair.get("old")
-					var new_tok = pair.get("new")
-					if not _refresh_slots_for_token_swap(old_tok, new_tok):
-						fallback_pairs.append(pair)
-				for fb_pair in fallback_pairs:
-					var fb_old = fb_pair.get("old")
-					var fb_new = fb_pair.get("new")
-					if fb_new == null:
-						continue
-					var current_arr := _get_inventory_array()
-					var prev_idx := current_arr.find(fb_new)
-					if prev_idx != -1 and fb_old != null:
-						current_arr[prev_idx] = fb_old
-						_set_inventory_array(current_arr)
-					_apply_token_to_nearest_visible_empty(fb_new)
-				replaced = true
+		arr = _get_inventory_array()
+	var prefer_append := _is_empty_token(tok)
+	if arr.size() > 0 and not prefer_append:
+		var target_empty = _take_pending_empty_token()
+		var idx := -1
+		if target_empty != null:
+			idx = arr.find(target_empty)
+		if idx < 0:
+			idx = _find_empty_index(arr)
+		if idx >= 0:
+			var replaced_pairs: Array = []
+			var prev_token = null
+			if idx < arr.size():
+				prev_token = arr[idx]
+			arr[idx] = tok
+			if prev_token != null:
+				replaced_pairs.append({"old": prev_token, "new": tok})
+			# Handle duplicate-on-add abilities (e.g., Copper Coin total_copies=2)
+			var copies: int = _copies_to_add_for_token(tok)
+			var extra: int = copies - 1
+			if extra < 0:
+				extra = 0
+			for j in range(extra):
+				var jidx := _find_empty_index(arr)
+				if jidx < 0:
+					break
+				var prev_dup = null
+				if jidx < arr.size():
+					prev_dup = arr[jidx]
+				var dup: Resource = (tok as Resource).duplicate(true)
+				_init_token_base_value(dup)
+				arr[jidx] = dup
+				if prev_dup != null:
+					replaced_pairs.append({"old": prev_dup, "new": dup})
+			# Commit once after all replacements to minimize churn
+			_set_inventory_array(arr)
+			# Emit signal for the initial replacement; UI can resync if needed
+			emit_signal("loot_choice_replaced", round_num, tok, idx)
+			var fallback_pairs: Array = []
+			for pair in replaced_pairs:
+				var old_tok = pair.get("old")
+				var new_tok = pair.get("new")
+				if not _refresh_slots_for_token_swap(old_tok, new_tok):
+					fallback_pairs.append(pair)
+			for fb_pair in fallback_pairs:
+				var fb_old = fb_pair.get("old")
+				var fb_new = fb_pair.get("new")
+				if fb_new == null:
+					continue
+				var current_arr := _get_inventory_array()
+				var prev_idx := current_arr.find(fb_new)
+				if prev_idx != -1 and fb_old != null:
+					current_arr[prev_idx] = fb_old
+					_set_inventory_array(current_arr)
+				_apply_token_to_nearest_visible_empty(fb_new)
+			replaced = true
 
 	if not replaced:
 		emit_signal("loot_choice_selected", round_num, tok)
