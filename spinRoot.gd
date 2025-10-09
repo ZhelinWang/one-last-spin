@@ -360,50 +360,28 @@ func _apply_slot_token(slot: Control, token) -> void:
 func handle_triggered_empty_removed(offset: int) -> void:
 	if offset == 0:
 		return
-	if offset < 0:
-		var current := offset
-		while current < 0:
-			var src_off := current - 1
-			var dst_slot := _slot_for_offset(current)
-			var src_slot := _slot_for_offset(src_off)
-			if dst_slot == null:
-				break
-			var token = null
-			if src_slot != null and src_slot.has_meta("token_data"):
-				token = src_slot.get_meta("token_data")
-			_apply_slot_token(dst_slot, token)
-			if token == null:
-				break
-			current += 1
-		if offset > -2:
-			var boundary_slot := _slot_for_offset(-2)
-			var src_slot := _slot_for_offset(-3)
-			if boundary_slot != null and src_slot != null and src_slot.has_meta("token_data"):
-				var tok = src_slot.get_meta("token_data")
-				if tok != null:
-					_apply_slot_token(boundary_slot, tok)
-	else:
-		var current := offset
-		while current > 0:
-			var src_off := current + 1
-			var dst_slot := _slot_for_offset(current)
-			var src_slot := _slot_for_offset(src_off)
-			if dst_slot == null:
-				break
-			var token = null
-			if src_slot != null and src_slot.has_meta("token_data"):
-				token = src_slot.get_meta("token_data")
-			_apply_slot_token(dst_slot, token)
-			if token == null:
-				break
-			current -= 1
-		if offset < 2:
-			var boundary_slot := _slot_for_offset(2)
-			var src_slot := _slot_for_offset(3)
-			if boundary_slot != null and src_slot != null and src_slot.has_meta("token_data"):
-				var tok = src_slot.get_meta("token_data")
-				if tok != null:
-					_apply_slot_token(boundary_slot, tok)
+	var step := -1 if offset < 0 else 1
+	var current := offset
+	while true:
+		var src_off := current + step
+		var dst_slot := _slot_for_offset(current)
+		if dst_slot == null:
+			break
+		var src_slot := _slot_for_offset(src_off)
+		if src_slot == null:
+			_apply_slot_token(dst_slot, null)
+			break
+		var token = null
+		if src_slot.has_meta("token_data"):
+			token = src_slot.get_meta("token_data")
+		_apply_slot_token(dst_slot, token)
+		if src_slot != dst_slot:
+			_apply_slot_token(src_slot, null)
+		if token == null:
+			break
+		if src_off == current:
+			break
+		current = src_off
 	_capture_slot_baseline_for_preview()
 
 func _clone_token_ref(token):
@@ -875,7 +853,7 @@ func _build_strip_for_spin(laps: int) -> int:
 		lap_items.shuffle()
 		for token in lap_items:
 			_add_slot(token)
-			count += 1
+	count += 1
 	return count
 
 func _remove_oldest_spin() -> void:

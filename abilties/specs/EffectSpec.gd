@@ -430,6 +430,20 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 						"preserve_tags": bool(act.preserve_tags),
 						"source": src
 					})
+				elif tk == "choose":
+					var choose_val := -1
+					if act.set_value_from_amount:
+						choose_val = int(max(1, int(_roll_amount(act, ctx))))
+					out.append({
+						"op": "replace_at_offset",
+						"target_kind": "choose",
+						"choose": true,
+						"token_path": path,
+						"set_value": choose_val,
+						"preserve_tags": bool(act.preserve_tags),
+						"source": src
+					})
+					continue
 				elif tk == "tag":
 					out.append({
 						"op": "replace_board_tag",
@@ -471,6 +485,17 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 					for off in picks:
 						out.append({"op": "destroy", "target_offset": int(off), "source": src})
 			"double_target_permanent":
+				var tkd2 := String(tgt.get("target_kind", _tk_to_string())).to_lower()
+				if tkd2 == "choose":
+					var count_dp: int = max(1, int(act.choose_count))
+					for i in range(count_dp):
+						out.append({
+							"op": "double_target_permanent",
+							"target_kind": "choose",
+							"choose": true,
+							"source": src
+						})
+					continue
 				var cands_d := _collect_candidate_offsets(contribs, source_token, tgt)
 				var picks_d := _choose_offsets(cands_d, act, ctx)
 				if picks_d.is_empty(): picks_d = [int(tgt.get("target_offset", 0))]
@@ -479,24 +504,71 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 			"set_perm_to_self_current":
 				var cands_s := _collect_candidate_offsets(contribs, source_token, tgt)
 				var picks_s := _choose_offsets(cands_s, act, ctx)
+				var tk_s := String(tgt.get("target_kind", _tk_to_string())).to_lower()
+				if tk_s == "choose":
+					var count_s: int = max(1, int(act.choose_count))
+					for i in range(count_s):
+						out.append({
+							"op": "set_perm_to_self_current",
+							"target_kind": "choose",
+							"choose": true,
+							"source": src
+						})
+					continue
 				if picks_s.is_empty(): picks_s = [int(tgt.get("target_offset", 0))]
 				for offs in picks_s:
 					out.append({"op": "set_perm_to_self_current", "target_offset": int(offs), "source": src})
 			"set_self_perm_to_target_current":
+				var tk_t := String(tgt.get("target_kind", _tk_to_string())).to_lower()
+				if tk_t == "choose":
+					var count_st: int = max(1, int(act.choose_count))
+					for i in range(count_st):
+						out.append({
+							"op": "set_self_perm_to_target_current",
+							"target_kind": "choose",
+							"choose": true,
+							"source": src
+						})
+					continue
 				var cands_t := _collect_candidate_offsets(contribs, source_token, tgt)
 				var picks_t := _choose_offsets(cands_t, act, ctx)
 				if picks_t.is_empty(): picks_t = [int(tgt.get("target_offset", 0))]
 				for offt in picks_t:
 					out.append({"op": "set_self_perm_to_target_current", "target_offset": int(offt), "source": src})
 			"destroy_and_gain_fraction":
+				var tk_f := String(tgt.get("target_kind", _tk_to_string())).to_lower()
+				var numer: int = max(0, int(act.gain_numer))
+				var denom: int = max(1, int(act.gain_denom))
+				if tk_f == "choose":
+					var count_f: int = max(1, int(act.choose_count))
+					for i in range(count_f):
+						out.append({
+							"op": "destroy_and_gain_fraction",
+							"target_kind": "choose",
+							"choose": true,
+							"gain_numer": numer,
+							"gain_denom": denom,
+							"source": src
+						})
+					continue
 				var cands_f := _collect_candidate_offsets(contribs, source_token, tgt)
 				var picks_f := _choose_offsets(cands_f, act, ctx)
 				if picks_f.is_empty(): picks_f = [int(tgt.get("target_offset", 0))]
-				var numer: int = max(0, int(act.gain_numer))
-				var denom: int = max(1, int(act.gain_denom))
 				for offf in picks_f:
 					out.append({"op": "destroy_and_gain_fraction", "target_offset": int(offf), "gain_numer": numer, "gain_denom": denom, "source": src})
 			"replace_target_with_self_copy":
+				var tk_rc := String(tgt.get("target_kind", _tk_to_string())).to_lower()
+				if tk_rc == "choose":
+					var count_rc: int = max(1, int(act.choose_count))
+					for i in range(count_rc):
+						out.append({
+							"op": "replace_at_offset",
+							"target_kind": "choose",
+							"choose": true,
+							"token_ref": source_token,
+							"source": src
+						})
+					continue
 				var cands_rc := _collect_candidate_offsets(contribs, source_token, tgt)
 				var picks_rc := _choose_offsets(cands_rc, act, ctx)
 				if picks_rc.is_empty(): picks_rc = [int(tgt.get("target_offset", 0))]
@@ -536,6 +608,17 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 						thr = _contrib_value(self_c_rd)
 					out.append({"op": "register_destroy_guard", "offset": int(self_c_rd.get("offset", 0)), "min_value_threshold": thr, "triggered_only": bool(act.triggered_only), "source": src})
 			"copy_target_to_inventory":
+				var tk_ct := String(tgt.get("target_kind", _tk_to_string())).to_lower()
+				if tk_ct == "choose":
+					var count_ct: int = max(1, int(act.choose_count))
+					for i in range(count_ct):
+						out.append({
+							"op": "copy_target_to_inventory",
+							"target_kind": "choose",
+							"choose": true,
+							"source": src
+						})
+					continue
 				var cands_ct := _collect_candidate_offsets(contribs, source_token, tgt)
 				var picks_ct := _choose_offsets(cands_ct, act, ctx)
 				if picks_ct.is_empty(): picks_ct = [int(tgt.get("target_offset", 0))]
@@ -601,6 +684,17 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 			"destroy_non_triggered_empties":
 				out.append({"op": "destroy_non_triggered_empties", "source": src})
 			"reroll_same_rarity":
+				var tk_rr := String(tgt.get("target_kind", _tk_to_string())).to_lower()
+				if tk_rr == "choose":
+					var count_rr: int = max(1, int(act.choose_count))
+					for i in range(count_rr):
+						out.append({
+							"op": "reroll_same_rarity",
+							"target_kind": "choose",
+							"choose": true,
+							"source": src
+						})
+					continue
 				var cands_r := _collect_candidate_offsets(contribs, source_token, tgt)
 				var picks_r := _choose_offsets(cands_r, act, ctx)
 				if picks_r.is_empty(): picks_r = [int(tgt.get("target_offset", 0))]
@@ -611,6 +705,18 @@ func build_commands(ctx: Dictionary, contribs: Array, source_token: Resource) ->
 				var tplm := String(desc_template)
 				if tplm.to_lower().find("promote") != -1:
 					mode = "promote"
+				var tk_rb := String(tgt.get("target_kind", _tk_to_string())).to_lower()
+				if tk_rb == "choose":
+					var count_rb: int = max(1, int(act.choose_count))
+					for i in range(count_rb):
+						out.append({
+							"op": "replace_by_rarity",
+							"target_kind": "choose",
+							"choose": true,
+							"mode": mode,
+							"source": src
+						})
+					continue
 				var cands_b := _collect_candidate_offsets(contribs, source_token, tgt)
 				var picks_b := _choose_offsets(cands_b, act, ctx)
 				if picks_b.is_empty(): picks_b = [int(tgt.get("target_offset", 0))]
