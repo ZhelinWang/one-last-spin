@@ -561,7 +561,7 @@ horizontal_scroll_mode = 0
 vertical_scroll_mode = 0
 
 [node name="slotsHBox" type="HBoxContainer" parent="mainContainer/spinMarginContainer/gameElementsContainer/spinRoot/spinner/spinnerTilesMargin/scrollContainer"]
-custom_minimum_size = Vector2(1750, 350)
+custom_minimum_size = Vector2(1360, 350)
 layout_mode = 2
 size_flags_horizontal = 6
 size_flags_vertical = 3

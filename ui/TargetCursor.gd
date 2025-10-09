@@ -66,5 +66,12 @@ func _draw() -> void:
 
 func _exit_tree() -> void:
 	# Restore cursor visibility if we hid it here
-	if hide_system_cursor:
-		Input.set_mouse_mode(_prev_mouse_mode)
+	restore_cursor()
+
+func restore_cursor() -> void:
+	if not hide_system_cursor:
+		return
+	var mode := _prev_mouse_mode
+	if mode != Input.MOUSE_MODE_VISIBLE:
+		mode = Input.MOUSE_MODE_VISIBLE
+	Input.set_mouse_mode(mode)

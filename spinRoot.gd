@@ -101,6 +101,21 @@ func _ready() -> void:
 	slots_hbox.size_flags_vertical   = Control.SIZE_FILL
 	scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll_container.size_flags_vertical   = Control.SIZE_FILL
+	# Constrain visible slots to the triggered window + immediate neighbors
+	var slot_width := 0.0
+	if slot_item_scene != null:
+		var temp = slot_item_scene.instantiate()
+		if temp is Control:
+			slot_width = float((temp as Control).custom_minimum_size.x)
+		if temp != null:
+			temp.queue_free()
+	if slot_width <= 0.0:
+		slot_width = 256.0
+	var separation := float(slots_hbox.get_theme_constant("separation"))
+	var target_width := slot_width * 5.0 + separation * 4.0
+	slots_hbox.custom_minimum_size.x = target_width
+	if scroll_container != null:
+		scroll_container.custom_minimum_size.x = target_width
 
 	_rebuild_idle_strip()
 	_update_inventory_strip()
@@ -362,28 +377,55 @@ func _apply_slot_token(slot: Control, token) -> void:
 func handle_triggered_empty_removed(offset: int) -> void:
 	if offset == 0:
 		return
-	var step := -1 if offset < 0 else 1
-	var current := offset
+	var step := 1 if offset > 0 else -1
+	var winner_idx := _last_winning_slot_idx
+	var dst_idx := winner_idx + offset
+	var children := slots_hbox.get_children()
+	if dst_idx < 0 or dst_idx >= children.size():
+		return
 	while true:
-		var src_off := current + step
-		var dst_slot := _slot_for_offset(current)
-		if dst_slot == null:
+		var dst_slot_node := children[dst_idx]
+		if dst_slot_node == null or not (dst_slot_node is Control):
 			break
-		var src_slot := _slot_for_offset(src_off)
-		if src_slot == null:
+		var dst_slot := dst_slot_node as Control
+		var search_idx := dst_idx + step
+		var found_slot: Control = null
+		var found_token = null
+		while search_idx >= 0 and search_idx < children.size():
+			var src_node := children[search_idx]
+			if src_node == null or not (src_node is Control):
+				search_idx += step
+				continue
+			var src_slot := src_node as Control
+			var tok = null
+			if src_slot.has_meta("token_data"):
+				tok = src_slot.get_meta("token_data")
+			if tok == null:
+				search_idx += step
+				continue
+			if _is_empty_token_local(tok):
+				_apply_slot_token(src_slot, null)
+				if coin_mgr != null and coin_mgr.has_method("queue_pending_empty_token"):
+					coin_mgr.call("queue_pending_empty_token", tok)
+				search_idx += step
+				continue
+			found_slot = src_slot
+			found_token = tok
+			break
+		if found_token == null:
 			_apply_slot_token(dst_slot, null)
 			break
-		var token = null
-		if src_slot.has_meta("token_data"):
-			token = src_slot.get_meta("token_data")
-		_apply_slot_token(dst_slot, token)
-		if src_slot != dst_slot:
-			_apply_slot_token(src_slot, null)
-		if token == null:
+		_apply_slot_token(dst_slot, found_token)
+		if found_slot != null and found_slot != dst_slot:
+			_apply_slot_token(found_slot, null)
+			dst_idx = children.find(found_slot)
+			if dst_idx == -1:
+				break
+		else:
+			dst_idx += step
+		if dst_idx < 0 or dst_idx >= children.size():
 			break
-		if src_off == current:
-			break
-		current = src_off
+	_debug_spin_window("After collapse offset=%d" % offset)
 	_capture_slot_baseline_for_preview()
 
 func _clone_token_ref(token):
@@ -851,6 +893,8 @@ func spin() -> void:
 	else:
 		scroll_container.scroll_horizontal = _target_scroll
 
+	_debug_spin_window("Spin settled")
+
 	_finish_spin()
 
 func _build_strip_for_spin(laps: int) -> int:
@@ -1074,6 +1118,8 @@ func _show_target_cursor(count: int) -> void:
 
 func _hide_target_cursor() -> void:
 	if _target_cursor != null and is_instance_valid(_target_cursor):
+		if _target_cursor.has_method("restore_cursor"):
+			_target_cursor.call("restore_cursor")
 		_target_cursor.queue_free()
 	_target_cursor = null
 
@@ -1119,6 +1165,71 @@ func choose_target_offset(exclude_center: bool = true, ordinal: int = 1) -> int:
 func _on_target_pick_pressed(off: int) -> void:
 	_hide_target_cursor()
 	emit_signal("target_chosen", off)
+
+func _should_debug_spin() -> bool:
+	if coin_mgr == null:
+		coin_mgr = get_node_or_null("/root/coinManager")
+	if coin_mgr == null:
+		return false
+	var dbg_val := false
+	var dbg_prop = coin_mgr.get("debug_spin") if coin_mgr != null else null
+	if typeof(dbg_prop) == TYPE_BOOL:
+		dbg_val = dbg_prop
+	return dbg_val
+
+func _debug_token_name(token) -> String:
+	if token == null:
+		return "null"
+	if (token as Object).has_method("get"):
+		var nm = token.get("name")
+		if typeof(nm) == TYPE_STRING:
+			var s := String(nm).strip_edges()
+			if s != "":
+				return s
+	if token is Resource:
+		var path := (token as Resource).resource_path
+		if path != "":
+			var file := String(path.get_file())
+			if file.ends_with(".tres"):
+				file = file.trim_suffix(".tres")
+			return file
+	return str(token)
+
+func _debug_spin_window(label: String) -> void:
+	if not _should_debug_spin():
+		return
+	var entries: Array[String] = []
+	for off in range(-4, 5):
+		var slot := _slot_for_offset(off)
+		var name := "null"
+		if slot != null and slot.has_meta("token_data"):
+			name = _debug_token_name(slot.get_meta("token_data"))
+		entries.append("%d:%s" % [off, name])
+	print("[SpinDebug] %s -> %s" % [label, ", ".join(entries)])
+
+func _is_empty_token_local(token) -> bool:
+	if token == null:
+		return true
+	if coin_mgr != null:
+		var empty_path = ""
+		if coin_mgr.has_method("get"):
+			var maybe = coin_mgr.get("empty_token_path")
+			if typeof(maybe) == TYPE_STRING:
+				empty_path = String(maybe)
+		if empty_path != "" and token is Resource:
+			var rp := (token as Resource).resource_path
+			if rp != "" and rp == empty_path:
+				return true
+	if token is Object and (token as Object).has_method("get"):
+		var nm = token.get("name")
+		if typeof(nm) == TYPE_STRING:
+			var s := String(nm).strip_edges().to_lower()
+			if s == "empty" or s == "empty token":
+				return true
+		var is_empty = token.get("isEmpty")
+		if is_empty != null and bool(is_empty):
+			return true
+	return false
 
 func replace_token_in_inventory(old_token: Resource, new_token: Resource) -> void:
 	if old_token == null or new_token == null:

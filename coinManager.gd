@@ -135,6 +135,9 @@ const ROUND_PAY_ACCEL_PER_SEC: float = 1.35
 const ROUND_PAY_MIN_FRAME: float = 1.0 / 240.0
 const VALUE_LABEL_FONT_SIZE := 20
 const VALUE_LABEL_OUTLINE_SIZE := 24
+const MIN_INVENTORY_TOKENS := 9
+const EMPTY_LOCK_COLOR := Color8(118, 130, 142)
+const EMPTY_UNLOCK_COLOR := Color.WHITE
 
 # Game Over overlay
 var _round_pay_layer: CanvasLayer
@@ -162,6 +165,7 @@ var _target_selection_pending: bool = false
 # Run state guards
 var _game_over_active: bool = false
 var _loot_gen: int = 0  # increments to invalidate any pending loot shows
+var _empty_removal_locked: bool = false
 
 # Cached refs
 var _value_label: Node = null
@@ -185,6 +189,7 @@ const ZERO_REPLACEMENT_VALUE := 1
 const TEMP_META_DELTA := "__temp_spin_delta"
 const TEMP_META_COLOR := "__temp_spin_color"
 const POPUP_META_TOTAL := "__popup_running_total"
+var _pending_empty_tokens: Array = []
 
 func _temporary_neutral_color() -> Color:
 	return Color(0.92, 0.92, 0.96)
@@ -197,6 +202,7 @@ var _next_loot_guarantees: Dictionary = {}
 func _ready() -> void:
 	_loot_rng.randomize()
 	_initialize_artifact_library()
+	_refresh_empty_lock_state()
 	if not is_connected("winner_description_shown", Callable(self, "_on_winner_description_shown")):
 		connect("winner_description_shown", Callable(self, "_on_winner_description_shown"))
 
@@ -2462,6 +2468,9 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 		tok = (tok as Resource).duplicate(true)
 		_init_token_base_value(tok)
 
+	if debug_spin:
+		_debug_board_state("Loot selection begin -> %s" % _debug_token_name(tok))
+
 	var replaced: bool = false
 	var prop_str: String = String(inventory_property).strip_edges()
 	var owner_str: String = String(inventory_owner_path)
@@ -2469,9 +2478,20 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 	if prop_str != "" and owner_str != "":
 		var arr := _get_inventory_array()
 		if arr.size() > 0:
-			var idx := _find_empty_index(arr)
+			var target_empty = _take_pending_empty_token()
+			var idx := -1
+			if target_empty != null:
+				idx = arr.find(target_empty)
+			if idx < 0:
+				idx = _find_empty_index(arr)
 			if idx >= 0:
+				var replaced_pairs: Array = []
+				var prev_token = null
+				if idx < arr.size():
+					prev_token = arr[idx]
 				arr[idx] = tok
+				if prev_token != null:
+					replaced_pairs.append({"old": prev_token, "new": tok})
 				# Handle duplicate-on-add abilities (e.g., Copper Coin total_copies=2)
 				var copies: int = _copies_to_add_for_token(tok)
 				var extra: int = copies - 1
@@ -2481,13 +2501,35 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 					var jidx := _find_empty_index(arr)
 					if jidx < 0:
 						break
+					var prev_dup = null
+					if jidx < arr.size():
+						prev_dup = arr[jidx]
 					var dup: Resource = (tok as Resource).duplicate(true)
 					_init_token_base_value(dup)
 					arr[jidx] = dup
+					if prev_dup != null:
+						replaced_pairs.append({"old": prev_dup, "new": dup})
 				# Commit once after all replacements to minimize churn
 				_set_inventory_array(arr)
 				# Emit signal for the initial replacement; UI can resync if needed
 				emit_signal("loot_choice_replaced", round_num, tok, idx)
+				var fallback_pairs: Array = []
+				for pair in replaced_pairs:
+					var old_tok = pair.get("old")
+					var new_tok = pair.get("new")
+					if not _refresh_slots_for_token_swap(old_tok, new_tok):
+						fallback_pairs.append(pair)
+				for fb_pair in fallback_pairs:
+					var fb_old = fb_pair.get("old")
+					var fb_new = fb_pair.get("new")
+					if fb_new == null:
+						continue
+					var current_arr := _get_inventory_array()
+					var prev_idx := current_arr.find(fb_new)
+					if prev_idx != -1 and fb_old != null:
+						current_arr[prev_idx] = fb_old
+						_set_inventory_array(current_arr)
+					_apply_token_to_nearest_visible_empty(fb_new)
 				replaced = true
 
 	if not replaced:
@@ -2497,6 +2539,9 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 	_update_round_and_deadline_labels()
 	_update_spin_counters()
 	_try_start_artifact_selection()
+	_pending_empty_tokens.clear()
+	if debug_spin:
+		_debug_board_state("Loot selection end -> %s" % _debug_token_name(tok))
 
 func _load_empty_token() -> Resource:
 	var res: Resource = null
@@ -2765,6 +2810,206 @@ func _set_inventory_array(arr: Array) -> void:
 	if prop.strip_edges() == "":
 		prop = "items"
 	owner.set(prop, arr)
+	_refresh_empty_lock_state()
+
+func _inventory_size() -> int:
+	var arr := _get_inventory_array()
+	return arr.size()
+
+func _would_violate_inventory_minimum(count_to_remove: int) -> bool:
+	if count_to_remove <= 0:
+		return false
+	return _inventory_size() - count_to_remove < MIN_INVENTORY_TOKENS
+
+func _refresh_empty_lock_state() -> void:
+	var arr := _get_inventory_array()
+	var size := arr.size()
+	var locked := size > 0 and size <= MIN_INVENTORY_TOKENS
+	_empty_removal_locked = locked
+	_apply_empty_lock_visuals(locked)
+
+func _apply_empty_lock_visuals(locked: bool) -> void:
+	var arr := _get_inventory_array()
+	if arr.is_empty():
+		return
+	var color: Color
+	if locked:
+		color = EMPTY_LOCK_COLOR
+	else:
+		color = EMPTY_UNLOCK_COLOR
+	for tok in arr:
+		if _is_empty_token(tok):
+			_set_token_controls_modulate(tok, color, locked)
+
+func _set_token_controls_modulate(token, color: Color, locked: bool) -> void:
+	if token == null:
+		return
+	var uid := _ensure_token_uid(token)
+	if uid == 0:
+		return
+	var controls := _get_controls_for_uid(uid)
+	if controls.is_empty():
+		return
+	var meta_key := "__empty_lock_base_modulate"
+	for ctrl in controls:
+		if not (ctrl is CanvasItem):
+			continue
+		var canvas := ctrl as CanvasItem
+		if locked:
+			if not canvas.has_meta(meta_key):
+				canvas.set_meta(meta_key, canvas.modulate)
+			canvas.modulate = color
+		else:
+			if canvas.has_meta(meta_key):
+				var base = canvas.get_meta(meta_key)
+				if base is Color:
+					canvas.modulate = base
+				else:
+					canvas.modulate = EMPTY_UNLOCK_COLOR
+				canvas.remove_meta(meta_key)
+			else:
+				canvas.modulate = EMPTY_UNLOCK_COLOR
+
+func _apply_empty_lock_visual_to_token(token) -> void:
+	if token == null:
+		return
+	if not _is_empty_token(token):
+		return
+	if _empty_removal_locked:
+		_set_token_controls_modulate(token, EMPTY_LOCK_COLOR, true)
+	else:
+		_set_token_controls_modulate(token, EMPTY_UNLOCK_COLOR, false)
+
+func queue_pending_empty_token(token) -> void:
+	if token == null:
+		return
+	if not _is_empty_token(token):
+		return
+	if _pending_empty_tokens.has(token):
+		return
+	_pending_empty_tokens.append(token)
+
+func _take_pending_empty_token() -> Variant:
+	if _pending_empty_tokens.is_empty():
+		return null
+	return _pending_empty_tokens.pop_front()
+
+func _refresh_slots_for_token_swap(old_token, new_token) -> bool:
+	if old_token == null or new_token == null:
+		return false
+	var replaced := false
+	var sr := _resolve_spin_root()
+	if sr == null:
+		return false
+	var slots: Array = []
+	if sr.has_method("_build_slot_map"):
+		var sm_variant = sr.call("_build_slot_map")
+		if typeof(sm_variant) == TYPE_DICTIONARY:
+			for key in (sm_variant as Dictionary).keys():
+				var slot = (sm_variant as Dictionary).get(key)
+				if slot is Control:
+					slots.append(slot)
+	if slots.is_empty():
+		var hbox = null
+		if sr.has_method("get"):
+			var maybe_box = sr.get("slots_hbox")
+			if maybe_box is Node:
+				hbox = maybe_box
+		if hbox != null and hbox is Node:
+			for child in (hbox as Node).get_children():
+				if child is Control:
+					slots.append(child)
+	for slot in slots:
+		if slot == null or not (slot is Control):
+			continue
+		var ctrl := slot as Control
+		if ctrl.has_meta("token_data") and ctrl.get_meta("token_data") == old_token:
+			_apply_token_to_slot(ctrl, new_token)
+			replaced = true
+	return replaced
+
+func _apply_token_to_nearest_visible_empty(token) -> void:
+	if token == null:
+		return
+	var sr := _resolve_spin_root()
+	if sr == null:
+		return
+	var slot_map: Dictionary = {}
+	if sr.has_method("_build_slot_map"):
+		var sm_variant = sr.call("_build_slot_map")
+		if typeof(sm_variant) == TYPE_DICTIONARY:
+			slot_map = sm_variant
+	var candidates := [-1, 1, -2, 2, -3, 3, -4, 4, 0]
+	var arr := _get_inventory_array()
+	for off in candidates:
+		var slot = null
+		if not slot_map.is_empty():
+			slot = slot_map.get(off)
+		if slot == null and sr.has_method("_slot_for_offset"):
+			slot = sr.call("_slot_for_offset", off)
+		if slot == null or not (slot is Control):
+			continue
+		var ctrl := slot as Control
+		var prev_token = null
+		if ctrl.has_meta("token_data"):
+			prev_token = ctrl.get_meta("token_data")
+		if prev_token == null or not _is_empty_token(prev_token):
+			continue
+		_apply_token_to_slot(ctrl, token)
+		if prev_token != null:
+			var idx := arr.find(prev_token)
+			if idx != -1:
+				arr[idx] = token
+				_set_inventory_array(arr)
+		if debug_spin:
+			_debug_board_state("Fallback slot update -> %s" % _debug_token_name(token))
+		return
+
+func _debug_token_name(token) -> String:
+	if token == null:
+		return "null"
+	if (token as Object).has_method("get"):
+		var nm = token.get("name")
+		if typeof(nm) == TYPE_STRING:
+			var s := String(nm).strip_edges()
+			if s != "":
+				return s
+	if token is Resource:
+		var path := (token as Resource).resource_path
+		if path != "":
+			var file := String(path.get_file())
+			if file.ends_with(".tres"):
+				file = file.trim_suffix(".tres")
+			return file
+	return str(token)
+
+func _debug_board_state(label: String) -> void:
+	if not debug_spin:
+		return
+	var sr := _resolve_spin_root()
+	var board_entries: Array[String] = []
+	if sr != null and sr.has_method("_build_slot_map"):
+		var sm_variant = sr.call("_build_slot_map")
+		if typeof(sm_variant) == TYPE_DICTIONARY:
+			var sm: Dictionary = sm_variant
+			var order := [-4, -3, -2, -1, 0, 1, 2, 3, 4]
+			for off in order:
+				if sm.has(off):
+					var slot = sm[off]
+					var name := "null"
+					if slot is Control and (slot as Control).has_meta("token_data"):
+						name = _debug_token_name((slot as Control).get_meta("token_data"))
+					board_entries.append("%d:%s" % [off, name])
+	var inv_entries: Array[String] = []
+	var arr := _get_inventory_array()
+	for i in range(arr.size()):
+		inv_entries.append("%d:%s" % [i, _debug_token_name(arr[i])])
+	print("[Debug] ", label)
+	if board_entries.is_empty():
+		print("  Board: (unavailable)")
+	else:
+		print("  Board: ", ", ".join(board_entries))
+	print("  Inventory: ", ", ".join(inv_entries))
 
 func _find_empty_index(arr: Array) -> int:
 	var indices: Array = []
@@ -4261,6 +4506,8 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				var arr_em := _get_inventory_array()
 				var new_arr: Array = []
 				var changed := false
+				var max_removable = max(0, arr_em.size() - MIN_INVENTORY_TOKENS)
+				var removed_count := 0
 				for i in range(arr_em.size()):
 					var tok_e = arr_em[i]
 					var remove_this := false
@@ -4273,8 +4520,12 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 							triggered_null -= 1
 							skip = true
 						if not skip:
-							_notify_any_token_destroyed(ctx, tok_e, "destroy_non_triggered_empty")
-							remove_this = true
+							if removed_count >= max_removable:
+								skip = true
+							else:
+								_notify_any_token_destroyed(ctx, tok_e, "destroy_non_triggered_empty")
+								remove_this = true
+								removed_count += 1
 					if remove_this:
 						changed = true
 						continue
@@ -5146,6 +5397,8 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	token_path = trimmed_path
 	if not has_path and source_token_ref == null:
 		return null
+	if debug_spin:
+		_debug_board_state("Before replace_at_offset offset=%d" % offset)
 	var slot := _slot_from_ctx(ctx, offset)
 	if slot != null:
 		_shake_slot(slot)
@@ -5157,6 +5410,11 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	var removing_empty := false
 	if target_token != null:
 		removing_empty = _is_empty_token(target_token) and _token_path_is_empty(token_path)
+		if removing_empty and _would_violate_inventory_minimum(1):
+			if debug_spin:
+				print("[Commands] Prevented empty removal to preserve minimum inventory size")
+			_refresh_empty_lock_state()
+			return null
 
 	# If we have a token to remove, let its abilities react (e.g., on-removed penalties)
 	if target_token != null:
@@ -5214,6 +5472,7 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 	if removing_empty:
 		(arr as Array).remove_at(idx)
 		owner.set(prop, arr)
+		_refresh_empty_lock_state()
 		if owner.has_method("_update_inventory_strip"):
 			owner.call_deferred("_update_inventory_strip")
 		if owner.has_method("_refresh_inventory_baseline"):
@@ -5235,6 +5494,8 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 						if typeof(win_idx_var) == TYPE_INT:
 							var fresh_neighbors = sr.call("_gather_neighbor_tokens", int(win_idx_var))
 							ctx_dict["neighbors"] = fresh_neighbors
+		if debug_spin:
+			_debug_board_state("After remove_at_offset offset=%d" % offset)
 		return null
 
 	var rep: Resource = null
@@ -5265,7 +5526,10 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 			inst.set("tags", PackedStringArray(src_tags))
 
 	(arr as Array)[idx] = inst
+	if _is_empty_token(inst):
+		queue_pending_empty_token(inst)
 	owner.set(prop, arr)
+	_refresh_empty_lock_state()
 
 	if slot != null:
 		_apply_token_to_slot(slot, inst)
@@ -5278,6 +5542,8 @@ func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, 
 		ctx["board_tokens"] = _get_inventory_array()
 
 	_register_effect_target_current(inst)
+	if debug_spin:
+		_debug_board_state("After replace_at_offset offset=%d" % offset)
 
 	return inst
 func _find_contrib_by_offset(contribs: Array, off: int) -> Dictionary:
@@ -5521,15 +5787,18 @@ func _apply_token_to_slot(slot: Control, token: Resource) -> void:
 			break
 	if has_data_prop:
 		slot.set("data", token)
+		_apply_empty_lock_visual_to_token(token)
 		return
 	# Fallback: if root exposes an _apply(data) method
 	if slot.has_method("_apply"):
 		slot.call("_apply", token)
+		_apply_empty_lock_visual_to_token(token)
 		return
 	# Final fallback: update a child named "slotItem" if present
 	var si := slot.get_node_or_null("slotItem")
 	if si != null and si.has_method("set"):
 		si.set("data", token)
+	_apply_empty_lock_visual_to_token(token)
 
 func _replace_board_tag_in_slotmap(ctx: Dictionary, target_tag: String, token_path: String) -> void:
 	if token_path.strip_edges() == "":
@@ -5722,6 +5991,7 @@ func _replace_all_empties_in_inventory(token_path: String, ctx: Variant = null) 
 			changed = true
 	if changed:
 		owner.set(prop, arr)
+		_refresh_empty_lock_state()
 		if owner.has_method("_update_inventory_strip"):
 			owner.call_deferred("_update_inventory_strip")
 		if ctx is Dictionary:
@@ -5983,6 +6253,7 @@ func _destroy_inventory_coins(max_to_destroy: int, ctx: Dictionary) -> int:
 	if destroyed == 0:
 		return 0
 	owner.set(prop, arr)
+	_refresh_empty_lock_state()
 	if owner.has_method("_update_inventory_strip"):
 		owner.call_deferred("_update_inventory_strip")
 	if ctx is Dictionary:
@@ -6032,6 +6303,7 @@ func _destroy_inventory_by_tag(tag: String, max_to_destroy: int, ctx: Dictionary
 	if destroyed == 0:
 		return 0
 	owner.set(prop, arr)
+	_refresh_empty_lock_state()
 	if owner.has_method("_update_inventory_strip"):
 		owner.call_deferred("_update_inventory_strip")
 	if ctx is Dictionary:
@@ -6069,6 +6341,7 @@ func _destroy_inventory_by_name(name: String, max_to_destroy: int, ctx: Dictiona
 		replaced_tokens.append({"old": tok, "new": inst}); _register_effect_target_current(inst); destroyed += 1
 	if destroyed == 0: return 0
 	owner.set(prop, arr)
+	_refresh_empty_lock_state()
 	if owner.has_method("_update_inventory_strip"): owner.call_deferred("_update_inventory_strip")
 	if ctx is Dictionary:
 		ctx["board_tokens"] = _get_inventory_array()
@@ -6107,6 +6380,7 @@ func _replace_inventory_by_tag(tag: String, token_path: String, max_to_replace: 
 		replacements.append({"old": tok, "new": inst}); _register_effect_target_current(inst); replaced += 1
 	if replaced == 0: return 0
 	owner.set(prop, arr)
+	_refresh_empty_lock_state()
 	if owner.has_method("_update_inventory_strip"): owner.call_deferred("_update_inventory_strip")
 	if ctx is Dictionary:
 		ctx["board_tokens"] = _get_inventory_array()
@@ -6146,6 +6420,7 @@ func _replace_inventory_by_name(name: String, token_path: String, max_to_replace
 		replacements.append({"old": tok, "new": inst}); _register_effect_target_current(inst); replaced += 1
 	if replaced == 0: return 0
 	owner.set(prop, arr)
+	_refresh_empty_lock_state()
 	if owner.has_method("_update_inventory_strip"): owner.call_deferred("_update_inventory_strip")
 	if ctx is Dictionary:
 		ctx["board_tokens"] = _get_inventory_array()
