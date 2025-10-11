@@ -21,6 +21,11 @@ min_amount = 1
 max_amount = 8
 choose_mode = "One Random"
 
+[sub_resource type="Resource" id="C_25pct"]
+script = ExtResource("5_cond")
+kind = "random_chance"
+chance_percent = 25
+
 [sub_resource type="Resource" id="E_winner"]
 script = ExtResource("3_effect")
 id = "fortune_cookie_random_add_active"
@@ -37,11 +42,6 @@ target_kind = 5 # ANY
 winner_only = false
 conditions = [ SubResource("C_25pct") ]
 actions = [ SubResource("A_passive_action") ]
-
-[sub_resource type="Resource" id="C_25pct"]
-script = ExtResource("5_cond")
-kind = "random_chance"
-chance_percent = 25
 
 [resource]
 script = ExtResource("1_token")

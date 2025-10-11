@@ -10,6 +10,8 @@ signal eye_hover_ended
 @export var slot_item_scene: PackedScene
 @export var class_data: CharacterClassData
 @export var artifact_xp_schedule: Array[int] = [5, 5, 5, 5, 5]
+@export var peek_left_container: Control
+@export var peek_right_container: Control
 
 @onready var main_ui := get_tree().get_root().get_node("mainUI") as Control
 
@@ -60,6 +62,12 @@ var _baseline_spin_distance: float = 0.0
 var _spin_duration_scale: float = 1.0
 var _recycle_queue: Array = []
 const WINNER_RIGHT_BUFFER := 4
+const PEEK_LEFT_OFFSET := -3
+const PEEK_RIGHT_OFFSET := 3
+const PEEK_NAME_LEFT := "PeekLeftSlot"
+const PEEK_NAME_RIGHT := "PeekRightSlot"
+var _peek_left_slot: Control = null
+var _peek_right_slot: Control = null
 
 # SFX internals
 var _sfx_pool: Array[AudioStreamPlayer] = []
@@ -120,6 +128,7 @@ func _ready() -> void:
 	if scroll_container != null:
 		scroll_container.custom_minimum_size.x = target_width
 
+	_init_peek_slots()
 	_rebuild_idle_strip()
 	_update_inventory_strip()
 	_inventory_before_spin = _deep_copy_inventory(items)
@@ -439,6 +448,111 @@ func _clone_token_ref(token):
 			return dup
 	return token
 
+func _init_peek_slots() -> void:
+	_peek_left_slot = _prepare_peek_holder(peek_left_container, PEEK_NAME_LEFT)
+	_peek_right_slot = _prepare_peek_holder(peek_right_container, PEEK_NAME_RIGHT)
+	_update_peek_tokens()
+
+func _prepare_peek_holder(container: Control, slot_name: String) -> Control:
+	if container == null:
+		return null
+	container.mouse_filter = Control.MOUSE_FILTER_STOP
+	container.anchor_left = 0.0
+	container.anchor_top = 0.0
+	container.anchor_right = 0.0
+	container.anchor_bottom = 0.0
+	container.offset_left = 0.0
+	container.offset_top = 0.0
+	container.offset_right = 0.0
+	container.offset_bottom = 0.0
+	container.modulate = Color(1.0, 1.0, 1.0, 0.85)
+	container.visible = false
+	var existing_tip := container.get_node_or_null("TooltipSpawner")
+	for child in container.get_children():
+		if child == existing_tip:
+			continue
+		child.queue_free()
+	if slot_item_scene == null:
+		return null
+	var inst = slot_item_scene.instantiate()
+	if inst == null or not (inst is Control):
+		return null
+	var ctrl := inst as Control
+	ctrl.name = slot_name
+	ctrl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ctrl.focus_mode = Control.FOCUS_NONE
+	ctrl.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ctrl.offset_left = 0.0
+	ctrl.offset_top = 0.0
+	ctrl.offset_right = 0.0
+	ctrl.offset_bottom = 0.0
+	container.add_child(ctrl)
+	if existing_tip == null:
+		existing_tip = TooltipSpawner.new()
+		existing_tip.name = "TooltipSpawner"
+		container.add_child(existing_tip)
+	else:
+		container.move_child(existing_tip, container.get_child_count() - 1)
+	container.set_meta("tooltip_base_only", true)
+	return ctrl
+
+func _update_peek_tokens() -> void:
+	_update_single_peek(peek_left_container, _peek_left_slot, PEEK_LEFT_OFFSET)
+	_update_single_peek(peek_right_container, _peek_right_slot, PEEK_RIGHT_OFFSET)
+
+func _update_single_peek(wrapper: Control, slot_display: Control, offset: int) -> void:
+	if wrapper == null:
+		return
+	var tip := wrapper.get_node_or_null("TooltipSpawner")
+	if slot_display == null:
+		wrapper.visible = false
+		wrapper.set_meta("token_data", null)
+		if tip != null:
+			tip.set_meta("token_data", null)
+		return
+	var target_slot := _slot_for_offset(offset)
+	if target_slot == null or not target_slot.has_meta("token_data"):
+		_set_slot_token(slot_display, null)
+		wrapper.visible = false
+		wrapper.set_meta("token_data", null)
+		if tip != null:
+			tip.set_meta("token_data", null)
+		return
+	var token = target_slot.get_meta("token_data")
+	if token == null:
+		_set_slot_token(slot_display, null)
+		wrapper.visible = false
+		wrapper.set_meta("token_data", null)
+		if tip != null:
+			tip.set_meta("token_data", null)
+		return
+	var overlay := wrapper.get_parent()
+	var base_ctrl: Control = null
+	if offset < 0:
+		base_ctrl = _slot_for_offset(-2)
+	else:
+		base_ctrl = _slot_for_offset(2)
+	if base_ctrl == null and target_slot is Control:
+		base_ctrl = target_slot as Control
+	if overlay is Control and base_ctrl is Control:
+		var base_pos := base_ctrl.global_position
+		var base_size := base_ctrl.size
+		var separation := float(slots_hbox.get_theme_constant("separation"))
+		if offset < 0:
+			base_pos.x -= base_size.x + separation
+		else:
+			base_pos.x += base_size.x + separation
+		var local_pos = (overlay as Control).to_local(base_pos)
+		wrapper.position = local_pos
+		wrapper.size = base_size
+	var clone = _clone_token_ref(token)
+	_set_slot_token(slot_display, clone)
+	wrapper.visible = true
+	wrapper.set_meta("token_data", clone)
+	wrapper.set_meta("tooltip_base_only", true)
+	if tip != null:
+		tip.set_meta("token_data", clone)
+
 func _capture_slot_baseline_for_preview() -> void:
 	_slot_baseline_tokens.clear()
 	var kids = slots_hbox.get_children()
@@ -449,6 +563,7 @@ func _capture_slot_baseline_for_preview() -> void:
 				continue
 			var tok = ctrl.get_meta("token_data")
 			_slot_baseline_tokens[ctrl] = _clone_token_ref(tok)
+	_update_peek_tokens()
 func _compute_overshoot_scroll(target_scroll: float) -> float:
 	_overshoot_offset = 0.0
 	if overshoot_slot_fraction <= 0.0:
@@ -861,7 +976,10 @@ func spin() -> void:
 	# 2) BUILD lap
 	var laps = _rng.randi_range(min_laps, max_laps)
 	var appended = _build_strip_for_spin(laps)
-	_spin_history_counts.push_back(appended)
+	# Track both newly added slots and recycled buffer slots so next pre-cull
+	# removes the exact count appended this spin.
+	var appended_total = appended + _recycle_queue.size()
+	_spin_history_counts.push_back(appended_total)
 	_append_recycled_slots()
 
 	# 3) flush
@@ -920,14 +1038,20 @@ func spin() -> void:
 
 	_finish_spin()
 
+const VISIBLE_WINDOW_SPAN := 9 # offsets -4..4
+
 func _build_strip_for_spin(laps: int) -> int:
+	# Build each lap from a single shuffled order so repeated instances of the
+	# same token are spaced exactly by inventory size (>= window span), avoiding
+	# duplicates within the visible window at any time.
 	var count = 0
+	var base_order := items.duplicate()
+	if base_order.size() > 1:
+		base_order.shuffle()
 	for lap in range(laps):
-		var lap_items = items.duplicate()
-		lap_items.shuffle()
-		for token in lap_items:
+		for token in base_order:
 			_add_slot(token)
-	count += 1
+			count += 1
 	return count
 
 func _remove_oldest_spin() -> void:
@@ -949,15 +1073,35 @@ func _remove_oldest_spin() -> void:
 	_recycle_queue = recycle_tokens
 
 func _append_recycled_slots() -> void:
+	# Append only recycled tokens that will not cause the same token instance
+	# to appear twice within the trailing visible window.
 	if _recycle_queue.is_empty():
 		return
 	var tokens: Array = _recycle_queue.duplicate()
 	_recycle_queue.clear()
 	if tokens.size() > 1:
 		tokens.shuffle()
+	# Collect identities of tokens currently in the trailing window
+	var recent: Array = []
+	var kids := slots_hbox.get_children()
+	var take = min(VISIBLE_WINDOW_SPAN, kids.size())
+	for i in range(max(0, kids.size() - take), kids.size()):
+		var n = kids[i]
+		if n is Control and (n as Control).has_meta("token_data"):
+			recent.append((n as Control).get_meta("token_data"))
 	for tok in tokens:
-		if tok != null:
-			_add_slot(tok)
+		if tok == null:
+			continue
+		# Skip if same instance is already present in trailing window
+		var exists := false
+		for r in recent:
+			if r == tok:
+				exists = true
+				break
+		if exists:
+			continue
+		_add_slot(tok)
+		recent.append(tok)
 
 func _scroll_for_aligning(slot: Control) -> int:
 	var slot_center = slot.position.x + slot.size.x * 0.5
@@ -1233,6 +1377,23 @@ func _debug_spin_window(label: String) -> void:
 			name = _debug_token_name(slot.get_meta("token_data"))
 		entries.append("%d:%s" % [off, name])
 	print("[SpinDebug] %s -> %s" % [label, ", ".join(entries)])
+	# Optional: detect duplicates in the window by instance
+	var seen: Array = []
+	var dupes: Array[String] = []
+	for off in range(-4, 5):
+		var slot2 := _slot_for_offset(off)
+		if slot2 == null or !slot2.has_meta("token_data"):
+			continue
+		var tk = slot2.get_meta("token_data")
+		var found := false
+		for s in seen:
+			if s == tk: found = true; break
+		if found:
+			dupes.append(_debug_token_name(tk))
+		else:
+			seen.append(tk)
+	if !dupes.is_empty():
+		print("[SpinDebug] Duplicate instances in window: ", ", ".join(dupes))
 
 func _is_empty_token_local(token) -> bool:
 	if token == null:

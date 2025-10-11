@@ -18,7 +18,7 @@ var _prev_mouse_mode: int = Input.MOUSE_MODE_VISIBLE
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	z_index = 10000
+	z_index = 4096
 	set_process(true)
 	_apply_label()
 	# Hide the OS cursor while targeting (restore on exit)

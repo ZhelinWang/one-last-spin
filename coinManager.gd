@@ -4071,6 +4071,57 @@ func _normalize_step(d: Dictionary) -> Dictionary:
 		out["_temporary"] = bool(d["_temporary"])
 	return out
 
+# Format a readable label for tokens or artifacts in debug logs.
+func _debug_token_label(token) -> String:
+	if token == null:
+		return ""
+	if token is ArtifactData:
+		var art: ArtifactData = token
+		var art_name := String(art.get_display_name()).strip_edges()
+		if art_name != "":
+			return art_name
+	var name := _token_name(token)
+	if name.strip_edges() != "":
+		return name
+	return _obj_name(token)
+
+# Build an explanation string describing why a value changed.
+func _describe_value_change_reason(step: Dictionary, source_token, target_contrib: Dictionary) -> String:
+	if step == null or not (step is Dictionary):
+		step = {}
+	var contrib_dict: Dictionary = {}
+	if target_contrib is Dictionary:
+		contrib_dict = target_contrib
+	var ability_ref = step.get("_ability_ref", null)
+	if ability_ref != null:
+		var owner_label := _debug_token_label(source_token)
+		if owner_label.strip_edges() == "":
+			owner_label = "Unknown source"
+		var winner_flag := false
+		if (ability_ref is Object) and (ability_ref as Object).has_method("get"):
+			var raw_flag = ability_ref.get("winner_only")
+			if raw_flag != null:
+				winner_flag = bool(raw_flag)
+		var ability_role := "Passive ability"
+		if winner_flag:
+			ability_role = "Active ability"
+		var ability_label := _ability_id_or_class(ability_ref)
+		if ability_label.strip_edges() == "":
+			return "%s %s" % [ability_role, owner_label]
+		return "%s %s (%s)" % [ability_role, owner_label, ability_label]
+	var owner_label2 := _debug_token_label(source_token)
+	var slot_kind := ""
+	if not contrib_dict.is_empty():
+		slot_kind = String(contrib_dict.get("kind", "")).strip_edges()
+	if owner_label2.strip_edges() != "":
+		if slot_kind != "":
+			return "%s token effect from %s" % [slot_kind.capitalize(), owner_label2]
+		return "Token effect from %s" % owner_label2
+	var source_label := String(step.get("source", "unknown")).strip_edges()
+	if source_label != "":
+		return source_label
+	return "unknown"
+
 # Normalize a "global" step (winner final-phase). Defaults target_kind to "any" if missing.
 func _normalize_global_step(d: Dictionary) -> Dictionary:
 	var s: Dictionary = _normalize_step(d)
@@ -4143,7 +4194,34 @@ func _filter_step_for_contrib(ctx: Dictionary, step: Dictionary, source_token, t
 
 # Ability on_value_changed: notify target and source ability sets
 func _invoke_on_value_changed(ctx: Dictionary, source_token, target_contrib: Dictionary, prev_val: int, new_val: int, step: Dictionary) -> void:
+	if target_contrib == null or not (target_contrib is Dictionary):
+		target_contrib = {}
 	var token_target = target_contrib.get("token")
+	var delta := int(new_val) - int(prev_val)
+	if debug_spin and delta != 0:
+		var target_label := _debug_token_label(token_target)
+		if target_label.strip_edges() == "":
+			target_label = "Offset %d" % int(target_contrib.get("offset", 0))
+		var slot_kind := String(target_contrib.get("kind", "unknown")).strip_edges()
+		if slot_kind == "":
+			slot_kind = "unknown"
+		var delta_str := str(delta)
+		if delta > 0:
+			delta_str = "+" + delta_str
+		var reason := _describe_value_change_reason(step, source_token, target_contrib)
+		if reason.strip_edges() == "":
+			reason = "unknown"
+		var step_kind := String(step.get("kind", "")).strip_edges()
+		if step_kind == "":
+			step_kind = "unknown"
+		print("[ValueChange] %s (%s) %s -> %d via %s (step=%s)" % [
+			target_label,
+			slot_kind,
+			delta_str,
+			int(new_val),
+			reason,
+			step_kind
+		])
 	var abilities_sets: Array = [
 		_get_abilities(token_target),
 		_get_abilities(source_token)
@@ -5381,6 +5459,81 @@ func _refresh_dynamic_passives(ctx: Variant, contribs: Array) -> void:
 			var new_val := _compute_value(contrib)
 			_update_slot_value(ctx_dict, contrib, new_val)
 
+		# Additionally: support abilities that emit cross-target steps via build_final_steps during spin.
+		# These are typically adjacency-style passives (e.g., Coffee Cup) that affect neighbors.
+		# Only consider non-winner-only abilities during spin, and route steps to their target offsets.
+		for ab2 in abilities:
+			if ab2 == null:
+				continue
+			# Must be active during spin and not winner-only (those are handled in final broadcast)
+			if not _ability_is_active_during_spin(ab2):
+				continue
+			if _ability_winner_only(ab2):
+				continue
+			if not (ab2 as Object).has_method("build_final_steps"):
+				continue
+			var fs: Array = ab2.build_final_steps(ctx_dict, contribs, token)
+			if not (fs is Array) or fs.is_empty():
+				continue
+			# Group normalized steps by destination offset so we can refresh each target contrib once.
+			var by_off: Dictionary = {}
+			for raw in fs:
+				if typeof(raw) != TYPE_DICTIONARY:
+					continue
+				var s := _normalize_step(raw)
+				# Resolve destination offsets from the step's target metadata.
+				var tk := String(s.get("target_kind", "offset")).to_lower()
+				var dest_offsets: Array = []
+				match tk:
+					"self", "winner", "middle":
+						dest_offsets = [int(contrib.get("offset", 0))]
+					"left":
+						dest_offsets = [int(contrib.get("offset", 0)) - 1]
+					"right":
+						dest_offsets = [int(contrib.get("offset", 0)) + 1]
+					"neighbors", "adjacent":
+						dest_offsets = [int(contrib.get("offset", 0)) - 1, int(contrib.get("offset", 0)) + 1]
+					"offset":
+						dest_offsets = [int(s.get("target_offset", 0))]
+					"any", "all":
+						# Apply to all five slots in view
+						dest_offsets = [-2, -1, 0, 1, 2]
+					_:
+						# Unknown targeting; skip
+						continue
+				for off in dest_offsets:
+					var int_off := int(off)
+					# Only route to visible triggered offsets
+					if abs(int_off) > 2:
+						continue
+					if not by_off.has(int_off):
+						by_off[int_off] = []
+					var s2 := s.duplicate(true)
+					s2["target_kind"] = "offset"
+					s2["target_offset"] = int_off
+					(by_off[int_off] as Array).append(s2)
+			# Apply/refresh step logs on each destination contrib for this ability
+			for k in by_off.keys():
+				var dest_off := int(k)
+				var dest_contrib := _find_contrib_by_offset(contribs, dest_off)
+				if dest_contrib.is_empty():
+					continue
+				var exist_logs := _find_refresh_logs_for_ability(dest_contrib, ab2)
+				if _refresh_contrib_log_with_steps(dest_contrib, ab2, exist_logs, (by_off[dest_off] as Array)):
+					_update_slot_value(ctx_dict, dest_contrib, _compute_value(dest_contrib))
+			# Also clear any stale logs for this ability on offsets that are no longer targeted
+			for off_all in [-2, -1, 0, 1, 2]:
+				var o := int(off_all)
+				if by_off.has(o):
+					continue
+				var c_dest := _find_contrib_by_offset(contribs, o)
+				if c_dest.is_empty():
+					continue
+				var exist2 := _find_refresh_logs_for_ability(c_dest, ab2)
+				if not exist2.is_empty():
+					if _refresh_contrib_log_with_steps(c_dest, ab2, exist2, []):
+						_update_slot_value(ctx_dict, c_dest, _compute_value(c_dest))
+
 func _resolve_inventory_owner_node() -> Node:
 	var owner := get_node_or_null(inventory_owner_path)
 	if owner != null:
@@ -6184,6 +6337,38 @@ func _reapply_passives_for_offset(ctx: Dictionary, contribs: Array, offset: int)
 		immediate = (immediate_var as Array)
 	if not immediate.is_empty():
 		await _apply_steps_now(idx, contrib, immediate.duplicate(true), ctx, token)
+
+	# If the token at this offset has non-winner-only EffectSpec/abilities that emit safe commands
+	# (e.g., permanent_add to neighbors), execute them now so mid-spin replacements apply immediately.
+	if token != null and (token as Object).has_method("get"):
+		var abilities = token.get("abilities")
+		if abilities is Array:
+			var cmds_now: Array = []
+			for ab in abilities:
+				if ab == null:
+					continue
+				if not _ability_is_active_during_spin(ab):
+					continue
+				if _ability_winner_only(ab):
+					continue
+				if (ab as Object).has_method("build_commands"):
+					var arr = ab.build_commands(ctx, contribs, token)
+					if arr is Array and not arr.is_empty():
+						for cmd in arr:
+							if typeof(cmd) != TYPE_DICTIONARY:
+								continue
+							var op := String((cmd as Dictionary).get("op", "")).to_lower()
+							# Whitelist safe ops to apply during passive refresh
+							if op == "permanent_add" or op == "register_guard_aura" or op == "register_destroy_guard" or op == "register_ward":
+								var cmd_copy: Dictionary = (cmd as Dictionary).duplicate(true)
+								# Ensure effect metadata is present for logging/tracking
+								cmd_copy["__effect_source_token"] = token
+								cmd_copy["__ability_ref"] = ab
+								if not cmd_copy.has("source"):
+									cmd_copy["source"] = "ability:" + _ability_id_or_class(ab)
+								cmds_now.append(cmd_copy)
+			if not cmds_now.is_empty():
+				_execute_ability_commands(cmds_now, ctx, contribs, token)
 
 func _drain_passive_refresh_queue(ctx: Dictionary, contribs: Array) -> void:
 	if ctx == null or not (ctx is Dictionary):

@@ -18,6 +18,7 @@ token_paths = null
 script = ExtResource("3_effect")
 actions = Array[ExtResource("6_action")]([SubResource("A_perm_rand_action")])
 id = "lucky_coin_rand_pm1"
+winner_only = true
 
 [resource]
 script = ExtResource("1_token")

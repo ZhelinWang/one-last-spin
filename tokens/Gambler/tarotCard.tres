@@ -1,23 +1,24 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=6 format=3 uid="uid://d4bouoot1b7ys"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=9 format=3 uid="uid://d4bouoot1b7ys"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
-[ext_resource type="Script" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
-[ext_resource type="Script" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
+[ext_resource type="Script" uid="uid://wc3no5lphtue" path="res://abilties/specs/EffectSpec.gd" id="3_effect"]
+[ext_resource type="Script" uid="uid://dmtr4kg2d2yfm" path="res://abilties/specs/ConditionSpec.gd" id="3_fifc2"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="4_icon"]
+[ext_resource type="Script" uid="uid://bcm63yjd5s7fl" path="res://abilties/specs/ActionSpec.gd" id="6_action"]
 
 [sub_resource type="Resource" id="A_all_action"]
 script = ExtResource("6_action")
 op = "permanent_add"
 amount = 1
 target_override_kind = "any"
+token_paths = null
 
 [sub_resource type="Resource" id="A_all"]
 script = ExtResource("3_effect")
+actions = Array[ExtResource("6_action")]([SubResource("A_all_action")])
 id = "tarot_all_triggered_plus_1"
-trigger = 0 # ACTIVE_DURING_SPIN
 winner_only = true
-actions = [ SubResource("A_all_action") ]
 
 [resource]
 script = ExtResource("1_token")

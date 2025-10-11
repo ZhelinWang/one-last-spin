@@ -570,6 +570,21 @@ mouse_filter = 0
 theme_override_constants/separation = 20
 alignment = 1
 
+[node name="peekOverlay" type="Control" parent="mainContainer/spinMarginContainer/gameElementsContainer/spinRoot/spinner/spinnerTilesMargin"]
+z_index = 2
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 8
+mouse_filter = 2
+
+[node name="peekLeft" type="Control" parent="mainContainer/spinMarginContainer/gameElementsContainer/spinRoot/spinner/spinnerTilesMargin/peekOverlay"]
+anchors_preset = 0
+mouse_filter = 2
+
+[node name="peekRight" type="Control" parent="mainContainer/spinMarginContainer/gameElementsContainer/spinRoot/spinner/spinnerTilesMargin/peekOverlay"]
+anchors_preset = 0
+mouse_filter = 2
+
 [node name="spinnerFrame" type="VBoxContainer" parent="mainContainer/spinMarginContainer/gameElementsContainer/spinRoot/spinner"]
 layout_mode = 2
 size_flags_vertical = 8

@@ -1,8 +1,18 @@
-[gd_resource type="Resource" script_class="TokenLootData" load_steps=4 format=3 uid="uid://dsyi2kb5c07lc"]
+[gd_resource type="Resource" script_class="TokenLootData" load_steps=8 format=3 uid="uid://dsyi2kb5c07lc"]
 
 [ext_resource type="Script" uid="uid://2lqsh3g3xqag" path="res://tokens/tokenData.gd" id="1_token"]
 [ext_resource type="Script" uid="uid://cc88rmbau7nxl" path="res://abilties/tokenAbilities.gd" id="2_abilities"]
+[ext_resource type="Script" uid="uid://b5lc03vqof565" path="res://abilties/petRockActiveAbility.gd" id="3_active"]
+[ext_resource type="Script" uid="uid://bp8bc0n6ty5y6" path="res://abilties/petRockValueLockAbility.gd" id="4_passive"]
 [ext_resource type="Texture2D" uid="uid://dcrsbubbw58pl" path="res://placehold.jpg" id="5_icon"]
+
+[sub_resource type="Resource" id="PetRockActive"]
+script = ExtResource("3_active")
+id = "pet_rock_active"
+
+[sub_resource type="Resource" id="PetRockPassive"]
+script = ExtResource("4_passive")
+id = "pet_rock_value_lock"
 
 [resource]
 script = ExtResource("1_token")
@@ -10,5 +20,6 @@ name = "Pet Rock"
 icon = ExtResource("5_icon")
 value = 3
 tags = PackedStringArray("General")
+abilities = Array[ExtResource("2_abilities")]([SubResource("PetRockActive"), SubResource("PetRockPassive")])
 activeDescription = "Set all triggered tokens to this token's value."
 passiveDescription = "This token's value cannot be changed."

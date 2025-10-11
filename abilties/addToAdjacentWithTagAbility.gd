@@ -38,3 +38,7 @@ func build_final_steps(ctx: Dictionary, contribs: Array, source_token: Resource)
                 "target_offset": off
             })
     return out
+
+func should_refresh_after_board_change() -> bool:
+    # Adjacency depends on neighbors; re-evaluate when the board changes mid-spin.
+    return true

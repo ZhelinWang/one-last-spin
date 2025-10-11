@@ -31,6 +31,7 @@ token_paths = null
 script = ExtResource("2_effect")
 actions = Array[ExtResource("6_action")]([SubResource("A_passive_action")])
 id = "coffee_adjacent_human_plus1_spec"
+once_per_spin = true
 
 [resource]
 script = ExtResource("1_token")

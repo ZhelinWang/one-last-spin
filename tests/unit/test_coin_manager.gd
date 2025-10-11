@@ -5,6 +5,9 @@ const EMPTY_TOKEN_PATH := "res://tokens/empty.tres"
 const COIN_TOKEN_PATH := "res://tokens/Hoarder/coin.tres"
 const COPPER_TOKEN_PATH := "res://tokens/Hoarder/copperCoin.tres"
 const EXECUTIVE_TOKEN_PATH := "res://tokens/Hoarder/executive.tres"
+const EffectSpec := preload("res://abilties/specs/EffectSpec.gd")
+const AbilityAction := preload("res://abilties/specs/ActionSpec.gd")
+const AbilityCondition := preload("res://abilties/specs/ConditionSpec.gd")
 
 class DummyInventoryOwner:
 	extends Node
@@ -153,3 +156,59 @@ func test_resync_permanent_add_updates_triggered_coin() -> void:
 	assert_true(contrib.has("steps") and contrib["steps"] is Array and !contrib["steps"].is_empty(), "resync should log a replacement/value step")
 	assert_true(ctx.has("board_tokens"), "context should refresh board snapshot after permanent add")
 	assert_eq(owner.items[0].get("value"), 1, "inventory coin should match updated value")
+
+func test_random_chance_zero_prevents_commands() -> void:
+	var effect: EffectSpec = EffectSpec.new()
+	effect.id = "chance_zero"
+	effect.winner_only = true
+	var action: AbilityAction = AbilityAction.new()
+	action.op = "permanent_add"
+	action.amount = 1
+	effect.actions = [action]
+	var cond: AbilityCondition = AbilityCondition.new()
+	cond.kind = "random_chance"
+	cond.chance_percent = 0
+	effect.conditions = [cond]
+	var token := load(COIN_TOKEN_PATH).duplicate(true)
+	var contrib := {
+		"offset": 0,
+		"token": token,
+		"kind": "active",
+		"base": token.get("value"),
+		"delta": 0,
+		"mult": 1.0,
+		"meta": {}
+	}
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 12345
+	var ctx := {"rng": rng}
+	var commands := effect.build_commands(ctx, [contrib], token)
+	assert_true(commands.is_empty(), "0% chance condition should block command emission")
+
+func test_random_chance_hundred_always_emits_command() -> void:
+	var effect: EffectSpec = EffectSpec.new()
+	effect.id = "chance_full"
+	effect.winner_only = true
+	var action: AbilityAction = AbilityAction.new()
+	action.op = "permanent_add"
+	action.amount = 1
+	effect.actions = [action]
+	var cond: AbilityCondition = AbilityCondition.new()
+	cond.kind = "random_chance"
+	cond.chance_percent = 100
+	effect.conditions = [cond]
+	var token := load(COIN_TOKEN_PATH).duplicate(true)
+	var contrib := {
+		"offset": 0,
+		"token": token,
+		"kind": "active",
+		"base": token.get("value"),
+		"delta": 0,
+		"mult": 1.0,
+		"meta": {}
+	}
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 54321
+	var ctx := {"rng": rng}
+	var commands := effect.build_commands(ctx, [contrib], token)
+	assert_false(commands.is_empty(), "100% chance condition should always emit a command")
