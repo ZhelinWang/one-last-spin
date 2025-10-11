@@ -2,9 +2,12 @@ extends Control
 
 @export var count: int = 1
 @export var square_size: int = 64
+@export_range(0.1, 0.9) var inner_square_ratio: float = 0.45
 @export var border_thickness: int = 6
+@export var inner_border_thickness: int = 3
 @export var color: Color = Color8(246, 44, 37)
 @export var outline_thickness: int = 2
+@export var inner_outline_thickness: int = 1
 @export var outline_color: Color = Color(0, 0, 0)
 @export var hide_system_cursor: bool = true
 @export var text_color: Color = Color(1, 1, 1)
@@ -63,6 +66,17 @@ func _draw() -> void:
 	if ot > 0.0:
 		draw_rect(rect, outline_color, false, bt + ot * 2.0)
 	draw_rect(rect, color, false, bt)
+
+	var inner_ratio = clamp(inner_square_ratio, 0.05, 0.95)
+	var inner_size = float(square_size) * inner_ratio
+	if inner_size >= 1.0:
+		var inner_tl := _mouse_pos - Vector2(inner_size * 0.5, inner_size * 0.5)
+		var inner_rect := Rect2(inner_tl, Vector2(inner_size, inner_size))
+		var ibt := float(max(1, inner_border_thickness))
+		var iot := float(max(0, inner_outline_thickness))
+		if iot > 0.0:
+			draw_rect(inner_rect, outline_color, false, ibt + iot * 2.0)
+		draw_rect(inner_rect, color, false, ibt)
 
 func _exit_tree() -> void:
 	# Restore cursor visibility if we hid it here

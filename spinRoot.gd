@@ -62,8 +62,6 @@ var _baseline_spin_distance: float = 0.0
 var _spin_duration_scale: float = 1.0
 var _recycle_queue: Array = []
 const WINNER_RIGHT_BUFFER := 4
-const PEEK_LEFT_OFFSET := -3
-const PEEK_RIGHT_OFFSET := 3
 const PEEK_NAME_LEFT := "PeekLeftSlot"
 const PEEK_NAME_RIGHT := "PeekRightSlot"
 var _peek_left_slot: Control = null
@@ -400,6 +398,9 @@ func handle_triggered_empty_removed(offset: int) -> void:
 		if dst_slot_node == null or not (dst_slot_node is Control):
 			break
 		var dst_slot := dst_slot_node as Control
+		var dst_prev_token = null
+		if dst_slot.has_meta("token_data"):
+			dst_prev_token = dst_slot.get_meta("token_data")
 		var search_idx := dst_idx + step
 		var found_slot: Control = null
 		var found_token = null
@@ -415,12 +416,6 @@ func handle_triggered_empty_removed(offset: int) -> void:
 			if tok == null:
 				search_idx += step
 				continue
-			if _is_empty_token_local(tok):
-				_apply_slot_token(src_slot, null)
-				if coin_mgr != null and coin_mgr.has_method("queue_pending_empty_token"):
-					coin_mgr.call("queue_pending_empty_token", tok)
-				search_idx += step
-				continue
 			found_slot = src_slot
 			found_token = tok
 			break
@@ -429,7 +424,10 @@ func handle_triggered_empty_removed(offset: int) -> void:
 			break
 		_apply_slot_token(dst_slot, found_token)
 		if found_slot != null and found_slot != dst_slot:
-			_apply_slot_token(found_slot, null)
+			if dst_prev_token != null:
+				_apply_slot_token(found_slot, dst_prev_token)
+			else:
+				_apply_slot_token(found_slot, null)
 			dst_idx = children.find(found_slot)
 			if dst_idx == -1:
 				break
@@ -497,10 +495,26 @@ func _prepare_peek_holder(container: Control, slot_name: String) -> Control:
 	return ctrl
 
 func _update_peek_tokens() -> void:
-	_update_single_peek(peek_left_container, _peek_left_slot, PEEK_LEFT_OFFSET)
-	_update_single_peek(peek_right_container, _peek_right_slot, PEEK_RIGHT_OFFSET)
+	_update_single_peek(peek_left_container, _peek_left_slot, -1)
+	_update_single_peek(peek_right_container, _peek_right_slot, 1)
 
-func _update_single_peek(wrapper: Control, slot_display: Control, offset: int) -> void:
+func _find_peek_target(sign: int) -> Control:
+	if sign == 0:
+		return null
+	var step := -1 if sign < 0 else 1
+	var offset := -3 if sign < 0 else 3
+	var guard := 0
+	while guard < 16:
+		var slot := _slot_for_offset(offset)
+		if slot == null:
+			return null
+		if slot.has_meta("token_data") and slot.get_meta("token_data") != null:
+			return slot
+		offset += step
+		guard += 1
+	return null
+
+func _update_single_peek(wrapper: Control, slot_display: Control, side_sign: int) -> void:
 	if wrapper == null:
 		return
 	var tip := wrapper.get_node_or_null("TooltipSpawner")
@@ -510,7 +524,7 @@ func _update_single_peek(wrapper: Control, slot_display: Control, offset: int) -
 		if tip != null:
 			tip.set_meta("token_data", null)
 		return
-	var target_slot := _slot_for_offset(offset)
+	var target_slot := _find_peek_target(side_sign)
 	if target_slot == null or not target_slot.has_meta("token_data"):
 		_set_slot_token(slot_display, null)
 		wrapper.visible = false
@@ -528,7 +542,7 @@ func _update_single_peek(wrapper: Control, slot_display: Control, offset: int) -
 		return
 	var overlay := wrapper.get_parent()
 	var base_ctrl: Control = null
-	if offset < 0:
+	if side_sign < 0:
 		base_ctrl = _slot_for_offset(-2)
 	else:
 		base_ctrl = _slot_for_offset(2)
@@ -538,7 +552,7 @@ func _update_single_peek(wrapper: Control, slot_display: Control, offset: int) -
 		var base_pos := base_ctrl.global_position
 		var base_size := base_ctrl.size
 		var separation := float(slots_hbox.get_theme_constant("separation"))
-		if offset < 0:
+		if side_sign < 0:
 			base_pos.x -= base_size.x + separation
 		else:
 			base_pos.x += base_size.x + separation
