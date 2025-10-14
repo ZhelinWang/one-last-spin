@@ -93,8 +93,14 @@ func _on_entered() -> void:
 		var tip_view := tooltip_node as TokenTooltipView
 		tip_view.force_dim_active = active_dim
 		tip_view.force_dim_passive = dim_all
+		tip_view.dim_active_title_when_dimmed = dim_all
+		tip_view.dim_passive_title_when_dimmed = dim_all
+		tip_view.dim_value_when_dimmed = dim_all
+		tip_view.dim_tags_when_dimmed = dim_all
 		tip_view.set_dim_active(active_dim)
 		tip_view.set_dim_passive(dim_all)
+		tip_view.set_dim_value(dim_all)
+		tip_view.set_dim_tags(dim_all)
 		apply_active_dim = active_dim
 		apply_passive_dim = dim_all
 
@@ -105,6 +111,8 @@ func _on_entered() -> void:
 		if is_token and tooltip_node is TokenTooltipView:
 			(tooltip_node as TokenTooltipView).set_dim_active(apply_active_dim)
 			(tooltip_node as TokenTooltipView).set_dim_passive(apply_passive_dim)
+			(tooltip_node as TokenTooltipView).set_dim_value(apply_passive_dim)
+			(tooltip_node as TokenTooltipView).set_dim_tags(apply_passive_dim)
 	_tooltip.visible = true
 	_position_tooltip()
 
@@ -196,8 +204,14 @@ func _refresh_highlight_if_hovering(_a = null, _b = null, _c = null, _d = null, 
 		var tip_view := _tooltip as TokenTooltipView
 		tip_view.force_dim_active = desired_active
 		tip_view.force_dim_passive = dim_all
+		tip_view.dim_active_title_when_dimmed = dim_all
+		tip_view.dim_passive_title_when_dimmed = dim_all
+		tip_view.dim_value_when_dimmed = dim_all
+		tip_view.dim_tags_when_dimmed = dim_all
 		tip_view.set_dim_active(desired_active)
 		tip_view.set_dim_passive(dim_all)
+		tip_view.set_dim_value(dim_all)
+		tip_view.set_dim_tags(dim_all)
 
 func _compute_dim_for_owner() -> bool:
 	# Grey out Active when hovering a triggered-but-non-winner slot (±2 around center, excluding center).

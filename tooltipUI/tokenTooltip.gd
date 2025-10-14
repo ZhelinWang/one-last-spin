@@ -13,8 +13,11 @@ const ACTIVE_TITLE_COLOR := Color8(246, 44, 37)    # #f62c25
 const PASSIVE_TITLE_COLOR := Color8(66, 182, 255)  # #42b6ff
 const DEFAULT_DESC_COLOR := Color(0.9, 0.9, 0.95)
 const DIM_DESC_COLOR := Color(0.6, 0.6, 0.68)
+const DIM_TITLE_COLOR := Color(0.6, 0.6, 0.68)
 const TAG_BG := Color(0.16, 0.16, 0.2, 0.9)
 const TAG_TEXT := Color(0.92, 0.92, 0.96)
+const DIM_TAG_BG := Color(0.26, 0.26, 0.3, 0.9)
+const DIM_TAG_TEXT := Color(0.72, 0.72, 0.76)
 
 var _built := false
 var _panel_sb: StyleBoxFlat
@@ -34,6 +37,13 @@ var _active_title_wrap: MarginContainer
 var _active_desc_wrap: MarginContainer
 var _passive_title_wrap: MarginContainer
 var _passive_desc_wrap: MarginContainer
+var dim_active_title_when_dimmed := false
+var dim_passive_title_when_dimmed := false
+var dim_value_when_dimmed := false
+var dim_tags_when_dimmed := false
+var _value_last_color: Color = Color(0.92, 0.92, 0.96)
+var _value_dimmed := false
+var _tag_chips: Array = []
 
 func _ready() -> void:
 	if _built:
@@ -157,22 +167,25 @@ func set_data(data: TokenLootData) -> void:
 			temp_color = temp_gain_color
 		elif temp_delta < 0.0:
 			temp_color = temp_loss_color
+	var applied_color := neutral
 	if base_only:
 		_value_label.text = "Value: %d" % base_val
-		_value_label.add_theme_color_override("font_color", neutral)
+		applied_color = neutral
 	else:
 		if has_temp:
 			var temp_str := "%+d" % int(round(temp_delta))
 			_value_label.text = "Value: %d (%s)" % [curr_val, temp_str]
-			_value_label.add_theme_color_override("font_color", temp_color)
+			applied_color = temp_color
 		else:
 			_value_label.text = "Value: %d" % curr_val
 			if curr_val > base_val:
-				_value_label.add_theme_color_override("font_color", temp_gain_color)
+				applied_color = temp_gain_color
 			elif curr_val < base_val:
-				_value_label.add_theme_color_override("font_color", temp_loss_color)
+				applied_color = temp_loss_color
 			else:
-				_value_label.add_theme_color_override("font_color", neutral)
+				applied_color = neutral
+	_value_label.add_theme_color_override("font_color", applied_color)
+	_value_last_color = applied_color
 
 	# Rarity via color only (no rarity text)
 	var rare_col := data.get_color()
@@ -188,6 +201,7 @@ func set_data(data: TokenLootData) -> void:
 	if String(data.passiveDescription).strip_edges() != "":
 		has_passive = true
 
+	var dim_all_flag := force_dim_passive
 	_active_title_wrap.visible = has_active
 	_active_desc_wrap.visible = has_active
 	if has_active:
@@ -201,9 +215,11 @@ func set_data(data: TokenLootData) -> void:
 	_passive_desc_wrap.visible = has_passive
 	if has_passive:
 		_passive_desc_label.text = String(data.passiveDescription)
+		set_dim_passive(dim_all_flag)
 	else:
 		_passive_desc_label.text = ""
-	set_dim_passive(force_dim_passive if has_passive else false)
+		set_dim_passive(false)
+	set_dim_value(dim_value_when_dimmed)
 
 	# --- Tags with indentation (no title) ---
 	# Wrap tags flow in an indented MarginContainer once (idempotent)
@@ -220,6 +236,7 @@ func set_data(data: TokenLootData) -> void:
 
 	# Clear and repopulate tags
 	_clear_node_children(_tags_flow)
+	_tag_chips.clear()
 	var tag_list: PackedStringArray = data.tags
 
 	# Toggle visibility (hide separator and flow when no tags)
@@ -236,7 +253,10 @@ func set_data(data: TokenLootData) -> void:
 
 	if has_tags:
 		for t in tag_list:
-			_tags_flow.add_child(_make_tag_chip(t))
+			var chip := _make_tag_chip(t)
+			_tags_flow.add_child(chip)
+			_tag_chips.append(chip)
+	set_dim_tags(dim_tags_when_dimmed)
 
 	reset_size()
 	queue_redraw()
@@ -283,6 +303,7 @@ func _make_tag_chip(text: String) -> PanelContainer:
 	sb.set_content_margin(SIDE_TOP, 5)     # 5px top margin for chip text
 	sb.set_content_margin(SIDE_BOTTOM, 2)
 	chip.add_theme_stylebox_override("panel", sb)
+	chip.set_meta("__tag_stylebox", sb)
 
 	var lbl := Label.new()
 	if pixel_font != null:
@@ -293,6 +314,7 @@ func _make_tag_chip(text: String) -> PanelContainer:
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	lbl.text = text
 	chip.add_child(lbl)
+	chip.set_meta("__tag_label", lbl)
 	return chip
 
 
@@ -347,6 +369,11 @@ func set_dim_active(dim: bool) -> void:
 		_active_desc_label.modulate = DIM_DESC_COLOR
 	else:
 		_active_desc_label.modulate = DEFAULT_DESC_COLOR
+	if _active_title_label != null:
+		var color := ACTIVE_TITLE_COLOR
+		if dim and dim_active_title_when_dimmed:
+			color = DIM_TITLE_COLOR
+		_active_title_label.add_theme_color_override("font_color", color)
 
 func set_dim_passive(dim: bool) -> void:
 	force_dim_passive = dim
@@ -356,3 +383,29 @@ func set_dim_passive(dim: bool) -> void:
 		_passive_desc_label.modulate = DIM_DESC_COLOR
 	else:
 		_passive_desc_label.modulate = DEFAULT_DESC_COLOR
+	if _passive_title_label != null:
+		var color := PASSIVE_TITLE_COLOR
+		if dim and dim_passive_title_when_dimmed:
+			color = DIM_TITLE_COLOR
+		_passive_title_label.add_theme_color_override("font_color", color)
+
+func set_dim_value(dim: bool) -> void:
+	_value_dimmed = dim
+	if _value_label == null:
+		return
+	if dim and dim_value_when_dimmed:
+		_value_label.add_theme_color_override("font_color", DIM_DESC_COLOR)
+	else:
+		_value_label.add_theme_color_override("font_color", _value_last_color)
+
+func set_dim_tags(dim: bool) -> void:
+	for chip in _tag_chips:
+		if chip == null:
+			continue
+		var sb = chip.get_meta("__tag_stylebox") if chip.has_meta("__tag_stylebox") else null
+		if sb is StyleBoxFlat:
+			(sb as StyleBoxFlat).bg_color = DIM_TAG_BG if dim else TAG_BG
+			chip.queue_redraw()
+		var lbl = chip.get_meta("__tag_label") if chip.has_meta("__tag_label") else null
+		if lbl is Label:
+			(lbl as Label).add_theme_color_override("font_color", DIM_TAG_TEXT if dim else TAG_TEXT)
