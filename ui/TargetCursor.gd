@@ -54,29 +54,61 @@ func _process(_dt: float) -> void:
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	queue_redraw()
-
+	
 func _draw() -> void:
 	var tl := _mouse_pos - Vector2(square_size * 0.5, square_size * 0.5)
 	var rect := Rect2(tl, Vector2(square_size, square_size))
+
 	var bt := float(max(1, border_thickness))
 	var ot := float(max(0, outline_thickness))
-	# Symmetric black outline by drawing a single thicker stroke,
-	# then the red stroke on top. Because line width is centered
-	# on the rect edge, this yields equal inside/outside thickness.
+
+	# --- Outer square ---
 	if ot > 0.0:
 		draw_rect(rect, outline_color, false, bt + ot * 2.0)
 	draw_rect(rect, color, false, bt)
 
-	var inner_ratio = clamp(inner_square_ratio, 0.05, 0.95)
-	var inner_size = float(square_size) * inner_ratio
-	if inner_size >= 1.0:
-		var inner_tl := _mouse_pos - Vector2(inner_size * 0.5, inner_size * 0.5)
-		var inner_rect := Rect2(inner_tl, Vector2(inner_size, inner_size))
-		var ibt := float(max(1, inner_border_thickness))
-		var iot := float(max(0, inner_outline_thickness))
-		if iot > 0.0:
-			draw_rect(inner_rect, outline_color, false, ibt + iot * 2.0)
-		draw_rect(inner_rect, color, false, ibt)
+	# --- Crosshair lines along each center edge ---
+	var half := square_size * 0.5
+	var accent_len := square_size * 0.125
+	var thickness := bt
+
+	var cx := _mouse_pos.x
+	var cy := _mouse_pos.y
+
+	var pixel_align := func(v: Vector2) -> Vector2:
+		return v.floor() + Vector2(0.5, 0.5)
+
+	var centers = {
+		"top":    Vector2(cx, cy - half),
+		"bottom": Vector2(cx, cy + half),
+		"left":   Vector2(cx - half, cy),
+		"right":  Vector2(cx + half, cy)
+	}
+
+	var outline_offsets = [
+		Vector2( ot, 0), Vector2(-ot, 0),
+		Vector2(0,  ot), Vector2(0, -ot),
+		Vector2( ot,  ot), Vector2(-ot,  ot),
+		Vector2( ot, -ot), Vector2(-ot, -ot)
+	]
+
+	for side in centers.keys():
+		var start: Vector2
+		var end: Vector2
+		match side:
+			"top", "bottom":
+				start = centers[side] - Vector2(0, accent_len)
+				end   = centers[side] + Vector2(0, accent_len)
+			"left", "right":
+				start = centers[side] - Vector2(accent_len, 0)
+				end   = centers[side] + Vector2(accent_len, 0)
+
+		# Draw black outline by surrounding the line with offset copies
+		if ot > 0.0:
+			for off in outline_offsets:
+				draw_line(pixel_align.call(start + off), pixel_align.call(end + off), outline_color, thickness)
+		# Then draw main colored line
+		draw_line(pixel_align.call(start), pixel_align.call(end), color, thickness)
 
 func _exit_tree() -> void:
 	# Restore cursor visibility if we hid it here

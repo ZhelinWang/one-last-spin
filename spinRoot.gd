@@ -492,6 +492,9 @@ func _prepare_peek_holder(container: Control, slot_name: String) -> Control:
 	else:
 		container.move_child(existing_tip, container.get_child_count() - 1)
 	container.set_meta("tooltip_base_only", true)
+	container.set_meta("tooltip_dim_all", true)
+	if existing_tip != null:
+		existing_tip.set_meta("tooltip_dim_all", true)
 	return ctrl
 
 func _update_peek_tokens() -> void:
@@ -564,8 +567,82 @@ func _update_single_peek(wrapper: Control, slot_display: Control, side_sign: int
 	wrapper.visible = true
 	wrapper.set_meta("token_data", clone)
 	wrapper.set_meta("tooltip_base_only", true)
+	wrapper.set_meta("tooltip_dim_all", true)
 	if tip != null:
 		tip.set_meta("token_data", clone)
+		tip.set_meta("tooltip_dim_all", true)
+
+func _slot_offset_for_control(ctrl: Control) -> int:
+	if ctrl == null or slots_hbox == null:
+		return 1024
+	var idx := slots_hbox.get_children().find(ctrl)
+	if idx == -1:
+		return 1024
+	return idx - _last_winning_slot_idx
+
+func _slot_is_empty(ctrl: Control) -> bool:
+	if ctrl == null:
+		return false
+	if !ctrl.has_meta("token_data"):
+		return true
+	var tok = ctrl.get_meta("token_data")
+	return tok == null or _is_empty_token_local(tok)
+
+func _collect_board_empty_slots() -> Array:
+	var empties: Array = []
+	if slots_hbox == null:
+		return empties
+	for node in slots_hbox.get_children():
+		if not (node is Control):
+			continue
+		var ctrl := node as Control
+		if !_slot_is_empty(ctrl):
+			continue
+		var tok = ctrl.get_meta("token_data") if ctrl.has_meta("token_data") else null
+		var idx := items.find(tok) if tok != null else -1
+		if idx == -1:
+			continue
+		empties.append({
+			"ctrl": ctrl,
+			"offset": _slot_offset_for_control(ctrl),
+			"inventory_index": idx,
+			"token": tok
+		})
+	return empties
+
+func place_token_random_board_empty(token, rng: RandomNumberGenerator = null, allow_append: bool = true) -> bool:
+	if token == null or slots_hbox == null:
+		return false
+	var empties_data := _collect_board_empty_slots()
+	if empties_data.is_empty():
+		if not allow_append:
+			return false
+		_add_slot(token)
+		if items.find(token) == -1:
+			items.append(token)
+			_update_inventory_strip()
+			_refresh_inventory_baseline()
+		_capture_slot_baseline_for_preview()
+		return true
+	var picker := rng
+	if picker == null:
+		picker = _rng
+	if picker == null:
+		picker = RandomNumberGenerator.new()
+		picker.randomize()
+	var pick_idx := picker.randi_range(0, empties_data.size() - 1)
+	var entry := empties_data[pick_idx] as Dictionary
+	var target_ctrl = entry.get("ctrl") if entry is Dictionary else null
+	if target_ctrl == null:
+		return false
+	var inv_index := int(entry.get("inventory_index", -1)) if entry is Dictionary else -1
+	_apply_slot_token(target_ctrl, token)
+	if inv_index >= 0 and inv_index < items.size():
+		items[inv_index] = token
+		_update_inventory_strip()
+		_refresh_inventory_baseline()
+	_capture_slot_baseline_for_preview()
+	return true
 
 func _capture_slot_baseline_for_preview() -> void:
 	_slot_baseline_tokens.clear()

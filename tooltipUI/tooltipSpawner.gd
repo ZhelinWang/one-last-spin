@@ -57,22 +57,54 @@ func _on_entered() -> void:
 	if tooltip_node is CanvasItem:
 		(tooltip_node as CanvasItem).texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
+	var apply_active_dim := false
+	var apply_passive_dim := false
+	var board_info := _resolve_board_slot_info()
+	var board_dim_all := false
+	if board_info.get("is_board", false):
+		var idx := int(board_info.get("index", -1))
+		var center_idx := int(board_info.get("center", -1))
+		if idx != -1 and center_idx >= 0 and idx != center_idx:
+			var diff = abs(idx - center_idx)
+			if diff > 2:
+				board_dim_all = true
+
 	if is_token and tooltip_node is TokenTooltipView:
 		var base_only := false
 		if _owner_ctrl != null and _owner_ctrl.has_meta("tooltip_base_only"):
 			base_only = bool(_owner_ctrl.get_meta("tooltip_base_only"))
+		var dim_all := false
+		if _owner_ctrl != null and _owner_ctrl.has_meta("tooltip_dim_all"):
+			dim_all = bool(_owner_ctrl.get_meta("tooltip_dim_all"))
+		elif has_meta("tooltip_dim_all"):
+			dim_all = bool(get_meta("tooltip_dim_all"))
+		elif _owner_ctrl != null:
+			var parent := _owner_ctrl.get_parent()
+			if parent != null and parent.name.to_lower().find("peek") != -1:
+				dim_all = true
+		if not dim_all:
+			dim_all = board_dim_all
 		(tooltip_node as TokenTooltipView).base_only = base_only
 		# Apply initial dim state for triggered-but-non-winner slots (spinner only)
 		var dim_now := _compute_dim_for_owner()
 		if dim_now:
 			_dim_locked = true
-		(tooltip_node as TokenTooltipView).force_dim_active = dim_now
-		(tooltip_node as TokenTooltipView).set_dim_active(dim_now)
+		var active_dim := dim_now or dim_all
+		var tip_view := tooltip_node as TokenTooltipView
+		tip_view.force_dim_active = active_dim
+		tip_view.force_dim_passive = dim_all
+		tip_view.set_dim_active(active_dim)
+		tip_view.set_dim_passive(dim_all)
+		apply_active_dim = active_dim
+		apply_passive_dim = dim_all
 
 	_tooltip = tooltip_node
 	_overlay_root.add_child(_tooltip)
 	if _tooltip.has_method("set_data"):
 		_tooltip.call("set_data", data)
+		if is_token and tooltip_node is TokenTooltipView:
+			(tooltip_node as TokenTooltipView).set_dim_active(apply_active_dim)
+			(tooltip_node as TokenTooltipView).set_dim_passive(apply_passive_dim)
 	_tooltip.visible = true
 	_position_tooltip()
 
@@ -137,26 +169,64 @@ func _refresh_highlight_if_hovering(_a = null, _b = null, _c = null, _d = null, 
 		_coin_mgr.call("start_effect_highlight_for_token", _highlight_token)
 	# Also keep the tooltip's dim state in sync across spin phases
 	if is_instance_valid(_tooltip) and _tooltip is TokenTooltipView:
+		var board_info := _resolve_board_slot_info()
+		var board_dim_all := false
+		if board_info.get("is_board", false):
+			var idx := int(board_info.get("index", -1))
+			var center_idx := int(board_info.get("center", -1))
+			if idx != -1 and center_idx >= 0 and idx != center_idx:
+				var diff = abs(idx - center_idx)
+				if diff > 2:
+					board_dim_all = true
+		var dim_all := false
+		if _owner_ctrl != null and _owner_ctrl.has_meta("tooltip_dim_all"):
+			dim_all = bool(_owner_ctrl.get_meta("tooltip_dim_all"))
+		elif has_meta("tooltip_dim_all"):
+			dim_all = bool(get_meta("tooltip_dim_all"))
+		elif _owner_ctrl != null:
+			var parent := _owner_ctrl.get_parent()
+			if parent != null and parent.name.to_lower().find("peek") != -1:
+				dim_all = true
+		if not dim_all:
+			dim_all = board_dim_all
 		var dim_now := _compute_dim_for_owner()
 		if dim_now:
 			_dim_locked = true
-		var desired := dim_now or _dim_locked
-		(_tooltip as TokenTooltipView).force_dim_active = desired
-		(_tooltip as TokenTooltipView).set_dim_active(desired)
+		var desired_active := dim_all or dim_now or _dim_locked
+		var tip_view := _tooltip as TokenTooltipView
+		tip_view.force_dim_active = desired_active
+		tip_view.force_dim_passive = dim_all
+		tip_view.set_dim_active(desired_active)
+		tip_view.set_dim_passive(dim_all)
 
 func _compute_dim_for_owner() -> bool:
 	# Grey out Active when hovering a triggered-but-non-winner slot (±2 around center, excluding center).
 	# Inventory items should not be affected (no spinRoot ancestor).
+	var info := _resolve_board_slot_info()
+	if not info.get("is_board", false):
+		return false
+	var idx := int(info.get("index", -1))
+	var center_idx := int(info.get("center", -1))
+	if idx == -1 or center_idx < 0 or idx == center_idx:
+		return false
+	return abs(idx - center_idx) <= 2
+
+func _resolve_board_slot_info() -> Dictionary:
+	var result := {
+		"is_board": false,
+		"index": -1,
+		"center": -1
+	}
 	var sr: Node = _owner_ctrl
 	while sr != null and sr.name != "spinRoot":
 		sr = sr.get_parent()
 	if sr == null:
-		return false
+		return result
 	var slots = sr.get("slots_hbox") if (sr as Object).has_method("get") else null
 	if slots == null or not (slots is Node):
 		slots = sr.get_node_or_null("spinner/spinnerTilesMargin/scrollContainer/slotsHBox")
 	if slots == null or not (slots is HBoxContainer):
-		return false
+		return result
 	var kids: Array = (slots as HBoxContainer).get_children()
 	# Resolve which slot this owner belongs to: walk up until the direct child of slots_hbox
 	var owner_node: Node = _owner_ctrl
@@ -167,10 +237,11 @@ func _compute_dim_for_owner() -> bool:
 			break
 		owner_node = owner_node.get_parent()
 	var idx: int = kids.find(slot_ancestor if slot_ancestor != null else _owner_ctrl)
+	result["is_board"] = idx != -1
+	result["index"] = idx
 	var center_idx: int = int(sr.get("_last_winning_slot_idx")) if (sr as Object).has_method("get") else -1
-	if idx == -1 or center_idx < 0:
-		return false
-	return abs(idx - center_idx) <= 2 and idx != center_idx
+	result["center"] = center_idx
+	return result
 
 func _position_tooltip() -> void:
 	if not is_instance_valid(_tooltip):

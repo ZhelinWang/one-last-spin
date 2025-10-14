@@ -1328,14 +1328,9 @@ func _play_counting_popup(ctx: Dictionary, contrib: Dictionary, from_val: int, t
 	var ct := get_tree().create_tween()
 	popup.set_meta("count_tween", ct)
 	var color := _temporary_neutral_color()
-	if not is_base and step_info is Dictionary and _is_step_temporary(step_info):
-		if actual_change > 0.0:
-			color = temporary_gain_color
-		elif actual_change < 0.0:
-			color = temporary_loss_color
 	_apply_popup_glow(popup, color)
 	popup.set_meta(POPUP_META_TOTAL, new_display_total)
-	var call := Callable(self, "_set_counting_text").bind(env["label"], color)
+	var call := Callable(self, "_set_counting_text").bind(env["label"])
 	ct.tween_method(call, prev_display_total, new_display_total, count_dur).set_trans(Tween.TRANS_LINEAR)
 
 
@@ -1359,7 +1354,7 @@ func _apply_popup_glow(popup: Control, color: Color) -> void:
 	popup.add_theme_stylebox_override("panel", style)
 	popup.add_theme_stylebox_override("normal", style)
 
-func _set_counting_text(v: float, target: Node, color: Color) -> void:
+func _set_counting_text(v: float, target: Node) -> void:
 	if target == null:
 		return
 	var diff := int(round(v))
@@ -1368,11 +1363,11 @@ func _set_counting_text(v: float, target: Node, color: Color) -> void:
 	if target is RichTextLabel:
 		var rtl := target as RichTextLabel
 		rtl.bbcode_enabled = true
-		var color_code: String = color.to_html(false)
-		rtl.bbcode_text = "[color=%s]%s[/color]" % [color_code, t]
+		rtl.bbcode_text = t
 	elif target is Label:
 		var lbl := target as Label
-		lbl.add_theme_color_override("font_color", color)
+		if lbl.has_theme_color_override("font_color"):
+			lbl.remove_theme_color_override("font_color")
 		lbl.text = t.replace(_gold_bbcode(), "G")
 	else:
 		if target.has_method("set"):
@@ -2479,6 +2474,7 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 	if prop_str != "" and owner_str != "":
 		arr = _get_inventory_array()
 	var prefer_append := _is_empty_token(tok)
+	var added_tokens: Array = []
 	if arr.size() > 0 and not prefer_append:
 		var target_empty = _take_pending_empty_token()
 		var idx := -1
@@ -2492,6 +2488,7 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 			if idx < arr.size():
 				prev_token = arr[idx]
 			arr[idx] = tok
+			added_tokens.append(tok)
 			if prev_token != null:
 				replaced_pairs.append({"old": prev_token, "new": tok})
 			# Handle duplicate-on-add abilities (e.g., Copper Coin total_copies=2)
@@ -2509,29 +2506,38 @@ func _emit_loot_selected(round_num: int, token: Resource) -> void:
 				var dup: Resource = (tok as Resource).duplicate(true)
 				_init_token_base_value(dup)
 				arr[jidx] = dup
+				added_tokens.append(dup)
 				if prev_dup != null:
 					replaced_pairs.append({"old": prev_dup, "new": dup})
 			# Commit once after all replacements to minimize churn
 			_set_inventory_array(arr)
+			for new_tok in added_tokens:
+				if new_tok != null:
+					_register_effect_target_current(new_tok)
 			# Emit signal for the initial replacement; UI can resync if needed
 			emit_signal("loot_choice_replaced", round_num, tok, idx)
 			var fallback_pairs: Array = []
+			var placed_tokens: Array = []
 			for pair in replaced_pairs:
 				var old_tok = pair.get("old")
 				var new_tok = pair.get("new")
-				if not _refresh_slots_for_token_swap(old_tok, new_tok):
+				if _refresh_slots_for_token_swap(old_tok, new_tok):
+					placed_tokens.append(new_tok)
+				else:
 					fallback_pairs.append(pair)
 			for fb_pair in fallback_pairs:
-				var fb_old = fb_pair.get("old")
 				var fb_new = fb_pair.get("new")
 				if fb_new == null:
 					continue
-				var current_arr := _get_inventory_array()
-				var prev_idx := current_arr.find(fb_new)
-				if prev_idx != -1 and fb_old != null:
-					current_arr[prev_idx] = fb_old
-					_set_inventory_array(current_arr)
-				_apply_token_to_nearest_visible_empty(fb_new)
+				if _place_token_on_board_direct(fb_new):
+					placed_tokens.append(fb_new)
+			for new_tok in added_tokens:
+				if new_tok == null:
+					continue
+				if placed_tokens.has(new_tok):
+					continue
+				if _place_token_on_board_direct(new_tok):
+					placed_tokens.append(new_tok)
 			replaced = true
 
 	if not replaced:
@@ -2966,6 +2972,24 @@ func _apply_token_to_nearest_visible_empty(token) -> void:
 		if debug_spin:
 			_debug_board_state("Fallback slot update -> %s" % _debug_token_name(token))
 		return
+
+func _place_token_on_board_direct(token) -> bool:
+	if token == null:
+		return false
+	var sr := _resolve_spin_root()
+	if sr == null:
+		return false
+	var rng := _loot_rng
+	if rng == null:
+		rng = _mk_rng()
+	if sr.has_method("place_token_random_board_empty"):
+		var placed := bool(sr.call("place_token_random_board_empty", token, rng, true))
+		if placed:
+			return true
+	if sr.has_method("_slot_for_offset"):
+		_apply_token_to_nearest_visible_empty(token)
+		return true
+	return false
 
 func _debug_token_name(token) -> String:
 	if token == null:
@@ -4389,22 +4413,23 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 				var count_sr: int = max(1, int((cmd as Dictionary).get("count", 1)))
 				var choices_sr: Array[String] = []
 				var troot_sr := String(loot_scan_root)
-				var da_sr = DirAccess.open(troot_sr)
+				var da_sr: DirAccess = DirAccess.open(troot_sr)
 				if da_sr != null:
-					var files = da_sr.get_files()
+					var files := da_sr.get_files()
 					for f in files:
 						if f.ends_with(".tres"):
 							var p: String = troot_sr.path_join(f)
-							var res = ResourceLoader.load(p)
+							var res: Resource = ResourceLoader.load(p)
 							if res != null and (res as Object).has_method("get") and _token_has_tag(res, tag_sr):
 								choices_sr.append(p)
+				var board_changed_sr: bool = false
 				for i in range(count_sr):
 					if choices_sr.is_empty():
 						break
-					var pck := choices_sr[_loot_rng.randi_range(0, choices_sr.size()-1)]
-					var arrx := _get_inventory_array()
+					var pck := choices_sr[_loot_rng.randi_range(0, choices_sr.size() - 1)]
+					var arrx: Array = _get_inventory_array()
 					var idx_emp2 := _find_empty_index(arrx)
-					var resx = ResourceLoader.load(pck)
+					var resx: Resource = ResourceLoader.load(pck)
 					if resx is Resource:
 						var dupx := (resx as Resource).duplicate(true)
 						_init_token_base_value(dupx)
@@ -4413,17 +4438,26 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 						else:
 							arrx.append(dupx)
 						_set_inventory_array(arrx)
+						if ctx is Dictionary and _place_token_on_board(ctx, dupx):
+							board_changed_sr = true
+				if ctx is Dictionary:
+					ctx["board_tokens"] = _get_inventory_array()
+					if board_changed_sr:
+						_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+				continue
 			"spawn_random_by_rarity":
 				var rar_sr := String((cmd as Dictionary).get("rarity", "")).to_lower()
 				var count_rr: int = max(1, int((cmd as Dictionary).get("count", 1)))
 				var troot_rr := String(loot_scan_root)
+				var board_changed_rr: bool = false
 				for i in range(count_rr):
 					var p_rr := _pick_random_by_rarity_path(troot_rr, rar_sr)
 					if p_rr.strip_edges() == "":
 						break
-					var arr_rr := _get_inventory_array()
+					var arr_rr: Array = _get_inventory_array()
 					var idx_empr := _find_empty_index(arr_rr)
-					var resr = ResourceLoader.load(p_rr)
+					var resr: Resource = ResourceLoader.load(p_rr)
 					if resr is Resource:
 						var dupr := (resr as Resource).duplicate(true)
 						_init_token_base_value(dupr)
@@ -4432,26 +4466,35 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 						else:
 							arr_rr.append(dupr)
 						_set_inventory_array(arr_rr)
+						if ctx is Dictionary and _place_token_on_board(ctx, dupr):
+							board_changed_rr = true
+				if ctx is Dictionary:
+					ctx["board_tokens"] = _get_inventory_array()
+					if board_changed_rr:
+						_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+				continue
 			"spawn_random_any":
 				var count_any: int = max(1, int((cmd as Dictionary).get("count", 1)))
 				var troot_any := String(loot_scan_root)
-				var all_paths_any: Array[String] = _collect_token_paths_under(troot_any)
+				var all_paths_any := _collect_token_paths_under(troot_any)
 				var choices_any: Array[String] = []
 				for pth in all_paths_any:
-					var res_any = ResourceLoader.load(pth)
+					var res_any: Resource = ResourceLoader.load(pth)
 					if res_any == null or not (res_any as Object).has_method("get"):
 						continue
 					var nm_any := _token_name(res_any)
 					if nm_any == "Empty":
 						continue
 					choices_any.append(pth)
+				var board_changed_any: bool = false
 				for i in range(count_any):
 					if choices_any.is_empty():
 						break
-					var pick_any := choices_any[_loot_rng.randi_range(0, choices_any.size()-1)]
-					var arr_any := _get_inventory_array()
+					var pick_any := choices_any[_loot_rng.randi_range(0, choices_any.size() - 1)]
+					var arr_any: Array = _get_inventory_array()
 					var idx_empa := _find_empty_index(arr_any)
-					var resa = ResourceLoader.load(pick_any)
+					var resa: Resource = ResourceLoader.load(pick_any)
 					if resa is Resource:
 						var dupa := (resa as Resource).duplicate(true)
 						_init_token_base_value(dupa)
@@ -4460,23 +4503,42 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 						else:
 							arr_any.append(dupa)
 						_set_inventory_array(arr_any)
+						if ctx is Dictionary and _place_token_on_board(ctx, dupa):
+							board_changed_any = true
+				if ctx is Dictionary:
+					ctx["board_tokens"] = _get_inventory_array()
+					if board_changed_any:
+						_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+				continue
 			"spawn_copy_of_last_destroyed":
 				var count_l: int = max(1, int((cmd as Dictionary).get("count", 1)))
-				var last_tok = null
+				var last_tok: Resource = null
 				if ctx is Dictionary and ctx.has("last_destroyed_token"):
-					last_tok = ctx["last_destroyed_token"]
+					var last_variant = ctx["last_destroyed_token"]
+					if last_variant is Resource:
+						last_tok = last_variant
 				if last_tok == null or not (last_tok as Object).has_method("duplicate"):
 					continue
+				var board_changed_ld: bool = false
 				for i in range(count_l):
 					var dup_l := (last_tok as Resource).duplicate(true)
 					_init_token_base_value(dup_l)
-					var arr_l := _get_inventory_array()
+					var arr_l: Array = _get_inventory_array()
 					var idx_empl := _find_empty_index(arr_l)
 					if idx_empl >= 0:
 						arr_l[idx_empl] = dup_l
 					else:
 						arr_l.append(dup_l)
 					_set_inventory_array(arr_l)
+					if ctx is Dictionary and _place_token_on_board(ctx, dup_l):
+						board_changed_ld = true
+				if ctx is Dictionary:
+					ctx["board_tokens"] = _get_inventory_array()
+					if board_changed_ld:
+						_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+				continue
 			"destroy_inventory_name":
 				var name_di := String((cmd as Dictionary).get("target_name", ""))
 				var maxdi2 := int((cmd as Dictionary).get("max_destroy", 0))
@@ -4536,6 +4598,7 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 					_notify_spin_lock_state(ctx)
 			"spawn_copy_in_inventory":
 				var to_copy = (cmd as Dictionary).get("token_ref", null)
+				var board_changed_ci := false
 				if to_copy != null and (to_copy is Resource or (to_copy as Object).has_method("duplicate")):
 					var arr := _get_inventory_array()
 					var idx_emp := _find_empty_index(arr)
@@ -4546,13 +4609,20 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 					else:
 						arr.append(dup)
 					_set_inventory_array(arr)
+					if ctx is Dictionary and _place_token_on_board(ctx, dup):
+						board_changed_ci = true
+				if ctx is Dictionary:
+					ctx["board_tokens"] = _get_inventory_array()
+					if board_changed_ci:
+						_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+				continue
 			"destroy_all_copies_by_name":
 				var nm := String((cmd as Dictionary).get("token_name", ""))
 				if nm.strip_edges() != "":
 					var arr2 := _get_inventory_array()
 					var empty_res3 := _load_empty_token()
 					if empty_res3 is Resource:
-						var erp := (empty_res3 as Resource).resource_path
 						for i in range(arr2.size()):
 							var it = arr2[i]
 							if it != null and (it as Object).has_method("get") and String(it.get("name")) == nm:
@@ -4617,7 +4687,6 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 					_resync_contribs_from_board(ctx, _contribs)
 					_refresh_dynamic_passives(ctx, _contribs)
 				continue
-
 			"adjust_empty_rarity_bonus":
 				var delta := float((cmd as Dictionary).get("amount", 0.0))
 				if delta != 0.0:
@@ -4639,54 +4708,58 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 								if sets.is_empty():
 									choices.append(p)
 								else:
-									var tags=res.get("tags")
-									var ok=false
+									var tags = res.get("tags")
+									var ok := false
 									if tags is Array:
 										for t in tags:
-											if typeof(t)==TYPE_STRING and sets.has(String(t)):
-												ok=true; break
+											if typeof(t) == TYPE_STRING and sets.has(String(t)):
+												ok = true
+												break
 									if ok:
 										choices.append(p)
 				if not choices.is_empty():
-					var pick := choices[_loot_rng.randi_range(0, choices.size()-1)]
-					# Find self offset
+					var pick := choices[_loot_rng.randi_range(0, choices.size() - 1)]
 					var self_c := _find_self_contrib(_contribs, effect_source)
 					var off_self := 0
-					if not self_c.is_empty(): off_self = int(self_c.get("offset", 0))
+					if not self_c.is_empty():
+						off_self = int(self_c.get("offset", 0))
 					_replace_token_at_offset(ctx, off_self, pick, -1, false)
 					_resync_contribs_from_board(ctx, _contribs)
 					_refresh_dynamic_passives(ctx, _contribs)
 			"promote_token_in_inventory":
-				var pathp := String((cmd as Dictionary).get("token_path", ""))
+				var pathp := String((cmd as Dictionary).get("token_path", "")).strip_edges()
 				var from_ref: Variant = (cmd as Dictionary).get("from_ref", null)
-				if pathp.strip_edges() == "":
-					break
+				if pathp == "":
+					continue
 				var arr3: Array = _get_inventory_array()
 				var idxp := -1
 				if from_ref != null:
 					for i in range(arr3.size()):
 						if arr3[i] == from_ref:
-							idxp = i; break
+							idxp = i
+							break
 				if idxp == -1 and from_ref != null and (from_ref as Object).has_method("get"):
 					var fn := String(from_ref.get("name"))
 					for i in range(arr3.size()):
 						var it2 = arr3[i]
 						if it2 != null and (it2 as Object).has_method("get") and String(it2.get("name")) == fn:
-							idxp = i; break
+							idxp = i
+							break
 				if idxp >= 0:
 					_replace_token_at_offset(ctx, 0, pathp, -1, false, arr3[idxp])
 					_resync_contribs_from_board(ctx, _contribs)
 					_refresh_dynamic_passives(ctx, _contribs)
 			"spawn_token_in_inventory":
-				var path_s := String((cmd as Dictionary).get("token_path", ""))
+				var path_s := String((cmd as Dictionary).get("token_path", "")).strip_edges()
 				var count := int((cmd as Dictionary).get("count", 1))
-				if path_s.strip_edges() == "":
-					break
-				var res_s := ResourceLoader.load(path_s)
+				if path_s == "":
+					continue
+				var res_s: Resource = ResourceLoader.load(path_s)
+				var board_changed: bool = false
 				if res_s is Resource:
-					var arr4 := _get_inventory_array()
+					var arr4: Array = _get_inventory_array()
 					var spawned: Array = []
-					var to_spawn = max(1, count)
+					var to_spawn: int = max(1, count)
 					for i in range(to_spawn):
 						var dup2 := (res_s as Resource).duplicate(true)
 						_init_token_base_value(dup2)
@@ -4700,12 +4773,17 @@ func _execute_ability_commands(cmds: Array, ctx: Dictionary, _contribs: Array, e
 					_set_inventory_array(arr4)
 					for new_tok in spawned:
 						_register_effect_target_current(new_tok)
+						if ctx is Dictionary and _place_token_on_board(ctx, new_tok):
+							board_changed = true
 					var owner_now := _resolve_inventory_owner_node()
 					if owner_now != null and owner_now.has_method("_update_inventory_strip"):
 						owner_now.call_deferred("_update_inventory_strip")
-					if ctx is Dictionary:
-						ctx["board_tokens"] = _get_inventory_array()
-						_refresh_dynamic_passives(ctx, _contribs)
+				if ctx is Dictionary:
+					ctx["board_tokens"] = _get_inventory_array()
+					if board_changed:
+						_resync_contribs_from_board(ctx, _contribs)
+				_refresh_dynamic_passives(ctx, _contribs)
+				continue
 			"register_guard_aura":
 				var off_g := int((cmd as Dictionary).get("offset", 0))
 				_register_guard_offset(ctx, off_g)
@@ -5545,6 +5623,19 @@ func _resolve_inventory_owner_node() -> Node:
 		if sr != null and sr is Node:
 			return sr
 	return null
+
+func _place_token_on_board(ctx: Dictionary, token, allow_append: bool = true) -> bool:
+	if ctx == null or token == null:
+		return false
+	if not ctx.has("spin_root"):
+		return false
+	var sr_var = ctx["spin_root"]
+	if sr_var == null or not (sr_var as Object).has_method("place_token_random_board_empty"):
+		return false
+	var rng_var = ctx.get("rng", null)
+	if rng_var is RandomNumberGenerator:
+		return bool((sr_var as Object).call("place_token_random_board_empty", token, rng_var, allow_append))
+	return bool((sr_var as Object).call("place_token_random_board_empty", token, null, allow_append))
 
 func _replace_token_at_offset(ctx: Dictionary, offset: int, token_path: String, set_value: int, preserve_tags: bool, target_token_override = null, source_token_ref = null) -> Resource:
 	var trimmed_path := String(token_path).strip_edges()

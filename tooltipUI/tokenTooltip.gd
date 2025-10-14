@@ -5,11 +5,14 @@ class_name TokenTooltipView
 @export var base_only: bool = false
 # When true, dims the Active description to indicate it won't trigger (e.g., side slots during spin)
 @export var force_dim_active: bool = false
+@export var force_dim_passive: bool = false
 @export var temp_gain_color: Color = Color8(80, 220, 80)
 @export var temp_loss_color: Color = Color8(220, 80, 80)
 
 const ACTIVE_TITLE_COLOR := Color8(246, 44, 37)    # #f62c25
 const PASSIVE_TITLE_COLOR := Color8(66, 182, 255)  # #42b6ff
+const DEFAULT_DESC_COLOR := Color(0.9, 0.9, 0.95)
+const DIM_DESC_COLOR := Color(0.6, 0.6, 0.68)
 const TAG_BG := Color(0.16, 0.16, 0.2, 0.9)
 const TAG_TEXT := Color(0.92, 0.92, 0.96)
 
@@ -200,6 +203,7 @@ func set_data(data: TokenLootData) -> void:
 		_passive_desc_label.text = String(data.passiveDescription)
 	else:
 		_passive_desc_label.text = ""
+	set_dim_passive(force_dim_passive if has_passive else false)
 
 	# --- Tags with indentation (no title) ---
 	# Wrap tags flow in an indented MarginContainer once (idempotent)
@@ -255,7 +259,7 @@ func _apply_pixel_rich_theme(rt: RichTextLabel, size: int) -> void:
 	if pixel_font != null:
 		rt.add_theme_font_override("normal_font", pixel_font)
 	rt.add_theme_font_size_override("normal_font_size", size)
-	rt.modulate = Color(0.9, 0.9, 0.95)
+	rt.modulate = DEFAULT_DESC_COLOR
 
 func _wrap_top_margin(child: Control, px: int) -> MarginContainer:
 	var mc := MarginContainer.new()
@@ -340,6 +344,15 @@ func set_dim_active(dim: bool) -> void:
 	if _active_desc_label == null:
 		return
 	if dim:
-		_active_desc_label.modulate = Color(0.6, 0.6, 0.68)
+		_active_desc_label.modulate = DIM_DESC_COLOR
 	else:
-		_active_desc_label.modulate = Color(0.9, 0.9, 0.95)
+		_active_desc_label.modulate = DEFAULT_DESC_COLOR
+
+func set_dim_passive(dim: bool) -> void:
+	force_dim_passive = dim
+	if _passive_desc_label == null:
+		return
+	if dim:
+		_passive_desc_label.modulate = DIM_DESC_COLOR
+	else:
+		_passive_desc_label.modulate = DEFAULT_DESC_COLOR
