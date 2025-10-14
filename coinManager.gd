@@ -6033,18 +6033,25 @@ func _apply_token_to_slot(slot: Control, token: Resource) -> void:
 			break
 	if has_data_prop:
 		slot.set("data", token)
-		_apply_empty_lock_visual_to_token(token)
-		return
-	# Fallback: if root exposes an _apply(data) method
-	if slot.has_method("_apply"):
-		slot.call("_apply", token)
-		_apply_empty_lock_visual_to_token(token)
-		return
-	# Final fallback: update a child named "slotItem" if present
-	var si := slot.get_node_or_null("slotItem")
-	if si != null and si.has_method("set"):
-		si.set("data", token)
+	else:
+		# Fallback: if root exposes an _apply(data) method
+		if slot.has_method("_apply"):
+			slot.call("_apply", token)
+		else:
+			# Final fallback: update a child named "slotItem" if present
+			var si := slot.get_node_or_null("slotItem")
+			if si != null and si.has_method("set"):
+				si.set("data", token)
 	_apply_empty_lock_visual_to_token(token)
+	var sr_ref = null
+	if slot.has_meta("spin_root_ref"):
+		sr_ref = slot.get_meta("spin_root_ref")
+	if sr_ref == null:
+		var parent := slot.get_parent()
+		if parent != null and parent.has_meta("spin_root_ref"):
+			sr_ref = parent.get_meta("spin_root_ref")
+	if sr_ref != null and sr_ref is Object and is_instance_valid(sr_ref) and (sr_ref as Object).has_method("notify_board_slot_changed"):
+		(sr_ref as Object).notify_board_slot_changed(slot)
 
 func _replace_board_tag_in_slotmap(ctx: Dictionary, target_tag: String, token_path: String) -> void:
 	if token_path.strip_edges() == "":

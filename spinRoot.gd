@@ -66,6 +66,9 @@ const PEEK_NAME_LEFT := "PeekLeftSlot"
 const PEEK_NAME_RIGHT := "PeekRightSlot"
 var _peek_left_slot: Control = null
 var _peek_right_slot: Control = null
+var _peek_refresh_pending := false
+var _peek_update_suspensions := 0
+var _peek_preview_snapshot: Dictionary = {}
 
 # SFX internals
 var _sfx_pool: Array[AudioStreamPlayer] = []
@@ -210,6 +213,7 @@ func _add_slot(it: TokenLootData) -> void:
 	var ctrl = slot as Control
 	if ctrl.custom_minimum_size == Vector2.ZERO:
 		ctrl.custom_minimum_size = Vector2(256, 256)
+	ctrl.set_meta("spin_root_ref", self)
 
 	# Apply visual data from your slot scene (if it supports it)
 	if ctrl.has_method("_apply"):
@@ -372,6 +376,7 @@ func _apply_slot_token(slot: Control, token) -> void:
 			var si := slot.get_node_or_null("slotItem")
 			if si != null and si.has_method("set"):
 				si.set("data", null)
+		notify_board_slot_changed(slot)
 		return
 	if coin_mgr != null and coin_mgr.has_method("_apply_token_to_slot"):
 		coin_mgr.call("_apply_token_to_slot", slot, token)
@@ -383,6 +388,7 @@ func _apply_slot_token(slot: Control, token) -> void:
 			var si2 := slot.get_node_or_null("slotItem")
 			if si2 != null and si2.has_method("set"):
 				si2.set("data", token)
+	notify_board_slot_changed(slot)
 
 func handle_triggered_empty_removed(offset: int) -> void:
 	if offset == 0:
@@ -451,6 +457,29 @@ func _init_peek_slots() -> void:
 	_peek_right_slot = _prepare_peek_holder(peek_right_container, PEEK_NAME_RIGHT)
 	_update_peek_tokens()
 
+func notify_board_slot_changed(slot: Control) -> void:
+	if slot == null or not is_instance_valid(slot):
+		return
+	if slots_hbox == null or not is_instance_valid(slots_hbox):
+		return
+	if slot.get_parent() != slots_hbox:
+		return
+	_queue_peek_refresh()
+
+func _queue_peek_refresh() -> void:
+	_peek_refresh_pending = true
+	if _peek_update_suspensions > 0:
+		return
+	_flush_peek_refresh()
+
+func _flush_peek_refresh() -> void:
+	if not _peek_refresh_pending:
+		return
+	if _peek_update_suspensions > 0:
+		return
+	_peek_refresh_pending = false
+	_update_peek_tokens()
+
 func _prepare_peek_holder(container: Control, slot_name: String) -> Control:
 	if container == null:
 		return null
@@ -498,8 +527,66 @@ func _prepare_peek_holder(container: Control, slot_name: String) -> Control:
 	return ctrl
 
 func _update_peek_tokens() -> void:
+	_peek_refresh_pending = false
 	_update_single_peek(peek_left_container, _peek_left_slot, -1)
 	_update_single_peek(peek_right_container, _peek_right_slot, 1)
+
+func _snapshot_peek_state() -> void:
+	_peek_preview_snapshot.clear()
+	_peek_preview_snapshot["left"] = _capture_peek_wrapper_state(peek_left_container, _peek_left_slot)
+	_peek_preview_snapshot["right"] = _capture_peek_wrapper_state(peek_right_container, _peek_right_slot)
+
+func _capture_peek_wrapper_state(wrapper: Control, slot_display: Control) -> Dictionary:
+	var snap: Dictionary = {}
+	if wrapper == null or slot_display == null:
+		return snap
+	snap["visible"] = wrapper.visible
+	var token = null
+	if wrapper.has_meta("token_data"):
+		token = wrapper.get_meta("token_data")
+	if token != null:
+		snap["token"] = _clone_token_ref(token)
+	else:
+		snap["token"] = null
+	return snap
+
+func _restore_peek_snapshot() -> void:
+	_apply_peek_snapshot_to_wrapper(peek_left_container, _peek_left_slot, _peek_preview_snapshot.get("left", {}))
+	_apply_peek_snapshot_to_wrapper(peek_right_container, _peek_right_slot, _peek_preview_snapshot.get("right", {}))
+	_peek_preview_snapshot.clear()
+
+func _apply_peek_snapshot_to_wrapper(wrapper: Control, slot_display: Control, snap) -> void:
+	if wrapper == null or slot_display == null:
+		return
+	var token = null
+	if snap is Dictionary:
+		token = snap.get("token", null)
+	if token != null:
+		token = _clone_token_ref(token)
+	_set_slot_token(slot_display, token)
+	var tip := wrapper.get_node_or_null("TooltipSpawner")
+	if token == null:
+		wrapper.visible = false
+		wrapper.set_meta("token_data", null)
+		if tip != null:
+			tip.set_meta("token_data", null)
+		return
+	wrapper.visible = bool((snap is Dictionary) and snap.get("visible", true))
+	wrapper.set_meta("token_data", token)
+	wrapper.set_meta("tooltip_base_only", true)
+	wrapper.set_meta("tooltip_dim_all", true)
+	if tip != null:
+		tip.set_meta("token_data", token)
+		tip.set_meta("tooltip_dim_all", true)
+
+func _push_peek_suspend() -> void:
+	_peek_update_suspensions += 1
+
+func _pop_peek_suspend() -> void:
+	if _peek_update_suspensions > 0:
+		_peek_update_suspensions -= 1
+	if _peek_update_suspensions == 0 and _peek_refresh_pending:
+		_flush_peek_refresh()
 
 func _find_peek_target(sign: int) -> Control:
 	if sign == 0:
@@ -512,6 +599,11 @@ func _find_peek_target(sign: int) -> Control:
 		if slot == null:
 			return null
 		if slot.has_meta("token_data") and slot.get_meta("token_data") != null:
+			var tok = slot.get_meta("token_data")
+			if tok == null or _is_empty_token_local(tok):
+				offset += step
+				guard += 1
+				continue
 			return slot
 		offset += step
 		guard += 1
@@ -646,6 +738,7 @@ func place_token_random_board_empty(token, rng: RandomNumberGenerator = null, al
 
 func _capture_slot_baseline_for_preview() -> void:
 	_slot_baseline_tokens.clear()
+	var offset_token_map: Dictionary = {}
 	var kids = slots_hbox.get_children()
 	for node in kids:
 		if node is Control:
@@ -654,7 +747,77 @@ func _capture_slot_baseline_for_preview() -> void:
 				continue
 			var tok = ctrl.get_meta("token_data")
 			_slot_baseline_tokens[ctrl] = _clone_token_ref(tok)
+			var off := _slot_offset_for_control(ctrl)
+			if off != 1024:
+				offset_token_map[off] = tok
+	_sync_triggered_baseline_from_offsets(offset_token_map)
 	_update_peek_tokens()
+
+func _sync_triggered_baseline_from_offsets(offset_token_map: Dictionary) -> void:
+	if offset_token_map.is_empty():
+		return
+	if _last_winning_slot_idx < 0:
+		return
+	var baseline_by_offset: Dictionary = {}
+	for entry in _last_spin_baseline:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var off_exists := int((entry as Dictionary).get("offset", 0))
+		baseline_by_offset[off_exists] = entry
+	var changed := false
+	for off in [-2, -1, 0, 1, 2]:
+		if not offset_token_map.has(off):
+			continue
+		var tok = offset_token_map[off]
+		var has_entry := baseline_by_offset.has(off)
+		var entry: Dictionary = {}
+		if has_entry:
+			entry = baseline_by_offset.get(off)
+		if not has_entry:
+			var kind_val := "passive"
+			if off == 0:
+				kind_val = "active"
+			entry = {
+				"offset": off,
+				"kind": kind_val,
+				"base_value": 0,
+				"token": null
+			}
+			_last_spin_baseline.append(entry)
+			baseline_by_offset[off] = entry
+		var base_tok = tok
+		entry["token"] = _clone_token_ref(base_tok)
+		if base_tok != null and (base_tok as Object).has_method("get"):
+			var nm = base_tok.get("name")
+			if typeof(nm) == TYPE_STRING:
+				entry["token_name"] = String(nm)
+			elif entry.has("token_name"):
+				entry.erase("token_name")
+			var icon_val = base_tok.get("icon")
+			if icon_val != null:
+				entry["icon"] = icon_val
+			elif entry.has("icon"):
+				entry.erase("icon")
+			var base_value_var = base_tok.get("value")
+			if base_value_var != null:
+				entry["base_value"] = int(base_value_var)
+		else:
+			entry["base_value"] = 0
+			if entry.has("token_name"):
+				entry.erase("token_name")
+			if entry.has("icon"):
+				entry.erase("icon")
+		if base_tok is Resource:
+			var rp := (base_tok as Resource).resource_path
+			if rp != "":
+				entry["resource_path"] = rp
+			elif entry.has("resource_path"):
+				entry.erase("resource_path")
+		elif entry.has("resource_path"):
+			entry.erase("resource_path")
+		changed = true
+	if changed and _preview_visible:
+		_apply_baseline_to_slots()
 func _compute_overshoot_scroll(target_scroll: float) -> float:
 	_overshoot_offset = 0.0
 	if overshoot_slot_fraction <= 0.0:
@@ -687,10 +850,13 @@ func show_base_preview() -> void:
 	if _last_spin_baseline.is_empty():
 		return
 	var was_active := _preview_visible
+	if not was_active:
+		_snapshot_peek_state()
 	if not _inventory_preview_active:
 		_set_inventory_preview(true)
 	_preview_visible = true
 	_apply_baseline_to_slots()
+	_update_peek_tokens()
 	if not was_active:
 		emit_signal("eye_hover_started")
 
@@ -700,6 +866,8 @@ func hide_base_preview() -> void:
 	var was_active := _preview_visible
 	_preview_visible = false
 	_restore_slots_from_preview()
+	if was_active:
+		_restore_peek_snapshot()
 	_clear_preview_popups()
 	if _inventory_preview_active:
 		_set_inventory_preview(false)
@@ -716,6 +884,7 @@ func set_base_preview_lock(lock: bool) -> void:
 		hide_base_preview()
 
 func _apply_baseline_to_slots() -> void:
+	_push_peek_suspend()
 	_restore_slots_from_preview()
 	_clear_preview_popups()
 	var handled_slots: Dictionary = {}
@@ -755,6 +924,9 @@ func _apply_baseline_to_slots() -> void:
 		var base_token = _slot_baseline_tokens[ctrl]
 		var apply_token = _clone_token_ref(base_token)
 		_set_slot_token(ctrl, apply_token)
+	_pop_peek_suspend()
+	if _peek_refresh_pending:
+		_flush_peek_refresh()
 
 func _ordered_baseline_entries() -> Array:
 	var ordered: Array = []
@@ -920,6 +1092,8 @@ func _clear_preview_popups() -> void:
 	_preview_popups.clear()
 
 func _restore_slots_from_preview() -> void:
+	var touched := not _preview_slot_cache.is_empty()
+	_push_peek_suspend()
 	for slot in _preview_slot_cache.keys():
 		if slot == null or !is_instance_valid(slot):
 			continue
@@ -939,7 +1113,10 @@ func _restore_slots_from_preview() -> void:
 							rtl.parse_bbcode(String(popup_info.get("text", "")))
 						elif not bool(popup_info.get("label_is_rich", false)) and label is Label:
 							(label as Label).text = String(popup_info.get("text", ""))
+	_pop_peek_suspend()
 	_preview_slot_cache.clear()
+	if not touched and _peek_update_suspensions == 0:
+		_update_peek_tokens()
 
 func _ingest_baseline_from_result(result: Dictionary) -> void:
 	_last_spin_baseline.clear()
