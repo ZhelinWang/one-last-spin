@@ -69,6 +69,8 @@ var _peek_right_slot: Control = null
 var _peek_refresh_pending := false
 var _peek_update_suspensions := 0
 var _peek_preview_snapshot: Dictionary = {}
+var _spin_result_snapshot: Dictionary = {}
+var _baseline_snapshot_locked := false
 
 # SFX internals
 var _sfx_pool: Array[AudioStreamPlayer] = []
@@ -133,7 +135,7 @@ func _ready() -> void:
 	_rebuild_idle_strip()
 	_update_inventory_strip()
 	_inventory_before_spin = _deep_copy_inventory(items)
-	_capture_slot_baseline_for_preview()
+	_capture_slot_baseline_for_preview(true)
 
 	if artifact_strip:
 		artifact_strip.clear_artifacts()
@@ -194,7 +196,7 @@ func _rebuild_idle_strip() -> void:
 		_add_slot(it)
 	scroll_container.scroll_horizontal = 0
 	_update_inventory_strip()
-	_capture_slot_baseline_for_preview()
+	_capture_slot_baseline_for_preview(true)
 
 func _clear(node: Node) -> void:
 	for c in node.get_children():
@@ -297,7 +299,8 @@ func _is_spin_button_enabled() -> bool:
 func _finish_spin() -> void:
 	# Keep _spinning true until totals are applied (or fallback finishes)
 	var neighbors: Array = _gather_neighbor_tokens(_last_winning_slot_idx)
-	_capture_slot_baseline_for_preview()
+	_snapshot_spin_pre_effect_state()
+	_capture_slot_baseline_for_preview(true)
 
 	# Preferred path: CoinManager orchestrates visuals; pass slot_map and optional popup scene
 	if coin_mgr and coin_mgr.has_method("play_spin"):
@@ -554,6 +557,17 @@ func _restore_peek_snapshot() -> void:
 	_apply_peek_snapshot_to_wrapper(peek_left_container, _peek_left_slot, _peek_preview_snapshot.get("left", {}))
 	_apply_peek_snapshot_to_wrapper(peek_right_container, _peek_right_slot, _peek_preview_snapshot.get("right", {}))
 	_peek_preview_snapshot.clear()
+	_peek_refresh_pending = false
+
+func _apply_preview_peek_snapshot() -> void:
+	if _spin_result_snapshot.is_empty():
+		_peek_refresh_pending = false
+		_update_peek_tokens()
+		return
+	var peek = _spin_result_snapshot.get("peek", {})
+	_apply_peek_snapshot_to_wrapper(peek_left_container, _peek_left_slot, peek.get("left", {}))
+	_apply_peek_snapshot_to_wrapper(peek_right_container, _peek_right_slot, peek.get("right", {}))
+	_peek_refresh_pending = false
 
 func _apply_peek_snapshot_to_wrapper(wrapper: Control, slot_display: Control, snap) -> void:
 	if wrapper == null or slot_display == null:
@@ -736,9 +750,12 @@ func place_token_random_board_empty(token, rng: RandomNumberGenerator = null, al
 	_capture_slot_baseline_for_preview()
 	return true
 
-func _capture_slot_baseline_for_preview() -> void:
+func _capture_slot_baseline_for_preview(force: bool = false) -> void:
+	if _baseline_snapshot_locked and not force:
+		return
+	if _spinning and not force:
+		return
 	_slot_baseline_tokens.clear()
-	var offset_token_map: Dictionary = {}
 	var kids = slots_hbox.get_children()
 	for node in kids:
 		if node is Control:
@@ -747,10 +764,6 @@ func _capture_slot_baseline_for_preview() -> void:
 				continue
 			var tok = ctrl.get_meta("token_data")
 			_slot_baseline_tokens[ctrl] = _clone_token_ref(tok)
-			var off := _slot_offset_for_control(ctrl)
-			if off != 1024:
-				offset_token_map[off] = tok
-	_sync_triggered_baseline_from_offsets(offset_token_map)
 	_update_peek_tokens()
 
 func _sync_triggered_baseline_from_offsets(offset_token_map: Dictionary) -> void:
@@ -818,6 +831,25 @@ func _sync_triggered_baseline_from_offsets(offset_token_map: Dictionary) -> void
 		changed = true
 	if changed and _preview_visible:
 		_apply_baseline_to_slots()
+
+func _snapshot_spin_pre_effect_state() -> void:
+	_baseline_snapshot_locked = true
+	var slot_tokens: Dictionary = {}
+	for off in [-2, -1, 0, 1, 2]:
+		var ctrl := _slot_for_offset(off)
+		var tok = null
+		if ctrl != null and ctrl.has_meta("token_data"):
+			tok = ctrl.get_meta("token_data")
+		slot_tokens[off] = _clone_token_ref(tok)
+	var peek_state := {
+		"left": _capture_peek_wrapper_state(peek_left_container, _peek_left_slot),
+		"right": _capture_peek_wrapper_state(peek_right_container, _peek_right_slot)
+	}
+	_spin_result_snapshot = {
+		"slots": slot_tokens,
+		"peek": peek_state
+	}
+	_sync_triggered_baseline_from_offsets(slot_tokens)
 func _compute_overshoot_scroll(target_scroll: float) -> float:
 	_overshoot_offset = 0.0
 	if overshoot_slot_fraction <= 0.0:
@@ -855,8 +887,10 @@ func show_base_preview() -> void:
 	if not _inventory_preview_active:
 		_set_inventory_preview(true)
 	_preview_visible = true
+	_push_peek_suspend()
 	_apply_baseline_to_slots()
-	_update_peek_tokens()
+	_apply_preview_peek_snapshot()
+	_pop_peek_suspend()
 	if not was_active:
 		emit_signal("eye_hover_started")
 
@@ -1781,6 +1815,9 @@ func _on_game_reset() -> void:
 	else:
 		_update_inventory_strip()
 	_inventory_before_spin = _deep_copy_inventory(items)
+	_spin_result_snapshot.clear()
+	_baseline_snapshot_locked = false
+	_capture_slot_baseline_for_preview(true)
 	if artifact_xp_bar:
 		artifact_xp_bar.reset_bar()
 
