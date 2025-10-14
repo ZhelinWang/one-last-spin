@@ -313,7 +313,7 @@ size_flags_vertical = 2
 theme_override_constants/margin_left = 0
 theme_override_constants/margin_top = 0
 theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 20
+theme_override_constants/margin_bottom = 25
 
 [node name="goldStatusBar" type="Panel" parent="mainContainer/topUIMarginContainer"]
 custom_minimum_size = Vector2(0, 150)
@@ -487,8 +487,8 @@ custom_minimum_size = Vector2(1400, 150)
 layout_mode = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/line_separation = 30
-theme_override_constants/outline_size = 50
-theme_override_font_sizes/normal_font_size = 48
+theme_override_constants/outline_size = 72
+theme_override_font_sizes/normal_font_size = 56
 bbcode_enabled = true
 text = "PLACEHOLDER ACTIVE EFFECT TITLE"
 scroll_active = false
